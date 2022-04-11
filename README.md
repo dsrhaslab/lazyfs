@@ -4,13 +4,13 @@ A FUSE Filesystem with its own configurable page cache which can be used to simu
 
 ## Supported operations
 
-Our filesystem implements severall system calls that query our custom page cache layer. Currently, **LazyFS** supports most of the operations except **truncate** (in development) and it is **not yet fully optimized**.
+Our filesystem implements several system calls that query our custom page cache layer. Currently, **LazyFS** supports most of the operations except **truncate** (in development) and it is **not yet fully optimized**.
 
 ## Installation
 
-LazyFS requires the following packages to be installed:
+LazyFS was tested with **ext4 (default mount options)** as the underlying filesystem. It requires the following packages to be installed:
 
--   **CMake** and **g++**:
+-   **CMake (>= 3.10)** and **g++ (>= 9.4.0)** (C++14):
     -   sudo apt install g++ cmake
 -   **FUSE** 3
 
@@ -40,7 +40,7 @@ cd lazyfs && ./build.sh && cd -
 
 ## Running and Injecting faults
 
-**LazyFS** uses a toml configuration file to setup the cache and a named pipe to append fault commands:
+**LazyFS** uses a toml configuration file to set up the cache and a named pipe to append fault commands:
 
 ```bash
 # lazyfs/config/default.toml
@@ -62,7 +62,7 @@ blocks_per_page=1
 
 The section **[cache]** **requires** that you specify the following:
 
--   **apply_eviction**: Wether the cache should behave like the real page cache, evicting pages when the cache fills to the maximum;
+-   **apply_eviction**: Whether the cache should behave like the real page cache, evicting pages when the cache fills to the maximum;
 
 -   **[cache.simple]** or **[cache.manual]**: To setup the cache size and internal organization. For now, one could just specify as seen in the example, the **custom_size** in (Gb/Mb/Kb) and the **number of blocks in each page** (you can just leave 1 as default). For manual configurations, comment out the simple configuration and uncoment/change the example above to suit your needs.
 
