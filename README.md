@@ -102,8 +102,6 @@ To display the current cache usage:
 echo "lazyfs::display-cache-usage" > /my/path/faults-example.fifo
 ```
 
-Use the **stdio** logging for now, later we will provide custom logging to a logfile.
-
 ## Development
 
 This section displays the next tasks and some documentation resources:
