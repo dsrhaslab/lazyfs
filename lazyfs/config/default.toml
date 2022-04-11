@@ -1,0 +1,11 @@
+[faults]
+fifo_path="/home/joao/faults-example.fifo"
+[cache]
+apply_eviction=false
+[cache.simple]
+custom_size="1GB"
+blocks_per_page=1
+# [cache.manual]
+# io_block_size=24576
+# page_size=24576
+# no_pages=100000

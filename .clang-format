@@ -1,0 +1,20 @@
+BasedOnStyle: LLVM
+IndentWidth: 4
+---
+Language: Cpp
+AlignConsecutiveAssignments: true
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowShortBlocksOnASingleLine: Empty
+BinPackArguments: false
+BinPackParameters: false
+ColumnLimit: 100
+FixNamespaceComments: true
+IncludeBlocks: Regroup
+SpaceAfterTemplateKeyword: false
+SpaceBeforeCpp11BracedList: true
+SpaceBeforeParens: Always
+SpacesInContainerLiterals: false
+DerivePointerAlignment: false
+PointerAlignment: Left
+KeepEmptyLinesAtTheStartOfBlocks: true
