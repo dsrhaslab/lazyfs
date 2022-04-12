@@ -120,6 +120,7 @@ This section displays the next tasks and some documentation resources:
 -   [ ] Make **rename** operations atomic
 -   [ ] Configure cache to grow until a certain size (dynamically)
 -   [ ] Add logging to an external file
+-   [ ] Code documentation
 
 ### Resources
 
