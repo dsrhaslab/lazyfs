@@ -8,10 +8,14 @@ Our filesystem implements several system calls that query our custom page cache 
 
 ## Installation
 
-LazyFS was tested with **ext4 (default mount options)** as the underlying filesystem. It requires the following packages to be installed:
+LazyFS was tested with **ext4** (default mount options) as the underlying filesystem. It is C++14 compliant and requires the following packages to be installed:
 
--   **CMake (>= 3.10)** and **g++ (>= 9.4.0)** (C++14):
-    -   sudo apt install g++ cmake
+-   **CMake** (>= 3.10) and **g++** (>= 9.4.0):
+
+```bash
+sudo apt install g++ cmake
+```
+
 -   **FUSE** 3
 
 Install and configure FUSE (version 3):
