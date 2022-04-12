@@ -179,4 +179,26 @@ void Page::make_block_readable_to (int blk_id, int max_offset) {
     this->allocated_block_ids.make_readable_to (blk_id, max_offset);
 }
 
+void Page::write_null_from (int block_id, int from_offset) {
+    if (contains_block (block_id)) {
+        int off_first = get_block_offsets (block_id).first;
+        memset (this->data + off_first + from_offset,
+                0,
+                this->config->IO_BLOCK_SIZE - off_first - from_offset);
+    }
+}
+
+void Page::remove_block (int block_id) {
+    if (contains_block (block_id)) {
+        int off_first = get_block_offsets (block_id).first;
+        this->free_block_indexes.push_back (off_first);
+        this->allocated_block_ids.remove_block (block_id);
+
+        memset (this->data + off_first, 0, this->config->IO_BLOCK_SIZE);
+    }
+
+    if (this->allocated_block_ids.empty ())
+        this->is_dirty = false;
+}
+
 } // namespace cache::engine::page

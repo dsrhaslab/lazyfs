@@ -63,6 +63,10 @@ class CustomCacheEngine : public PageCacheEngine {
     bool sync_pages (string owner);
     void make_block_readable_to_offset (string cid, int page_id, int block_id, int offset);
     bool rename_owner_pages (string old_owner, string new_owner);
+    bool truncate_cached_blocks (string content_owner_id,
+                                 unordered_map<int, int> blocks_to_remove,
+                                 int from_block_id,
+                                 int index_inside_block);
 };
 
 } // namespace cache::engine::backends::custom

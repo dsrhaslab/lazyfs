@@ -81,4 +81,46 @@ map<int, int> Data::get_blocks_max_offsets () {
     return res;
 }
 
+void Data::remove_all_blocks () {
+
+    for (const auto& it : this->blocks) {
+        delete it.second;
+    }
+
+    this->blocks.clear ();
+}
+
+unordered_map<int, int> Data::truncate_blocks_after (int blk_id, int blk_byte_index) {
+
+    unordered_map<int, int> res;
+
+    bool all_bigger_or_equal_to = blk_byte_index == 0;
+
+    for (auto it = this->blocks.begin (); it != this->blocks.end ();) {
+
+        bool delete_condition;
+        if (all_bigger_or_equal_to)
+            delete_condition = it->first >= blk_id;
+        else
+            delete_condition = it->first > blk_id;
+
+        if (delete_condition) {
+            delete it->second;
+            this->blocks.erase (it++);
+            res.insert (std::make_pair (it->first, it->second->get_page_index_number ()));
+        } else
+            ++it;
+    }
+
+    if (not all_bigger_or_equal_to) {
+        if (has_block (blk_id)) {
+            this->blocks.at (blk_id)->truncate_readable_to (blk_byte_index);
+        }
+    }
+
+    return res;
+}
+
+size_t Data::count_blocks () { return this->blocks.size (); }
+
 } // namespace cache::item

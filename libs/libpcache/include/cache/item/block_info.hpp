@@ -20,6 +20,7 @@ class BlockInfo {
     int make_readable_to (int to);
     void _print_block_info ();
     pair<int, int> clone_readable_offsets ();
+    void truncate_readable_to (int to);
 };
 
 } // namespace cache::item

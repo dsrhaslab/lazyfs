@@ -541,4 +541,50 @@ bool CustomCacheEngine::rename_owner_pages (string old_owner, string new_owner) 
     return true;
 }
 
+bool CustomCacheEngine::truncate_cached_blocks (string content_owner_id,
+                                                unordered_map<int, int> blocks_to_remove,
+                                                int from_block_id,
+                                                int index_inside_block) {
+
+    pthread_rwlock_wrlock (&lock_cache);
+
+    for (auto const& blk : blocks_to_remove) {
+        int blk_id  = blk.first;
+        int page_id = blk.second;
+        Page* page  = _get_page_ptr (page_id);
+        if (page->is_page_owner (content_owner_id)) {
+            if (blk_id == from_block_id) {
+
+                if (page->contains_block (from_block_id)) {
+                    page->make_block_readable_to (from_block_id, index_inside_block);
+                    page->write_null_from (from_block_id, index_inside_block + 1);
+                }
+
+            } else {
+
+                page->remove_block (blk_id);
+
+                this->owner_pages_mapping.at (content_owner_id).erase (page_id);
+                this->owner_oredered_pages_mapping.at (content_owner_id).erase (page_id);
+
+                if (not page->is_page_dirty ()) {
+
+                    // add page to free pages...
+                    this->free_pages.push_back (page_id);
+                    auto pos = this->page_order_mapping.find (page_id);
+                    if (pos != this->page_order_mapping.end ())
+                        this->lru_main_vector.erase (pos->second);
+                    this->page_order_mapping.erase (page_id);
+                    page->reset ();
+                    page->change_owner ("none");
+                }
+            }
+        }
+    }
+
+    pthread_rwlock_unlock (&lock_cache);
+
+    return true;
+}
+
 } // namespace cache::engine::backends::custom

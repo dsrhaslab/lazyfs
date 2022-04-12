@@ -32,40 +32,6 @@ int BlockInfo::make_readable_to (int to) {
     return this->readable_offset.second;
 }
 
-// Sorts and merges block intervals in N*Log(N) time
-// void BlockInfo::add_merge_offsets (int from, int to) {
-
-//     this->readable_offsets.push_back (make_pair (from, to));
-
-//     sort (this->readable_offsets.begin (), this->readable_offsets.end (), compare);
-//     vector<pair<int, int>> ans;
-//     int i = 0;
-//     int n = this->readable_offsets.size (), s = -1, e = -1;
-//     while (i < n) {
-//         if (s == -1) {
-//             s = this->readable_offsets[i].first;
-//             e = this->readable_offsets[i].second;
-//             i++;
-//         } else {
-//             if (this->readable_offsets[i].first <= e) {
-//                 e = max (e, this->readable_offsets[i].second);
-//                 i++;
-//             } else {
-//                 ans.push_back (make_pair (s, e));
-//                 s = this->readable_offsets[i].first;
-//                 e = this->readable_offsets[i].second;
-//                 i++;
-//             }
-//         }
-//     }
-
-//     if (s != -1) {
-//         ans.push_back (make_pair (s, e));
-//     }
-
-//     this->readable_offsets = ans;
-// }
-
 int BlockInfo::get_page_index_number () { return this->page_index_number; }
 
 void BlockInfo::_print_block_info () {
@@ -73,5 +39,7 @@ void BlockInfo::_print_block_info () {
     cout << "\n\t\t\treadable from byte " << this->readable_offset.first << " - to "
          << this->readable_offset.second << endl;
 }
+
+void BlockInfo::truncate_readable_to (int to) { this->readable_offset.second = to; }
 
 } // namespace cache::item

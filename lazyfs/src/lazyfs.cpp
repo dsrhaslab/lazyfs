@@ -776,6 +776,88 @@ int LazyFS::lfs_rename (const char* from, const char* to, unsigned int flags) {
     return 0;
 }
 
+int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_file_info* fi) {
+
+    std::printf ("truncate::(path=%s, size=%zu, ...)\n", path, truncate_size);
+
+    this_ ()->FSCache->print_cache ();
+    this_ ()->FSCache->print_engine ();
+
+    int res;
+
+    string owner (path);
+
+    Metadata* previous_metadata = this_ ()->FSCache->get_content_metadata (owner);
+    bool has_content_cached     = previous_metadata != nullptr;
+    bool behave_as_lfs_write    = false;
+
+    if (not has_content_cached) {
+
+        /*
+            If getattr is enabled for every call on read/write/open...the content
+            should be already cached when calling it.
+        */
+
+        std::printf ("\ttrunc: content is not cached\n");
+
+        behave_as_lfs_write = true;
+    }
+
+    std::printf ("\ttrunc: previous file size is %zu\n", previous_metadata->size);
+
+    if (has_content_cached && truncate_size == previous_metadata->size) {
+
+        behave_as_lfs_write = false;
+
+        // Since truncate size is the same as the file size, there's nothing to change/truncate.
+
+        std::printf ("\ttrunc: truncate size is the same as the file size\n");
+    }
+
+    if (truncate_size > previous_metadata->size) {
+
+        std::printf ("\ttrunc: truncate size is bigger than the file size\n");
+
+        behave_as_lfs_write = true;
+    }
+
+    if (behave_as_lfs_write) {
+
+        /*
+            In this case, cache file data to reach the size to truncate with zeroes.
+            1: Content does not exist? Fill 0 -> size with zeroes
+            2: Content exists? Fill size_before -> size with zeros
+        */
+
+        std::printf ("\ttrunc: behaving like a normal write\n");
+
+        // todo: this case
+
+    } else if (truncate_size < previous_metadata->size) {
+
+        std::printf ("\ttrunc: truncate size is less than the file size\n");
+
+        this_ ()->FSCache->truncate_item (owner, truncate_size);
+    }
+
+    // todo: update file size, if needed
+
+    Metadata new_meta;
+    new_meta.size = truncate_size;
+
+    this_ ()->FSCache->update_content_metadata (owner, new_meta, {"size"});
+
+    // todo: should file times update after truncate, even if truncate_size == current file size?
+    // todo: call truncate anyway?
+
+    std::printf ("\ttrunc: finish truncate...\n");
+
+    this_ ()->FSCache->print_cache ();
+    this_ ()->FSCache->print_engine ();
+
+    return 0;
+}
+
 int LazyFS::lfs_symlink (const char* from, const char* to) {
     int res;
 
@@ -963,22 +1045,6 @@ off_t LazyFS::lfs_lseek (const char* path, off_t off, int whence, struct fuse_fi
         close (fd);
 
     return res;
-}
-
-int LazyFS::lfs_truncate (const char* path, off_t size, struct fuse_file_info* fi) {
-
-    // std::printf ("truncate::(path=%s, size=%d, ...)\n", path, (int)size);
-
-    int res;
-
-    if (fi != NULL)
-        res = ftruncate (fi->fh, size);
-    else
-        res = truncate (path, size);
-    if (res == -1)
-        return -errno;
-
-    return 0;
 }
 
 int LazyFS::lfs_unlink (const char* path) {

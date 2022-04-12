@@ -4,6 +4,7 @@
 #include <map>
 #include <string>
 #include <sys/types.h>
+#include <unordered_map>
 
 using namespace std;
 
@@ -36,6 +37,10 @@ class PageCacheEngine {
     virtual bool remove_cached_blocks (string content_owner_id)                       = 0;
     virtual bool sync_pages (string owner)                                            = 0;
     virtual bool rename_owner_pages (string old_owner, string new_owner)              = 0;
+    virtual bool truncate_cached_blocks (string content_owner_id,
+                                         unordered_map<int, int> blocks_to_remove,
+                                         int from_block_id,
+                                         int index_inside_block)                      = 0;
 };
 
 } // namespace cache::engine

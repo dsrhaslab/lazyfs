@@ -273,6 +273,47 @@ bool Cache::remove_cached_item (string owner) {
     return false;
 }
 
+bool Cache::truncate_item (string owner, int new_size) {
+
+    lockCache ();
+
+    if (not has_content_cached (owner)) {
+        unlockCache ();
+        return false;
+    }
+
+    lockItem (owner);
+    unlockCache ();
+
+    Item* item = _get_content_ptr (owner);
+
+    if (new_size == 0) {
+
+        if (item->get_data ()->count_blocks () > 0) {
+            this->engine->remove_cached_blocks (owner);
+            item->get_data ()->remove_all_blocks ();
+        }
+
+        unlockItem (owner);
+        return true;
+    }
+
+    int truncate_from_block_id    = new_size / this->cache_config->IO_BLOCK_SIZE;
+    int truncate_from_block_index = new_size % this->cache_config->IO_BLOCK_SIZE;
+
+    auto res = item->get_data ()->truncate_blocks_after (truncate_from_block_id,
+                                                         truncate_from_block_index);
+
+    this->engine->truncate_cached_blocks (owner,
+                                          res,
+                                          truncate_from_block_id,
+                                          truncate_from_block_index);
+
+    unlockItem (owner);
+
+    return true;
+}
+
 int Cache::sync_owner (string owner, bool only_sync_data) {
 
     if (!has_content_cached (owner))

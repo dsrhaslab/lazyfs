@@ -27,6 +27,9 @@ class Data {
     bool has_block (int blk_id);
     void print_data ();
     map<int, int> get_blocks_max_offsets ();
+    size_t count_blocks ();
+    void remove_all_blocks ();
+    unordered_map<int, int> truncate_blocks_after (int blk_id, int blk_byte_index);
 };
 
 } // namespace cache::item

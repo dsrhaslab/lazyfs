@@ -27,6 +27,8 @@ class BlockOffsets {
     map<int, int> get_block_readable_offsets ();
     void preallocate ();
     int get_readable_to (int block_id);
+    void remove_block (int blk_id);
+    bool empty ();
 };
 
 } // namespace cache::engine::page

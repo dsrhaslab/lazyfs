@@ -64,4 +64,11 @@ map<int, int> BlockOffsets::get_block_readable_offsets () {
 
 int BlockOffsets::get_readable_to (int block_id) { return this->block_readable_to.at (block_id); }
 
+void BlockOffsets::remove_block (int blk_id) {
+    this->block_offset_mapping.erase (blk_id);
+    this->block_readable_to.erase (blk_id);
+}
+
+bool BlockOffsets::empty () { return this->block_offset_mapping.empty (); }
+
 } // namespace cache::engine::page

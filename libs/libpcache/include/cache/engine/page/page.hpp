@@ -46,6 +46,8 @@ class Page {
     bool is_page_dirty ();
     void make_block_readable_to (int blk_id, int max_offset);
     void set_page_as_dirty ();
+    void write_null_from (int block_id, int from_offset);
+    void remove_block (int block_id);
 };
 
 } // namespace cache::engine::page

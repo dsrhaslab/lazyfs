@@ -56,6 +56,7 @@ class Cache {
     int sync_owner (string owner, bool only_sync_data);
     bool rename_item (string old_cid, string new_cid);
     void clear_all_cache ();
+    bool truncate_item (string owner, int new_size);
 };
 
 } // namespace cache
