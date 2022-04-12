@@ -588,7 +588,12 @@ int LazyFS::lfs_read (const char* path,
         struct timespec access_time;
         clock_gettime (CLOCK_REALTIME, &access_time);
         meta.atim = access_time;
+
+        this_ ()->FSCache->lockItem (OWNER);
+
         this_ ()->FSCache->update_content_metadata (OWNER, meta, {"size", "atime"});
+
+        this_ ()->FSCache->unlockItem (OWNER);
 
     } else {
 
