@@ -41,7 +41,7 @@ void LazyFS::fault_clear_cache () {
 
 void LazyFS::display_cache_usage () {
 
-    // std::printf ("\t\t\t[cache] current usage: %0.2lf %% \n", FSCache->get_cache_usage ());
+    std::printf ("\t\t\t[cache] current usage: %0.2lf %% \n", FSCache->get_cache_usage ());
 }
 
 void* LazyFS::lfs_init (struct fuse_conn_info* conn, struct fuse_config* cfg) {
@@ -159,8 +159,6 @@ int LazyFS::lfs_readdir (const char* path,
 }
 
 int LazyFS::lfs_open (const char* path, struct fuse_file_info* fi) {
-
-    // std::printf ("open::(path=%s, ...)\n", path);
 
     int res;
 
@@ -778,12 +776,7 @@ int LazyFS::lfs_rename (const char* from, const char* to, unsigned int flags) {
 
 int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_file_info* fi) {
 
-    std::printf ("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-
-    std::printf ("truncate::(path=%s, size=%zu, ...)\n", path, truncate_size);
-
-    this_ ()->FSCache->print_cache ();
-    this_ ()->FSCache->print_engine ();
+    //  std::printf ("truncate::(path=%s, size=%zu, ...)\n", path, truncate_size);
 
     int res;
 
@@ -800,25 +793,17 @@ int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_fil
             should be already cached when calling it.
         */
 
-        std::printf ("%s: content is not cached\n", __func__);
-
         behave_as_lfs_write = true;
     }
-
-    std::printf ("%s: previous file size is %zu\n", __func__, previous_metadata->size);
 
     if (has_content_cached && truncate_size == previous_metadata->size) {
 
         behave_as_lfs_write = false;
 
         // Since truncate size is the same as the file size, there's nothing to change/truncate.
-
-        std::printf ("%s: truncate size is the same as the file size\n", __func__);
     }
 
     if (truncate_size > previous_metadata->size) {
-
-        std::printf ("%s: truncate size is bigger than the file size\n", __func__);
 
         behave_as_lfs_write = true;
     }
@@ -831,13 +816,66 @@ int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_fil
             2: Content exists? Fill size_before -> size with zeros
         */
 
-        std::printf ("%s: behaving like a normal write\n", __func__);
+        size_t IO_BLOCK_SIZE       = this_ ()->FSConfig->IO_BLOCK_SIZE;
+        int file_size              = previous_metadata->size;
+        int add_bytes_from_offset  = file_size;
+        int add_bytes_total        = truncate_size - add_bytes_from_offset;
+        int blk_low                = add_bytes_from_offset / IO_BLOCK_SIZE;
+        int blk_high               = (add_bytes_from_offset + add_bytes_total - 1) / IO_BLOCK_SIZE;
+        int blk_readable_from      = 0;
+        int blk_readable_to        = 0;
+        int data_allocated         = 0;
+        bool caching_blocks_failed = false;
 
-        // todo: this case
+        char buf[IO_BLOCK_SIZE];
+        memset (buf, '0', IO_BLOCK_SIZE);
+
+        for (int CURR_BLK_IDX = blk_low; CURR_BLK_IDX <= blk_high; CURR_BLK_IDX++) {
+
+            blk_readable_from =
+                (CURR_BLK_IDX == blk_low) ? (add_bytes_from_offset % IO_BLOCK_SIZE) : 0;
+
+            if (CURR_BLK_IDX == blk_high)
+                blk_readable_to = ((add_bytes_from_offset + add_bytes_total - 1) % IO_BLOCK_SIZE);
+            else if ((CURR_BLK_IDX == blk_low) &&
+                     ((add_bytes_from_offset + add_bytes_total - 1) < IO_BLOCK_SIZE))
+                blk_readable_to = add_bytes_from_offset + add_bytes_total - 1;
+            else if (CURR_BLK_IDX < blk_high)
+                blk_readable_to = IO_BLOCK_SIZE - 1;
+            else if (CURR_BLK_IDX == blk_high)
+                blk_readable_to = add_bytes_total - data_allocated - 1;
+
+            // Increase the ammount of bytes already written from the argument 'size'
+            data_allocated += blk_readable_to - blk_readable_from + 1;
+
+            auto put_res = this_ ()->FSCache->put_data_blocks (
+                owner,
+                {{CURR_BLK_IDX,
+                  {buf,
+                   (size_t) (blk_readable_to - blk_readable_from + 1),
+                   blk_readable_from,
+                   blk_readable_to}}},
+                OP_WRITE);
+            bool curr_block_put_exists = put_res.find (CURR_BLK_IDX) != put_res.end ();
+
+            if (!curr_block_put_exists || put_res.at (CURR_BLK_IDX) == false) {
+
+                caching_blocks_failed = true;
+                break;
+            }
+        }
+
+        if (caching_blocks_failed) {
+
+            int res;
+
+            if (fi != NULL)
+                res = ftruncate (fi->fh, truncate_size);
+            else
+                res = truncate (path, truncate_size);
+        }
 
     } else if (truncate_size < previous_metadata->size) {
-
-        std::printf ("%s: truncate size is less than the file size\n", __func__);
 
         this_ ()->FSCache->truncate_item (owner, truncate_size);
     }
@@ -847,17 +885,17 @@ int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_fil
     Metadata new_meta;
     new_meta.size = truncate_size;
 
+    this_ ()->FSCache->lockItem (owner);
     this_ ()->FSCache->update_content_metadata (owner, new_meta, {"size"});
+    this_ ()->FSCache->unlockItem (owner);
 
     // todo: should file times update after truncate, even if truncate_size == current file size?
-    // todo: call truncate anyway?
 
-    std::printf ("%s: finish truncate...\n", __func__);
+    // this_ ()->FSCache->print_cache ();
+    // this_ ()->FSCache->print_engine ();
 
-    this_ ()->FSCache->print_cache ();
-    this_ ()->FSCache->print_engine ();
-
-    std::printf ("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+    if (res == -1)
+        return -errno;
 
     return 0;
 }
