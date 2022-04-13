@@ -549,15 +549,21 @@ bool CustomCacheEngine::truncate_cached_blocks (string content_owner_id,
     pthread_rwlock_wrlock (&lock_cache);
 
     for (auto const& blk : blocks_to_remove) {
+
         int blk_id  = blk.first;
         int page_id = blk.second;
-        Page* page  = _get_page_ptr (page_id);
+
+        Page* page = _get_page_ptr (page_id);
+
         if (page->is_page_owner (content_owner_id)) {
-            if (blk_id == from_block_id) {
+
+            std::printf ("%s: %s is page %d owner\n", __func__, content_owner_id.c_str (), page_id);
+
+            if (blk_id == from_block_id && index_inside_block > 0) {
 
                 if (page->contains_block (from_block_id)) {
-                    page->make_block_readable_to (from_block_id, index_inside_block);
-                    page->write_null_from (from_block_id, index_inside_block + 1);
+                    page->make_block_readable_to (from_block_id, index_inside_block - 1);
+                    page->write_null_from (from_block_id, index_inside_block);
                 }
 
             } else {

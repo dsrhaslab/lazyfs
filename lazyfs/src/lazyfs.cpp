@@ -778,6 +778,8 @@ int LazyFS::lfs_rename (const char* from, const char* to, unsigned int flags) {
 
 int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_file_info* fi) {
 
+    std::printf ("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+
     std::printf ("truncate::(path=%s, size=%zu, ...)\n", path, truncate_size);
 
     this_ ()->FSCache->print_cache ();
@@ -798,12 +800,12 @@ int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_fil
             should be already cached when calling it.
         */
 
-        std::printf ("\ttrunc: content is not cached\n");
+        std::printf ("%s: content is not cached\n", __func__);
 
         behave_as_lfs_write = true;
     }
 
-    std::printf ("\ttrunc: previous file size is %zu\n", previous_metadata->size);
+    std::printf ("%s: previous file size is %zu\n", __func__, previous_metadata->size);
 
     if (has_content_cached && truncate_size == previous_metadata->size) {
 
@@ -811,12 +813,12 @@ int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_fil
 
         // Since truncate size is the same as the file size, there's nothing to change/truncate.
 
-        std::printf ("\ttrunc: truncate size is the same as the file size\n");
+        std::printf ("%s: truncate size is the same as the file size\n", __func__);
     }
 
     if (truncate_size > previous_metadata->size) {
 
-        std::printf ("\ttrunc: truncate size is bigger than the file size\n");
+        std::printf ("%s: truncate size is bigger than the file size\n", __func__);
 
         behave_as_lfs_write = true;
     }
@@ -829,18 +831,18 @@ int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_fil
             2: Content exists? Fill size_before -> size with zeros
         */
 
-        std::printf ("\ttrunc: behaving like a normal write\n");
+        std::printf ("%s: behaving like a normal write\n", __func__);
 
         // todo: this case
 
     } else if (truncate_size < previous_metadata->size) {
 
-        std::printf ("\ttrunc: truncate size is less than the file size\n");
+        std::printf ("%s: truncate size is less than the file size\n", __func__);
 
         this_ ()->FSCache->truncate_item (owner, truncate_size);
     }
 
-    // todo: update file size, if needed
+    // todo: update file size
 
     Metadata new_meta;
     new_meta.size = truncate_size;
@@ -850,10 +852,12 @@ int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_fil
     // todo: should file times update after truncate, even if truncate_size == current file size?
     // todo: call truncate anyway?
 
-    std::printf ("\ttrunc: finish truncate...\n");
+    std::printf ("%s: finish truncate...\n", __func__);
 
     this_ ()->FSCache->print_cache ();
     this_ ()->FSCache->print_engine ();
+
+    std::printf ("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
 
     return 0;
 }

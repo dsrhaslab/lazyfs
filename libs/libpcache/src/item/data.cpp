@@ -94,27 +94,38 @@ unordered_map<int, int> Data::truncate_blocks_after (int blk_id, int blk_byte_in
 
     unordered_map<int, int> res;
 
-    bool all_bigger_or_equal_to = blk_byte_index == 0;
-
     for (auto it = this->blocks.begin (); it != this->blocks.end ();) {
 
-        bool delete_condition;
-        if (all_bigger_or_equal_to)
-            delete_condition = it->first >= blk_id;
-        else
-            delete_condition = it->first > blk_id;
+        int b_id = it->first;
 
-        if (delete_condition) {
-            delete it->second;
-            this->blocks.erase (it++);
-            res.insert (std::make_pair (it->first, it->second->get_page_index_number ()));
-        } else
+        if (b_id >= blk_id) {
+
+            int p_id = it->second->get_page_index_number ();
+
+            std::printf ("%s: it->b_id = %d >= %d (p_id %d)\n", __func__, b_id, blk_id, p_id);
+
+            res.insert ({b_id, p_id});
+
+            if (b_id > blk_id) {
+
+                delete it->second;
+                this->blocks.erase (it++);
+
+            } else if (blk_byte_index == 0) {
+
+                delete it->second;
+                this->blocks.erase (it++);
+
+            } else {
+
+                BlockInfo* info = this->blocks.at (blk_id);
+                info->truncate_readable_to (blk_byte_index - 1);
+
+                ++it;
+            }
+
+        } else {
             ++it;
-    }
-
-    if (not all_bigger_or_equal_to) {
-        if (has_block (blk_id)) {
-            this->blocks.at (blk_id)->truncate_readable_to (blk_byte_index);
         }
     }
 

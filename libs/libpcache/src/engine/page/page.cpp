@@ -180,12 +180,18 @@ void Page::make_block_readable_to (int blk_id, int max_offset) {
 }
 
 void Page::write_null_from (int block_id, int from_offset) {
-    if (contains_block (block_id)) {
-        int off_first = get_block_offsets (block_id).first;
-        memset (this->data + off_first + from_offset,
-                0,
-                this->config->IO_BLOCK_SIZE - off_first - from_offset);
-    }
+
+    int off_first = get_block_offsets (block_id).first;
+
+    std::printf ("%s: from block %d, from offset %d (%d bytes)\n",
+                 __func__,
+                 block_id,
+                 off_first + from_offset,
+                 (int)this->config->IO_BLOCK_SIZE - off_first - from_offset);
+
+    memset (this->data + off_first + from_offset,
+            0,
+            this->config->IO_BLOCK_SIZE - off_first - from_offset);
 }
 
 void Page::remove_block (int block_id) {

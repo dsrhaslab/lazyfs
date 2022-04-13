@@ -48,6 +48,7 @@ void BlockOffsets::insert_or_update_block_offsets (int block_id, pair<int, int> 
 }
 
 void BlockOffsets::make_readable_to (int blk_id, int max_offset) {
+
     this->block_readable_to[blk_id] = max_offset;
 }
 
