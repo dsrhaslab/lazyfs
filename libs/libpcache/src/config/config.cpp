@@ -33,7 +33,7 @@ void Config::setup_config_manually (size_t io_blk_sz, size_t pg_sz, size_t nr_pg
 void Config::setup_config_by_size (size_t prealloc_bytes, int nr_blocks_per_page) {
 
     this->is_default_config = false;
-    assert (prealloc_bytes >= (double)this->IO_BLOCK_SIZE);
+    assert (prealloc_bytes >= this->IO_BLOCK_SIZE);
 
     size_t total_bytes = std::ceil (prealloc_bytes);
 
