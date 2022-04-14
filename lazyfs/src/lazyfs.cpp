@@ -168,6 +168,11 @@ int LazyFS::lfs_open (const char* path, struct fuse_file_info* fi) {
 
     int access_mode = fi->flags & O_ACCMODE;
 
+    // std::printf ("open::(path=%s, mode=%s...)\n",
+    //              path,
+    //              access_mode == O_TRUNC ? "O_TRUNC"
+    //                                     : access_mode == O_WRONLY ? "O_WRONLY" : "O_OTHER");
+
     string owner (path);
     struct timespec time_register;
     clock_gettime (CLOCK_REALTIME, &time_register);
@@ -193,7 +198,9 @@ int LazyFS::lfs_open (const char* path, struct fuse_file_info* fi) {
         update_meta_values.push_back ("mtime");
     }
 
+    this_ ()->FSCache->lockItem (owner);
     this_ ()->FSCache->update_content_metadata (owner, meta, update_meta_values);
+    this_ ()->FSCache->unlockItem (owner);
 
     // --------------------------------------------------------------------------
 
@@ -207,13 +214,16 @@ int LazyFS::lfs_open (const char* path, struct fuse_file_info* fi) {
 
 int LazyFS::lfs_create (const char* path, mode_t mode, struct fuse_file_info* fi) {
 
-    // std::printf ("create::(path=%s, ...)\n", path);
-
     int res;
 
     res = open (path, fi->flags, mode);
 
     int access_mode = fi->flags & O_ACCMODE;
+
+    // std::printf ("create::(path=%s, mode=%s...)\n",
+    //              path,
+    //              access_mode == O_TRUNC ? "O_TRUNC"
+    //                                     : access_mode == O_WRONLY ? "O_WRONLY" : "O_OTHER");
 
     string owner (path);
     struct timespec time_register;
@@ -240,7 +250,9 @@ int LazyFS::lfs_create (const char* path, mode_t mode, struct fuse_file_info* fi
         update_meta_values.push_back ("mtime");
     }
 
+    this_ ()->FSCache->lockItem (owner);
     this_ ()->FSCache->update_content_metadata (owner, meta, update_meta_values);
+    this_ ()->FSCache->unlockItem (owner);
 
     if (res == -1)
         return -errno;
@@ -506,9 +518,8 @@ int LazyFS::lfs_write (const char* path,
         values_to_change.push_back ("mtime");
 
         if (meta.size > FILE_SIZE_BEFORE) {
-            struct timespec change_time;
-            clock_gettime (CLOCK_REALTIME, &change_time);
-            meta.ctim = change_time;
+
+            meta.ctim = modify_time;
             values_to_change.push_back ("ctime");
         }
 
@@ -776,7 +787,7 @@ int LazyFS::lfs_rename (const char* from, const char* to, unsigned int flags) {
 
 int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_file_info* fi) {
 
-    //  std::printf ("truncate::(path=%s, size=%zu, ...)\n", path, truncate_size);
+    // std::printf ("truncate::(path=%s, size=%zu, ...)\n", path, truncate_size);
 
     int res;
 
@@ -885,8 +896,23 @@ int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_fil
     Metadata new_meta;
     new_meta.size = truncate_size;
 
+    vector<string> values_to_change;
+    values_to_change.push_back ("size");
+
+    struct timespec modify_time;
+    clock_gettime (CLOCK_REALTIME, &modify_time);
+    new_meta.mtim = modify_time;
+    values_to_change.push_back ("mtime");
+
+    if (new_meta.size > previous_metadata->size) {
+        new_meta.ctim = modify_time;
+        values_to_change.push_back ("ctime");
+    }
+
     this_ ()->FSCache->lockItem (owner);
-    this_ ()->FSCache->update_content_metadata (owner, new_meta, {"size"});
+
+    this_ ()->FSCache->update_content_metadata (owner, new_meta, values_to_change);
+
     this_ ()->FSCache->unlockItem (owner);
 
     // todo: should file times update after truncate, even if truncate_size == current file size?
