@@ -267,7 +267,7 @@ int LazyFS::lfs_write (const char* path,
                        off_t offset,
                        struct fuse_file_info* fi) {
 
-    // std::printf ("write::(path=%s, size=%d, offset=%d)\n", path, (int)size, (int)offset);
+    // std::printf ("write::(pat@h=%s, size=%d, offset=%d)\n", path, (int)size, (int)offset);
 
     int fd;
     int res;
@@ -322,7 +322,7 @@ int LazyFS::lfs_write (const char* path,
         int blk_readable_to      = 0;
         int data_allocated       = 0;
         int data_buffer_iterator = 0;
-        int fd_caching           = open (path, O_RDONLY);
+        int fd_caching           = fd;
 
         char block_caching_buffer[IO_BLOCK_SIZE];
         map<int, tuple<const char*, size_t, int, int>> put_mapping;
@@ -411,7 +411,7 @@ int LazyFS::lfs_write (const char* path,
 
                             if (blk_readable_from - st_index > 0)
                                 memset (block_caching_buffer + pread_res,
-                                        '?',
+                                        0,
                                         blk_readable_from - pread_res);
 
                             cache_buf   = block_caching_buffer;
@@ -497,7 +497,7 @@ int LazyFS::lfs_write (const char* path,
 
         // ----------------------------------------------------------------------------------
 
-        close (fd_caching);
+        // close (fd_caching);
 
         // ----------------------------------------------------------------------------------
 
@@ -574,7 +574,7 @@ int LazyFS::lfs_read (const char* path,
 
     int blk_low        = offset / IO_BLOCK_SIZE;
     int blk_high       = (offset + size - 1) / IO_BLOCK_SIZE;
-    int fd_caching     = open (path, O_RDONLY);
+    int fd_caching     = fd;
     int BUF_ITERATOR   = 0;
     int BYTES_LEFT     = size;
     int data_allocated = 0;
@@ -727,7 +727,7 @@ int LazyFS::lfs_read (const char* path,
 
     res = BUF_ITERATOR;
 
-    close (fd_caching);
+    // close (fd_caching);
 
     if (res == -1)
         res = -errno;
