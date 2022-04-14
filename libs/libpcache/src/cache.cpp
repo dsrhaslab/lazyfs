@@ -125,11 +125,15 @@ void Cache::lockItem (string cid) { this->item_locks.at (cid)->lock (); }
 
 void Cache::unlockItem (string cid) { this->item_locks.at (cid)->unlock (); }
 
-pair<int, int> Cache::_get_readable_offsets (string cid, int blk_id) {
+pair<int, int> Cache::_get_readable_offsets (string cid, Item* item, int blk_id) {
 
-    if (is_block_cached (cid, blk_id)) {
+    auto const& data = item->get_data ();
 
-        return _get_content_ptr (cid)->get_data ()->_get_readable_offsets (blk_id);
+    int page = data->get_page_id (blk_id);
+
+    if (this->engine->is_block_cached (cid, page, blk_id)) {
+
+        return item->get_data ()->_get_readable_offsets (blk_id);
     }
 
     return pair<int, int> (0, 0);
@@ -204,9 +208,7 @@ map<int, pair<bool, pair<int, int>>> Cache::get_data_blocks (string cid, map<int
     if (!has_content_cached (cid))
         return {};
 
-    lockCache ();
     lockItem (cid);
-    unlockCache ();
 
     Item* item = _get_content_ptr (cid);
 
@@ -228,7 +230,7 @@ map<int, pair<bool, pair<int, int>>> Cache::get_data_blocks (string cid, map<int
         }
     }
 
-    map<int, bool> res = this->engine->get_blocks (cid, get_mapping);
+    auto const& res = this->engine->get_blocks (cid, get_mapping);
 
     map<int, pair<bool, pair<int, int>>> cache_res;
 
@@ -236,7 +238,7 @@ map<int, pair<bool, pair<int, int>>> Cache::get_data_blocks (string cid, map<int
         if (it.second == false)
             item->get_data ()->remove_block (it.first);
         cache_res.insert (
-            {it.first, std::make_pair (it.second, _get_readable_offsets (cid, it.first))});
+            {it.first, std::make_pair (it.second, _get_readable_offsets (cid, item, it.first))});
     }
 
     unlockItem (cid);

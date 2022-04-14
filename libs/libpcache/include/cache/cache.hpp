@@ -25,7 +25,7 @@ class Cache {
     PageCacheEngine* engine;
 
     Item* _get_content_ptr (string cid);
-    pair<int, int> _get_readable_offsets (string cid, int blk);
+    pair<int, int> _get_readable_offsets (string cid, Item* item, int blk);
 
     mutex lock_cache_mtx;
 

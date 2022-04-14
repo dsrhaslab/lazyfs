@@ -255,7 +255,7 @@ void CustomCacheEngine::_update_owner_pages (string new_owner, int page_id, int 
     if (this->owner_pages_mapping.find (new_owner) != this->owner_pages_mapping.end ()) {
 
         this->owner_pages_mapping.at (new_owner).insert (page_id);
-        this->owner_oredered_pages_mapping.at (new_owner).insert ({block_id, page_id});
+        this->owner_oredered_pages_mapping.at (new_owner).insert ({block_id, {page_id, p}});
 
     } else {
 
@@ -266,7 +266,7 @@ void CustomCacheEngine::_update_owner_pages (string new_owner, int page_id, int 
         this->owner_pages_mapping.insert (
             pair<string, unordered_set<int>> (new_owner, owner_pages));
         this->owner_free_pages_mapping.insert (pair<string, vector<int>> (new_owner, {}));
-        this->owner_oredered_pages_mapping.insert ({new_owner, {{block_id, page_id}}});
+        this->owner_oredered_pages_mapping.insert ({new_owner, {{block_id, {page_id, p}}}});
     }
 
     if (p->has_free_space ()) {
@@ -456,17 +456,14 @@ bool CustomCacheEngine::sync_pages (string owner) {
         int wrote_bytes = 0;
         int page_streak = 0;
 
-        vector<int> page_chunk;
-        page_chunk.reserve (this->owner_oredered_pages_mapping.size ());
-
-        auto iterate_blocks = this->owner_oredered_pages_mapping.at (owner);
+        auto const& iterate_blocks = this->owner_oredered_pages_mapping.at (owner);
         int page_streak_last_offset =
             (iterate_blocks.begin ()->first) * this->config->IO_BLOCK_SIZE;
 
         for (auto it = iterate_blocks.begin (); it != iterate_blocks.end (); it++) {
 
-            auto current_block_id = it->first;
-            auto next_block_id    = std::next (it, 1)->first;
+            auto current_block_id     = it->first;
+            auto const& next_block_id = std::next (it, 1)->first;
 
             if ((page_streak < (__IOV_MAX - 1)) && (it != prev (iterate_blocks.end (), 1)) &&
                 (current_block_id == (next_block_id - 1))) {
@@ -481,12 +478,11 @@ bool CustomCacheEngine::sync_pages (string owner) {
 
                 for (int p_id = 0; p_id < page_streak; p_id++) {
 
-                    int streak_block = current_block_id - page_streak + p_id + 1;
-                    int streak_page  = iterate_blocks.at (streak_block);
-
-                    Page* page_ptr                 = _get_page_ptr (streak_page);
-                    pair<int, int> block_data_offs = page_ptr->get_block_offsets (streak_block);
-                    iov[p_id].iov_base             = page_ptr->data + block_data_offs.first;
+                    int streak_block            = current_block_id - page_streak + p_id + 1;
+                    auto const& streak_pair     = iterate_blocks.at (streak_block);
+                    Page* page_ptr              = streak_pair.second;
+                    auto const& block_data_offs = page_ptr->get_block_offsets (streak_block);
+                    iov[p_id].iov_base          = page_ptr->data + block_data_offs.first;
                     if (p_id == page_streak - 1) {
                         iov[p_id].iov_len =
                             page_ptr->allocated_block_ids.get_readable_to (streak_block) + 1;
@@ -520,7 +516,8 @@ bool CustomCacheEngine::rename_owner_pages (string old_owner, string new_owner) 
 
     unordered_set<int> old_page_mapping = this->owner_pages_mapping.at (old_owner);
     vector<int> old_free_mapping        = this->owner_free_pages_mapping.at (old_owner);
-    map<int, int> old_ordered_pages     = this->owner_oredered_pages_mapping.at (old_owner);
+    map<int, pair<int, Page*>> old_ordered_pages =
+        this->owner_oredered_pages_mapping.at (old_owner);
 
     for (auto const& it : old_page_mapping) {
         Page* page = _get_page_ptr (it);
@@ -571,7 +568,7 @@ bool CustomCacheEngine::truncate_cached_blocks (string content_owner_id,
                 page->remove_block (blk_id);
 
                 this->owner_pages_mapping.at (content_owner_id).erase (page_id);
-                this->owner_oredered_pages_mapping.at (content_owner_id).erase (page_id);
+                this->owner_oredered_pages_mapping.at (content_owner_id).erase (blk_id);
 
                 if (not page->is_page_dirty ()) {
 

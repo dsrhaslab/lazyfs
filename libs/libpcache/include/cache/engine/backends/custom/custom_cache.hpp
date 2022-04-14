@@ -31,7 +31,7 @@ class CustomCacheEngine : public PageCacheEngine {
     vector<int> free_pages;
     // owner -> [pages-list]
     unordered_map<string, unordered_set<int>> owner_pages_mapping;
-    unordered_map<string, map<int, int>> owner_oredered_pages_mapping;
+    unordered_map<string, map<int, pair<int, Page*>>> owner_oredered_pages_mapping;
     unordered_map<string, vector<int>> owner_free_pages_mapping;
     // concurrency control
     mutex lru_management_mtx;
