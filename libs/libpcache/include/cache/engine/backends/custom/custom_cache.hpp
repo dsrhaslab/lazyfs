@@ -31,7 +31,7 @@ class CustomCacheEngine : public PageCacheEngine {
     vector<int> free_pages;
     // owner -> [pages-list]
     unordered_map<string, unordered_set<int>> owner_pages_mapping;
-    unordered_map<string, map<int, pair<int, Page*>>> owner_oredered_pages_mapping;
+    unordered_map<string, map<int, tuple<int, Page*, pair<int, int>>>> owner_oredered_pages_mapping;
     unordered_map<string, vector<int>> owner_free_pages_mapping;
     // concurrency control
     mutex lru_management_mtx;
@@ -42,7 +42,10 @@ class CustomCacheEngine : public PageCacheEngine {
     pair<Page*, pair<int, int>>* _get_free_page_offsets ();
     void _apply_lru_after_page_visitation_on_WRITE (int visited_page_id);
     void _apply_lru_after_page_visitation_on_READ (int visited_page_id);
-    void _update_owner_pages (string content_owner_id, int page_id, int block_id);
+    void _update_owner_pages (string content_owner_id,
+                              int page_id,
+                              int block_id,
+                              pair<int, int> block_offsets_inside_page);
 
   public:
     CustomCacheEngine (cache::config::Config* config);

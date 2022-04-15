@@ -218,7 +218,10 @@ bool CustomCacheEngine::is_block_cached (string content_owner_id, int page_id, i
     return p->is_page_owner (content_owner_id) && (*p).contains_block (block_id);
 }
 
-void CustomCacheEngine::_update_owner_pages (string new_owner, int page_id, int block_id) {
+void CustomCacheEngine::_update_owner_pages (string new_owner,
+                                             int page_id,
+                                             int block_id,
+                                             pair<int, int> block_offsets_inside_page) {
 
     Page* p = _get_page_ptr (page_id);
     if (p == nullptr)
@@ -255,7 +258,8 @@ void CustomCacheEngine::_update_owner_pages (string new_owner, int page_id, int 
     if (this->owner_pages_mapping.find (new_owner) != this->owner_pages_mapping.end ()) {
 
         this->owner_pages_mapping.at (new_owner).insert (page_id);
-        this->owner_oredered_pages_mapping.at (new_owner).insert ({block_id, {page_id, p}});
+        this->owner_oredered_pages_mapping.at (new_owner).insert (
+            {block_id, {page_id, p, block_offsets_inside_page}});
 
     } else {
 
@@ -266,7 +270,8 @@ void CustomCacheEngine::_update_owner_pages (string new_owner, int page_id, int 
         this->owner_pages_mapping.insert (
             pair<string, unordered_set<int>> (new_owner, owner_pages));
         this->owner_free_pages_mapping.insert (pair<string, vector<int>> (new_owner, {}));
-        this->owner_oredered_pages_mapping.insert ({new_owner, {{block_id, {page_id, p}}}});
+        this->owner_oredered_pages_mapping.insert (
+            {new_owner, {{block_id, {page_id, p, block_offsets_inside_page}}}});
     }
 
     if (p->has_free_space ()) {
@@ -366,7 +371,7 @@ map<int, int> CustomCacheEngine::allocate_blocks (
 
         if (page_id >= 0 && free_page_ptr != nullptr) {
 
-            free_page_ptr->get_allocate_free_offset (blk_id);
+            auto const& offs = free_page_ptr->get_allocate_free_offset (blk_id);
             free_page_ptr->update_block_data (blk_id, (char*)blk_data, blk_data_len, offset_start);
 
             if (operation_type == OP_WRITE)
@@ -379,7 +384,7 @@ map<int, int> CustomCacheEngine::allocate_blocks (
             if (this->config->APPLY_LRU_EVICTION)
                 _apply_lru_after_page_visitation_on_WRITE (page_id);
 
-            _update_owner_pages (content_owner_id, page_id, blk_id);
+            _update_owner_pages (content_owner_id, page_id, blk_id, offs);
 
         } else {
 
@@ -460,6 +465,9 @@ bool CustomCacheEngine::sync_pages (string owner) {
         int page_streak_last_offset =
             (iterate_blocks.begin ()->first) * this->config->IO_BLOCK_SIZE;
 
+        vector<tuple<int, Page*, pair<int, int>>> page_chunk;
+        page_chunk.reserve (iterate_blocks.size ());
+
         for (auto it = iterate_blocks.begin (); it != iterate_blocks.end (); it++) {
 
             auto current_block_id     = it->first;
@@ -470,18 +478,24 @@ bool CustomCacheEngine::sync_pages (string owner) {
 
                 page_streak++;
 
+                page_chunk.push_back (it->second);
+
             } else {
 
                 page_streak++;
+
+                page_chunk.push_back (it->second);
 
                 struct iovec iov[page_streak];
 
                 for (int p_id = 0; p_id < page_streak; p_id++) {
 
-                    int streak_block            = current_block_id - page_streak + p_id + 1;
-                    auto const& streak_pair     = iterate_blocks.at (streak_block);
-                    Page* page_ptr              = streak_pair.second;
-                    auto const& block_data_offs = page_ptr->get_block_offsets (streak_block);
+                    int streak_block        = current_block_id - page_streak + p_id + 1;
+                    auto const& streak_pair = page_chunk[p_id];
+                    // auto const& streak_pair     = iterate_blocks.at (streak_block);
+                    Page* page_ptr = get<1> (streak_pair);
+                    // auto const& block_data_offs = page_ptr->get_block_offsets (streak_block);
+                    auto const& block_data_offs = get<2> (streak_pair);
                     iov[p_id].iov_base          = page_ptr->data + block_data_offs.first;
                     if (p_id == page_streak - 1) {
                         iov[p_id].iov_len =
@@ -494,6 +508,8 @@ bool CustomCacheEngine::sync_pages (string owner) {
                 wrote_bytes += pwritev (fd, iov, page_streak, page_streak_last_offset);
 
                 page_streak = 0;
+
+                page_chunk.clear ();
 
                 page_streak_last_offset = (current_block_id + 1) * this->config->IO_BLOCK_SIZE;
             }
@@ -516,7 +532,7 @@ bool CustomCacheEngine::rename_owner_pages (string old_owner, string new_owner) 
 
     unordered_set<int> old_page_mapping = this->owner_pages_mapping.at (old_owner);
     vector<int> old_free_mapping        = this->owner_free_pages_mapping.at (old_owner);
-    map<int, pair<int, Page*>> old_ordered_pages =
+    map<int, tuple<int, Page*, pair<int, int>>> old_ordered_pages =
         this->owner_oredered_pages_mapping.at (old_owner);
 
     for (auto const& it : old_page_mapping) {
