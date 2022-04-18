@@ -86,6 +86,7 @@ int main (int argc, char* argv[]) {
     if (mkfifo (std_config.FIFO_PATH.c_str (), 0777) < 0) {
         if (errno != EEXIST) {
             std::printf ("\t[faults] could not create faults fifo: (error) %s\n", strerror (errno));
+            std::printf ("[lazyfs] stopping the lazy filesystem...\n");
             return -1;
         } else
             std::printf ("\t[faults] faults fifo exists, setting up worker...\n");

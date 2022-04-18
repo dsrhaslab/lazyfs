@@ -51,8 +51,8 @@ mkdir -p $ROOT_DIR
 echo -e "::Running lazyfs (stop with ctrl+c or umount-lazyfs.sh)...\n"
 if [ -z "$CMD_FG" ]; then
    echo -e "(running in no foreground mode)\n"
+   echo -e "Note: run in foreground to see the <stdio> logs.\n"
    ./build/lazyfs $MOUNT_DIR --config-path config/default.toml -o allow_other -o modules=subdir -o subdir=$ROOT_DIR
-   echo -e "\nFUSE is running...\n\nNote: run in foreground to see the logs.\n"
 else
    echo -e "(running in foreground mode)\n"
    ./build/lazyfs $MOUNT_DIR --config-path config/default.toml -o allow_other -o modules=subdir -o subdir=$ROOT_DIR -f
