@@ -1,0 +1,21 @@
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+|     workload |   filesystem |  page size | ops (#/s) | rd/wr (mb/s) |
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+|    webserver |       lazyfs |          4 |    133.57 |       133.57 |
+|    webserver |       lazyfs |         12 |    185.80 |       185.80 |
+|    webserver |       lazyfs |         16 |    194.67 |       194.67 |
+|    webserver |       lazyfs |         32 |    206.40 |       206.40 |
+|    webserver |       lazyfs |         65 |    201.47 |       201.47 |
+|    webserver |  passthrough |          - |    169.17 |       169.17 |
+|  randomwrite |       lazyfs |          4 |    109.50 |       109.50 |
+|  randomwrite |       lazyfs |         12 |    139.03 |       139.03 |
+|  randomwrite |       lazyfs |         16 |    142.80 |       142.80 |
+|  randomwrite |       lazyfs |         32 |    147.43 |       147.43 |
+|  randomwrite |       lazyfs |         65 |    139.53 |       139.53 |
+|  randomwrite |  passthrough |          - |    392.23 |       392.23 |
+| simple-reads |       lazyfs |          4 |    131.13 |       131.13 |
+| simple-reads |       lazyfs |         12 |    177.83 |       177.83 |
+| simple-reads |       lazyfs |         16 |    200.67 |       200.67 |
+| simple-reads |       lazyfs |         32 |    196.63 |       196.63 |
+| simple-reads |  passthrough |          - |    190.60 |       190.60 |
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
