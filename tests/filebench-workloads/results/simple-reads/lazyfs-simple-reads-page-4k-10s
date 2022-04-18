@@ -7,7 +7,7 @@
 #
 # Description:
 #
-#   (Using standard page size in cache - 4kb)
+#   (Using standard page size in cache - 4kb / 4096 bytes)
 # 
 #   1. Clear all files from FS
 #   2. Run filebench simple-reads.f

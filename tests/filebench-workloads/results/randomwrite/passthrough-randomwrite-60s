@@ -1,0 +1,24 @@
+# Test: 
+#
+# Commands:
+#
+#   ./setup-testbed.sh -d /tmp/passthrough/fb-workload -f randomwrite.f
+#   filebench -f randomwrite.f
+#
+# Description:
+#
+#   1. Clear all files from FS
+#   2. Run filebench randomwrite.f
+#   3. Get results
+
+# Run 1
+
+
+
+# Run 2
+
+
+
+# Run 3
+
+

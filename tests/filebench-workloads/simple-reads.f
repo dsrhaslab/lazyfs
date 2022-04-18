@@ -1,3 +1,4 @@
+# This example was provided in the Filebench repository (README.md)
 
 set $WORKLOAD_PATH="/tmp/lazyfs/fb-workload"
 
@@ -15,4 +16,4 @@ define process name="readerP",instances=2 {
 
 }
 
-run 10
+run 60

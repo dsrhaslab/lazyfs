@@ -1,0 +1,44 @@
+# Test: 
+#
+# Commands:
+#
+#   ./setup-testbed.sh -d /tmp/lazyfs/fb-workload -f simple-reads.f
+#   filebench -f simple-reads.f
+#
+# Description:
+#
+#   (Using page size in cache of size 16kb / 16384 bytes)
+# 
+#   1. Clear all files from FS
+#   2. Run filebench simple-reads.f
+#   3. Get results
+
+# Run 1
+
+17.601: Run took 10 seconds...
+17.601: Per-Operation Breakdown
+closeOP              127773ops    12776ops/s   0.0mb/s    0.003ms/op [0.001ms - 0.852ms]
+readOP               127773ops    12776ops/s 199.6mb/s    0.263ms/op [0.058ms - 55.058ms]
+openOP               127775ops    12777ops/s   0.0mb/s    0.194ms/op [0.027ms - 46.185ms]
+17.601: IO Summary: 383321 ops 38329.593 ops/s 12776/0 rd/wr 199.6mb/s 0.153ms/op
+17.601: Shutting down processes
+
+# Run 2
+
+17.451: Run took 10 seconds...
+17.451: Per-Operation Breakdown
+closeOP              128795ops    12879ops/s   0.0mb/s    0.003ms/op [0.001ms - 1.262ms]
+readOP               128795ops    12879ops/s 201.2mb/s    0.264ms/op [0.061ms - 48.563ms]
+openOP               128799ops    12879ops/s   0.0mb/s    0.190ms/op [0.027ms - 59.898ms]
+17.451: IO Summary: 386389 ops 38636.358 ops/s 12879/0 rd/wr 201.2mb/s 0.152ms/op
+17.451: Shutting down processes
+
+# Run 3
+
+17.439: Run took 10 seconds...
+17.439: Per-Operation Breakdown
+closeOP              128787ops    12878ops/s   0.0mb/s    0.002ms/op [0.001ms - 0.542ms]
+readOP               128787ops    12878ops/s 201.2mb/s    0.261ms/op [0.064ms - 60.441ms]
+openOP               128792ops    12878ops/s   0.0mb/s    0.193ms/op [0.028ms - 50.474ms]
+17.440: IO Summary: 386366 ops 38634.062 ops/s 12878/0 rd/wr 201.2mb/s 0.152ms/op
+17.440: Shutting down processes

@@ -1,0 +1,53 @@
+# Test: 
+#
+# Commands:
+#
+#   ./setup-testbed.sh -d /tmp/lazyfs/fb-workload -f randomwrite.f
+#   filebench -f randomwrite.f
+#
+# Description:
+#
+#   (Using page size in cache of size 32kb / 32768 bytes)
+# 
+#   1. Clear all files from FS
+#   2. Run filebench randomwrite.f
+#   3. Get results
+
+# Run 1
+
+0.004: Pre-allocating files in largefile1 tree
+2.314: Waiting for pre-allocation to finish (in case of a parallel pre-allocation)
+2.314: Population and pre-allocation of filesets completed
+2.314: Starting 1 rand-write instances
+3.345: Running...
+63.349: Run took 60 seconds...
+63.349: Per-Operation Breakdown
+rand-write1          1208398ops    20139ops/s 157.3mb/s    0.048ms/op [0.034ms - 114.769ms]
+63.349: IO Summary: 1208398 ops 20138.712 ops/s 0/20139 rd/wr 157.3mb/s 0.048ms/op
+63.349: Shutting down processes
+
+# Run 2
+
+0.003: Pre-allocating files in largefile1 tree
+2.323: Waiting for pre-allocation to finish (in case of a parallel pre-allocation)
+2.323: Population and pre-allocation of filesets completed
+2.324: Starting 1 rand-write instances
+3.350: Running...
+63.354: Run took 60 seconds...
+63.354: Per-Operation Breakdown
+rand-write1          1102255ops    18370ops/s 143.5mb/s    0.053ms/op [0.045ms - 110.791ms]
+63.354: IO Summary: 1102255 ops 18369.720 ops/s 0/18370 rd/wr 143.5mb/s 0.053ms/op
+63.354: Shutting down processes
+
+# Run 3
+
+0.003: Pre-allocating files in largefile1 tree
+2.343: Waiting for pre-allocation to finish (in case of a parallel pre-allocation)
+2.343: Population and pre-allocation of filesets completed
+2.343: Starting 1 rand-write instances
+3.376: Running...
+63.380: Run took 60 seconds...
+63.380: Per-Operation Breakdown
+rand-write1          1086964ops    18115ops/s 141.5mb/s    0.054ms/op [0.044ms - 114.330ms]
+63.380: IO Summary: 1086964 ops 18114.902 ops/s 0/18115 rd/wr 141.5mb/s 0.054ms/op
+63.380: Shutting down processes
