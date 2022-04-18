@@ -28,7 +28,7 @@ do
         AVG_RDWR=`awk "BEGIN{ print $AVG_RDWR + $rd_wr_val }"`
     done <<< "$summaries"
     
-    AVG_OPS=`awk "BEGIN{ printf \"%.2f\", ($AVG_RDWR / 3.0) }"`
+    AVG_OPS=`awk "BEGIN{ printf \"%.2f\", ($AVG_OPS / 3.0) }"`
     AVG_RDWR=`awk "BEGIN{ printf \"%.2f\", ($AVG_RDWR / 3.0) }"`
     
     workload_name=`grep -o "/.*/" <<< $result_file | tr -d '/'`
