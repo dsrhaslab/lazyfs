@@ -7,9 +7,9 @@ RESULTS_FOLDER="results"
 
 #--------------------------------------------------------
 
-printf '~%.0s' {1..71}
-printf "\n| %12s | %12s | %10s | %9s | %12s |\n" "workload" "filesystem" "page size" "ops (#/s)" "rd/wr (mb/s)"
-printf '~%.0s' {1..71}
+printf '~%.0s' {1..76}
+printf "\n| %12s | %12s | %15s | %9s | %12s |\n" "workload" "filesystem" "page size (kb)" "ops (#/s)" "rd/wr (mb/s)"
+printf '~%.0s' {1..76}
 
 results=""
 
@@ -44,9 +44,9 @@ do
     else
         page_size=${page_size#"page"}
     fi
-    curr=`printf "| %12s | %12s | %10s | %9s | %12s |" $workload_name $app_name $page_size $AVG_OPS $AVG_RDWR`
+    curr=`printf "| %12s | %12s | %15s | %9s | %12s |" $workload_name $app_name $page_size $AVG_OPS $AVG_RDWR`
     results="$results$curr\n"
 done
 
 echo -e  "$results" | sort
-printf '~%.0s' {1..71} && printf '\n'
+printf '~%.0s' {1..76} && printf '\n'
