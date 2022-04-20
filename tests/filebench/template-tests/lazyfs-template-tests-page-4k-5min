@@ -1,0 +1,23 @@
+# Test: 
+#
+# Commands:
+#
+#   ./setup-testbed.sh -d /tmp/lazyfs/fb-workload -f template-tests.f
+#   filebench -f template-tests.f
+#
+# Description:
+#
+#   (Using standard page size in cache - 4kb / 4096 bytes)
+# 
+#   1. Clear all files from FS
+#   2. Run filebench template-tests.f
+#   3. Get results
+
+# Run 1
+
+
+# Run 2
+
+
+# Run 3
+

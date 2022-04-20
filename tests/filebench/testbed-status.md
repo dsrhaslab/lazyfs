@@ -1,0 +1,140 @@
+
+# Test description
+
+## Base setup
+
+- filebench:
+
+  - 1 thread
+  - 4k io block size
+
+- cache:
+
+    - 4k page
+    - 32k page
+
+## Workload setup
+
+- runs:
+  - 5 min
+  - repeat 2/3 times
+
+- workloads:
+
+  - fileserver
+    - passthrough
+      - [x] run 1
+      - [x] run 2
+      - [x] run 3
+    - lazyfs (page = 4k)
+      - [x] run 1
+      - [x] run 2
+      - [x] run 3
+    - lazyfs (page = 32k)
+      - [x] run 1
+      - [x] run 2
+      - [x] run 3
+  - varmail
+    - passthrough
+      - [x] run 1
+      - [x] run 2
+      - [x] run 3
+    - lazyfs (page = 4k)
+      - [x] run 1
+      - [x] run 2
+      - [x] run 3
+    - lazyfs (page = 32k)
+      - [x] run 1
+      - [x] run 2
+      - [x] run 3
+  - webserver
+    - passthrough
+      - [x] run 1
+      - [x] run 2
+      - [x] run 3
+    - lazyfs (page = 4k)
+      - [x] run 1
+      - [x] run 2
+      - [x] run 3
+    - lazyfs (page = 32k)
+      - [x] run 1
+      - [x] run 2
+      - [x] run 3
+  - filemicro_seqread
+    - passthrough
+      - [ ] run 1
+      - [ ] run 2
+      - [ ] run 3
+    - lazyfs (page = 4k)
+      - [ ] run 1
+      - [ ] run 2
+      - [ ] run 3
+    - lazyfs (page = 32k)
+      - [ ] run 1
+      - [ ] run 2
+      - [ ] run 3
+  - filemicro_seqwrite
+    - passthrough
+      - [ ] run 1
+      - [ ] run 2
+      - [ ] run 3
+    - lazyfs (page = 4k)
+      - [ ] run 1
+      - [ ] run 2
+      - [ ] run 3
+    - lazyfs (page = 32k)
+      - [ ] run 1
+      - [ ] run 2
+      - [ ] run 3
+  - filemicro_rread
+    - passthrough
+      - [ ] run 1
+      - [ ] run 2
+      - [ ] run 3
+    - lazyfs (page = 4k)
+      - [ ] run 1
+      - [ ] run 2
+      - [ ] run 3
+    - lazyfs (page = 32k)
+      - [ ] run 1
+      - [ ] run 2
+      - [ ] run 3
+  - filemicro_rwrite
+    - passthrough
+      - [ ] run 1
+      - [ ] run 2
+      - [ ] run 3
+    - lazyfs (page = 4k)
+      - [ ] run 1
+      - [ ] run 2
+      - [ ] run 3
+    - lazyfs (page = 32k)
+      - [ ] run 1
+      - [ ] run 2
+      - [ ] run 3
+  - filemicro_delete
+    - passthrough
+      - [ ] run 1
+      - [ ] run 2
+      - [ ] run 3
+    - lazyfs (page = 4k)
+      - [ ] run 1
+      - [ ] run 2
+      - [ ] run 3
+    - lazyfs (page = 32k)
+      - [ ] run 1
+      - [ ] run 2
+      - [ ] run 3
+  - filemicro_createfiles
+    - passthrough
+      - [ ] run 1
+      - [ ] run 2
+      - [ ] run 3
+    - lazyfs (page = 4k)
+      - [ ] run 1
+      - [ ] run 2
+      - [ ] run 3
+    - lazyfs (page = 32k)
+      - [ ] run 1
+      - [ ] run 2
+      - [ ] run 3

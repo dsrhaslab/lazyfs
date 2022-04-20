@@ -3,7 +3,7 @@
 #--------------------------------------------------------
 # Edit this variables
 
-RESULTS_FOLDER="results"
+RESULTS_FOLDER="general-tests"
 
 #--------------------------------------------------------
 
@@ -13,7 +13,7 @@ printf '~%.0s' {1..76}
 
 results=""
 
-for result_file in $(find $RESULTS_FOLDER/ -type f -print)
+for result_file in $(find $RESULTS_FOLDER/ -type f ! -name '*.table' -print)
 do
     summaries=`grep 'Summary' $result_file`
     AVG_OPS=0
