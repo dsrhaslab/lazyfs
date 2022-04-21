@@ -62,43 +62,43 @@
       - [x] run 3
   - filemicro_seqread
     - passthrough
-      - [ ] run 1
-      - [ ] run 2
-      - [ ] run 3
+      - [x] run 1
+      - [x] run 2
+      - [x] run 3
     - lazyfs (page = 4k)
-      - [ ] run 1
-      - [ ] run 2
-      - [ ] run 3
+      - [x] run 1
+      - [x] run 2
+      - [x] run 3
     - lazyfs (page = 32k)
-      - [ ] run 1
-      - [ ] run 2
-      - [ ] run 3
+      - [x] run 1
+      - [x] run 2
+      - [x] run 3
   - filemicro_seqwrite
     - passthrough
-      - [ ] run 1
-      - [ ] run 2
-      - [ ] run 3
+      - [x] run 1
+      - [x] run 2
+      - [x] run 3
     - lazyfs (page = 4k)
-      - [ ] run 1
-      - [ ] run 2
-      - [ ] run 3
+      - [x] run 1
+      - [x] run 2
+      - [x] run 3
     - lazyfs (page = 32k)
-      - [ ] run 1
-      - [ ] run 2
-      - [ ] run 3
+      - [x] run 1
+      - [x] run 2
+      - [x] run 3
   - filemicro_rread
     - passthrough
-      - [ ] run 1
-      - [ ] run 2
-      - [ ] run 3
+      - [x] run 1
+      - [x] run 2
+      - [x] run 3
     - lazyfs (page = 4k)
-      - [ ] run 1
-      - [ ] run 2
-      - [ ] run 3
+      - [x] run 1
+      - [x] run 2
+      - [x] run 3
     - lazyfs (page = 32k)
-      - [ ] run 1
-      - [ ] run 2
-      - [ ] run 3
+      - [x] run 1
+      - [x] run 2
+      - [x] run 3
   - filemicro_rwrite
     - passthrough
       - [ ] run 1
@@ -127,14 +127,14 @@
       - [ ] run 3
   - filemicro_createfiles
     - passthrough
-      - [ ] run 1
-      - [ ] run 2
-      - [ ] run 3
+      - [x] run 1
+      - [x] run 2
+      - [x] run 3
     - lazyfs (page = 4k)
-      - [ ] run 1
-      - [ ] run 2
-      - [ ] run 3
+      - [x] run 1
+      - [x] run 2
+      - [x] run 3
     - lazyfs (page = 32k)
-      - [ ] run 1
-      - [ ] run 2
-      - [ ] run 3
+      - [x] run 1
+      - [x] run 2
+      - [x] run 3

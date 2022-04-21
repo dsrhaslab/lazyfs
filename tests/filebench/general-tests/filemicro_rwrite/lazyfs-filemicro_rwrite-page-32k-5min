@@ -1,0 +1,47 @@
+# Test: 
+#
+# Commands:
+#
+#   ./setup-testbed.sh -d /tmp/lazyfs/fb-workload -f filemicro_rwrite.f
+#   filebench -f filemicro_rwrite.f
+#
+# Description:
+#
+#   (Using page size in cache of size 32kb / 32768 bytes)
+# 
+#   1. Clear all files from FS
+#   2. Run filebench filemicro_rwrite.f
+#   3. Get results
+
+# Run 1
+
+303.267: Run took 300 seconds...
+303.267: Per-Operation Breakdown
+finish-1             0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+close-1              0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+write-1              7928959ops    26428ops/s 103.2mb/s    0.036ms/op [0.026ms - 2.208ms]
+open-1               1ops        0ops/s   0.0mb/s   63.910ms/op [63.910ms - 63.910ms]
+303.267: IO Summary: 7928960 ops 26428.164 ops/s 0/26428 rd/wr 103.2mb/s 0.036ms/op
+303.267: Shutting down processes
+
+# Run 2
+
+302.741: Run took 300 seconds...
+302.741: Per-Operation Breakdown
+finish-1             0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+close-1              0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+write-1              7770504ops    25900ops/s 101.2mb/s    0.037ms/op [0.026ms - 0.532ms]
+open-1               1ops        0ops/s   0.0mb/s   63.372ms/op [63.372ms - 63.372ms]
+302.741: IO Summary: 7770505 ops 25900.011 ops/s 0/25900 rd/wr 101.2mb/s 0.037ms/op
+302.741: Shutting down processes
+
+# Run 3
+
+302.999: Run took 300 seconds...
+302.999: Per-Operation Breakdown
+finish-1             0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+close-1              0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+write-1              7757743ops    25857ops/s 101.0mb/s    0.037ms/op [0.026ms - 1.385ms]
+open-1               1ops        0ops/s   0.0mb/s   65.758ms/op [65.758ms - 65.758ms]
+302.999: IO Summary: 7757744 ops 25857.485 ops/s 0/25857 rd/wr 101.0mb/s 0.037ms/op
+302.999: Shutting down processes

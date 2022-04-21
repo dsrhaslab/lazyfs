@@ -1,0 +1,45 @@
+# Test: 
+#
+# Commands:
+#
+#   ./setup-testbed.sh -d /tmp/passthrough/fb-workload -f filemicro_seqread.f
+#   filebench -f filemicro_seqread.f
+#
+# Description:
+#
+#   1. Clear all files from FS
+#   2. Run filebench filemicro_seqread.f
+#   3. Get results
+
+# Run 1
+
+301.948: Run took 300 seconds...
+301.948: Per-Operation Breakdown
+finish-1             0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+close-1              0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+read-1               25644572ops    85477ops/s 333.9mb/s    0.010ms/op [0.006ms - 1.549ms]
+open-1               1ops        0ops/s   0.0mb/s   63.929ms/op [63.929ms - 63.929ms]
+301.948: IO Summary: 25644573 ops 85476.566 ops/s 85477/0 rd/wr 333.9mb/s 0.010ms/op
+301.948: Shutting down processes
+
+# Run 2
+
+301.869: Run took 300 seconds...
+301.869: Per-Operation Breakdown
+finish-1             0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+close-1              0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+read-1               25471956ops    84901ops/s 331.6mb/s    0.010ms/op [0.006ms - 4.478ms]
+open-1               1ops        0ops/s   0.0mb/s   64.907ms/op [64.907ms - 64.907ms]
+301.869: IO Summary: 25471957 ops 84901.207 ops/s 84901/0 rd/wr 331.6mb/s 0.010ms/op
+301.869: Shutting down processes
+
+# Run 3
+
+302.068: Run took 300 seconds...
+302.068: Per-Operation Breakdown
+finish-1             0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+close-1              0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+read-1               25334011ops    84441ops/s 329.8mb/s    0.010ms/op [0.006ms - 4.286ms]
+open-1               1ops        0ops/s   0.0mb/s   64.770ms/op [64.770ms - 64.770ms]
+302.068: IO Summary: 25334012 ops 84441.447 ops/s 84441/0 rd/wr 329.8mb/s 0.010ms/op
+302.068: Shutting down processes

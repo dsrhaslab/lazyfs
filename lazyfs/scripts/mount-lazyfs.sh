@@ -3,8 +3,10 @@
 # ------------------------------------------------
 # Variables that can be changed
 
-MOUNT_DIR=/tmp/lazyfs
-ROOT_DIR=/tmp/lazyfs-root
+# MOUNT_DIR=/tmp/lazyfs
+# ROOT_DIR=/tmp/lazyfs-root
+MOUNT_DIR=/mnt/test-fs/lazyfs
+ROOT_DIR=/mnt/test-fs/lazyfs-root
 
 # ------------------------------------------------
 

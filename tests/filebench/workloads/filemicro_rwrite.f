@@ -1,50 +1,32 @@
-#
-# CDDL HEADER START
-#
-# The contents of this file are subject to the terms of the
-# Common Development and Distribution License (the "License").
-# You may not use this file except in compliance with the License.
-#
-# You can obtain a copy of the license at usr/src/OPENSOLARIS.LICENSE
-# or http://www.opensolaris.org/os/licensing.
-# See the License for the specific language governing permissions
-# and limitations under the License.
-#
-# When distributing Covered Code, include this CDDL HEADER in each
-# file and include the License file at usr/src/OPENSOLARIS.LICENSE.
-# If applicable, add the following below this CDDL HEADER, with the
-# fields enclosed by brackets "[]" replaced with your own identifying
-# information: Portions Copyright [yyyy] [name of copyright owner]
-#
-# CDDL HEADER END
-#
-#
-# Copyright 2008 Sun Microsystems, Inc.  All rights reserved.
-# Use is subject to license terms.
-#
-# ident	"%Z%%M%	%I%	%E% SMI"
 
-# Single threaded asynchronous ($sync) random writes (2KB I/Os) on a 1GB file.
-# Stops when 128MB ($bytes) has been written.
+set $WORKLOAD_PATH="/mnt/test-fs/lazyfs/fb-workload"
 
-set $WORKLOAD_PATH="/tmp/lazyfs/fb-workload"
-set $bytes=128m
-set $cached=false
-set $filesize=1g
-set $iosize=4k
-set $iters=1
-set $nthreads=1
-set $sync=false
+set mode quit firstdone
 
-define file name=bigfile1,path=$WORKLOAD_PATH,size=$filesize,prealloc,reuse
+define fileset name="fileset-1", path=$WORKLOAD_PATH, entries=1, dirwidth=1, dirgamma=0,
+               filesize=1g, prealloc
 
-define process name=filewriter,instances=1
+define process name="process-1", instances=1
 {
-  thread name=filewriterthread,memsize=10m,instances=$nthreads
-  {
-    flowop write name=write-file,filename=bigfile1,random,dsync=$sync,iosize=$iosize,iters=$iters
-    flowop finishonbytes name=finish,value=$bytes
-  }
+    thread name="thread-1", memsize=4k, instances=1
+    {
+        flowop openfile name="open-1", filesetname="fileset-1", fd=1, indexed=1
+        flowop write name="write-1", fd=1, iosize=4k, iters=67108864, random
+        flowop closefile name="close-1", fd=1
+
+        flowop finishoncount name="finish-1", value=1
+    }
 }
 
-echo  "FileMicro-WriteRand Version 2.1 personality successfully loaded"
+# explicitly preallocate files
+create files
+
+# drop file system caches
+system "sync ."
+system "echo 3 > /proc/sys/vm/drop_caches"
+
+echo "time sync"
+system "date '+time sync %s.%N'"
+echo "time sync"
+
+run 300

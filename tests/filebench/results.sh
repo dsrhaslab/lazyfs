@@ -2,7 +2,7 @@
 
 #---------------------------------------------
 
-WORKLOAD_NAME="webserver"
+WORKLOAD_NAME="filemicro_rwrite"
 OUTPUT_FOLDER="general-tests/$WORKLOAD_NAME"
 
 #---------------------------------------------

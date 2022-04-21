@@ -1,0 +1,50 @@
+# Test: 
+#
+# Commands:
+#
+#   ./setup-testbed.sh -d /tmp/lazyfs/fb-workload -f filemicro_createfiles.f
+#   filebench -f filemicro_createfiles.f
+#
+# Description:
+#
+#   (Using standard page size in cache - 4kb / 4096 bytes)
+# 
+#   1. Clear all files from FS
+#   2. Run filebench filemicro_createfiles.f
+#   3. Get results
+
+# Run 1
+
+9.175: Run took 5 seconds...
+9.175: Per-Operation Breakdown
+finishoncount-1      0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+createwriteclose-1.closefile-1 6448ops     1290ops/s   0.0mb/s    0.008ms/op [0.002ms - 0.044ms]
+createwriteclose-1.write-1 6448ops     1290ops/s   5.0mb/s    0.451ms/op [0.167ms - 2.539ms]
+createwriteclose-1.createfile-1 6448ops     1290ops/s   0.0mb/s    0.301ms/op [0.075ms - 10.631ms]
+createwriteclose-1   0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+9.175: IO Summary: 19344 ops 3868.504 ops/s 0/1290 rd/wr   5.0mb/s 0.253ms/op
+9.175: Shutting down processes
+
+# Run 2
+
+9.037: Run took 5 seconds...
+9.037: Per-Operation Breakdown
+finishoncount-1      0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+createwriteclose-1.closefile-1 6292ops     1258ops/s   0.0mb/s    0.008ms/op [0.002ms - 0.139ms]
+createwriteclose-1.write-1 6292ops     1258ops/s   4.9mb/s    0.464ms/op [0.158ms - 3.672ms]
+createwriteclose-1.createfile-1 6293ops     1259ops/s   0.0mb/s    0.306ms/op [0.071ms - 4.837ms]
+createwriteclose-1   0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+9.037: IO Summary: 18877 ops 3775.103 ops/s 0/1258 rd/wr   4.9mb/s 0.259ms/op
+9.037: Shutting down processes
+
+# Run 3
+
+9.049: Run took 5 seconds...
+9.049: Per-Operation Breakdown
+finishoncount-1      0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+createwriteclose-1.closefile-1 6460ops     1292ops/s   0.0mb/s    0.008ms/op [0.002ms - 0.057ms]
+createwriteclose-1.write-1 6460ops     1292ops/s   5.0mb/s    0.449ms/op [0.158ms - 2.146ms]
+createwriteclose-1.createfile-1 6460ops     1292ops/s   0.0mb/s    0.301ms/op [0.070ms - 4.890ms]
+createwriteclose-1   0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+9.049: IO Summary: 19380 ops 3875.716 ops/s 0/1292 rd/wr   5.0mb/s 0.252ms/op
+9.049: Shutting down processes
