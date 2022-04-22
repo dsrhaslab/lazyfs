@@ -80,7 +80,9 @@ int LazyFS::lfs_getattr (const char* path, struct stat* stbuf, struct fuse_file_
     if (S_ISDIR (stbuf->st_mode))
         return 0;
 
-    if (this_ ()->FSCache->has_content_cached (content_owner)) {
+    bool locked = this_ ()->FSCache->lockItemCheckExists (content_owner);
+
+    if (locked) {
 
         /*
             Content is cached, must return cached metadata
@@ -88,12 +90,13 @@ int LazyFS::lfs_getattr (const char* path, struct stat* stbuf, struct fuse_file_
             - size, atime, ctime, mtime
         */
 
-        this_ ()->FSCache->lockItem (content_owner);
         Metadata* meta  = this_ ()->FSCache->get_content_metadata (content_owner);
         off_t get_size  = (off_t)meta->size;
         long remainder  = get_size / this_ ()->FSConfig->IO_BLOCK_SIZE;
         blkcnt_t blocks = ((remainder + 1) * (long)this_ ()->FSConfig->IO_BLOCK_SIZE) /
                           (long)this_ ()->FSConfig->DISK_SECTOR_SIZE;
+
+        // std::printf ("\tgetattr file size = %d\n", (int)get_size);
 
         stbuf->st_size         = get_size;
         stbuf->st_blocks       = blocks;
@@ -104,7 +107,8 @@ int LazyFS::lfs_getattr (const char* path, struct stat* stbuf, struct fuse_file_
         stbuf->st_mtim.tv_nsec = meta->mtim.tv_nsec;
         stbuf->st_mtim.tv_sec  = meta->mtim.tv_sec;
 
-        this_ ()->FSCache->unlockItem (content_owner);
+        if (locked)
+            this_ ()->FSCache->unlockItem (content_owner);
 
     } else {
 
@@ -114,7 +118,9 @@ int LazyFS::lfs_getattr (const char* path, struct stat* stbuf, struct fuse_file_
         */
 
         this_ ()->FSCache->put_data_blocks (content_owner, {}, OP_PASSTHROUGH);
-        this_ ()->FSCache->lockItem (content_owner);
+        bool locked = this_ ()->FSCache->lockItemCheckExists (content_owner);
+
+        // std::printf ("\tgetattr file size = %d\n", (int)stbuf->st_size);
 
         Metadata meta;
         meta.size = stbuf->st_size;
@@ -126,7 +132,8 @@ int LazyFS::lfs_getattr (const char* path, struct stat* stbuf, struct fuse_file_
                                                     meta,
                                                     {"size", "atime", "ctime", "mtime"});
 
-        this_ ()->FSCache->unlockItem (content_owner);
+        if (locked)
+            this_ ()->FSCache->unlockItem (content_owner);
     }
 
     return 0;
@@ -206,9 +213,10 @@ int LazyFS::lfs_open (const char* path, struct fuse_file_info* fi) {
         update_meta_values.push_back ("mtime");
     }
 
-    this_ ()->FSCache->lockItem (owner);
+    bool locked = this_ ()->FSCache->lockItemCheckExists (owner);
     this_ ()->FSCache->update_content_metadata (owner, meta, update_meta_values);
-    this_ ()->FSCache->unlockItem (owner);
+    if (locked)
+        this_ ()->FSCache->unlockItem (owner);
 
     // --------------------------------------------------------------------------
 
@@ -258,9 +266,10 @@ int LazyFS::lfs_create (const char* path, mode_t mode, struct fuse_file_info* fi
         update_meta_values.push_back ("mtime");
     }
 
-    this_ ()->FSCache->lockItem (owner);
+    bool locked = this_ ()->FSCache->lockItemCheckExists (owner);
     this_ ()->FSCache->update_content_metadata (owner, meta, update_meta_values);
-    this_ ()->FSCache->unlockItem (owner);
+    if (locked)
+        this_ ()->FSCache->unlockItem (owner);
 
     if (res == -1)
         return -errno;
@@ -275,7 +284,7 @@ int LazyFS::lfs_write (const char* path,
                        off_t offset,
                        struct fuse_file_info* fi) {
 
-    // std::printf ("write::(pat@h=%s, size=%d, offset=%d)\n", path, (int)size, (int)offset);
+    // std::printf ("write::(path=%s, size=%d, offset=%d)\n", path, (int)size, (int)offset);
 
     int fd;
     int res;
@@ -509,7 +518,7 @@ int LazyFS::lfs_write (const char* path,
 
         // ----------------------------------------------------------------------------------
 
-        this_ ()->FSCache->lockItem (OWNER);
+        bool locked = this_ ()->FSCache->lockItemCheckExists (OWNER);
 
         int was_written_until_offset = offset + size;
 
@@ -535,7 +544,8 @@ int LazyFS::lfs_write (const char* path,
 
         // std::printf ("\twrite: file size now is %d bytes\n", (int)meta.size);
 
-        this_ ()->FSCache->unlockItem (OWNER);
+        if (locked)
+            this_ ()->FSCache->unlockItem (OWNER);
     }
 
     // ----------------------------------------------------------------------------------
@@ -606,15 +616,17 @@ int LazyFS::lfs_read (const char* path,
         clock_gettime (CLOCK_REALTIME, &access_time);
         meta.atim = access_time;
 
-        this_ ()->FSCache->lockItem (OWNER);
+        bool locked = this_ ()->FSCache->lockItemCheckExists (OWNER);
 
         this_ ()->FSCache->update_content_metadata (OWNER, meta, {"size", "atime"});
 
-        this_ ()->FSCache->unlockItem (OWNER);
+        if (locked)
+            this_ ()->FSCache->unlockItem (OWNER);
 
     } else {
 
         meta.size = (int)(this_ ()->FSCache->get_content_metadata (OWNER)->size);
+        // std::printf ("\tread: file has %d bytes\n", (int)meta.size);
     }
 
     if (offset > (meta.size - 1))
@@ -638,6 +650,11 @@ int LazyFS::lfs_read (const char* path,
             blk_readable_to = IO_BLOCK_SIZE - 1;
         else if (CURR_BLK_IDX == blk_high)
             blk_readable_to = size - data_allocated - 1;
+
+        // std::printf ("\tread: blk %d read from %d to %d\n",
+        //              CURR_BLK_IDX,
+        //              blk_readable_from,
+        //              blk_readable_to);
 
         if (this_ ()->FSCache->is_block_cached (OWNER, CURR_BLK_IDX)) {
 
@@ -677,8 +694,20 @@ int LazyFS::lfs_read (const char* path,
                         read_buffer + blk_readable_from,
                         (read_to - blk_readable_from) + 1);
 
+                // std::printf ("\tread: copy %d bytes from %d\n",
+                //              (read_to - blk_readable_from) + 1,
+                //              blk_readable_from);
+
                 BUF_ITERATOR += (read_to - blk_readable_from) + 1;
                 BYTES_LEFT -= (read_to - blk_readable_from) + 1;
+
+                int reached_offset = blk_readable_from + (read_to - blk_readable_from) + 1;
+
+                if (reached_offset < (IO_BLOCK_SIZE - 1) && CURR_BLK_IDX < blk_high) {
+
+                    memset (buf + BUF_ITERATOR + reached_offset, 0, IO_BLOCK_SIZE - reached_offset);
+                    BUF_ITERATOR += IO_BLOCK_SIZE - reached_offset;
+                }
 
                 data_allocated += (read_to - blk_readable_from) + 1;
             }
@@ -734,6 +763,8 @@ int LazyFS::lfs_read (const char* path,
     // ---------------------------------------------------------
 
     res = BUF_ITERATOR;
+
+    // std::printf ("\tread return %d bytes\n", res);
 
     // close (fd_caching);
 
@@ -917,11 +948,12 @@ int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_fil
         values_to_change.push_back ("ctime");
     }
 
-    this_ ()->FSCache->lockItem (owner);
+    bool locked = this_ ()->FSCache->lockItemCheckExists (owner);
 
     this_ ()->FSCache->update_content_metadata (owner, new_meta, values_to_change);
 
-    this_ ()->FSCache->unlockItem (owner);
+    if (locked)
+        this_ ()->FSCache->unlockItem (owner);
 
     // todo: should file times update after truncate, even if truncate_size == current file size?
 

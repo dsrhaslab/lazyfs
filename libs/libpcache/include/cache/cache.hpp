@@ -49,6 +49,7 @@ class Cache {
     void print_engine ();
     void lockItem (string cid);
     void unlockItem (string cid);
+    bool lockItemCheckExists (string cid);
     void lockCache ();
     void unlockCache ();
     double get_cache_usage ();

@@ -256,25 +256,6 @@ bool Cache::_delete_item (string cid) {
     return true;
 }
 
-bool Cache::remove_cached_item (string owner) {
-
-    if (not has_content_cached (owner))
-        return false;
-
-    lockCache ();
-
-    if (this->engine->remove_cached_blocks (owner)) {
-
-        this->_delete_item (owner);
-        unlockCache ();
-        return true;
-    }
-
-    unlockCache ();
-
-    return false;
-}
-
 bool Cache::truncate_item (string owner, int new_size) {
 
     lockCache ();
@@ -373,6 +354,25 @@ bool Cache::rename_item (string old_cid, string new_cid) {
     return this->engine->rename_owner_pages (old_cid, new_cid);
 }
 
+bool Cache::remove_cached_item (string owner) {
+
+    if (not has_content_cached (owner))
+        return false;
+
+    lockCache ();
+
+    if (this->engine->remove_cached_blocks (owner)) {
+
+        this->_delete_item (owner);
+        unlockCache ();
+        return true;
+    }
+
+    unlockCache ();
+
+    return false;
+}
+
 void Cache::clear_all_cache () {
 
     std::list<string> items;
@@ -385,6 +385,22 @@ void Cache::clear_all_cache () {
 
         remove_cached_item (it);
     }
+}
+
+bool Cache::lockItemCheckExists (string cid) {
+
+    lockCache ();
+
+    if (not has_content_cached (cid)) {
+        unlockCache ();
+        return false;
+    }
+
+    lockItem (cid);
+
+    unlockCache ();
+
+    return true;
 }
 
 } // namespace cache

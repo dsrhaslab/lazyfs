@@ -27,10 +27,5 @@ done
 
 set -- "${POSITIONAL_ARGS[@]}"
 
-if [ ! -d "$MOUNT_DIR" ]; then
-    echo "Error: Mount directory '${MOUNT_DIR}' does not exist."    
-    exit
-fi
-
 echo "Umounting FUSE on $MOUNT_DIR..."
-fusermount -uz $MOUNT_DIR
+fusermount3 -u ${MOUNT_DIR}
