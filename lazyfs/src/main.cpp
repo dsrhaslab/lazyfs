@@ -97,9 +97,8 @@ int main (int argc, char* argv[]) {
 
     CustomCacheEngine* engine = new CustomCacheEngine (&std_config);
     Cache* cache              = new Cache (&std_config, engine);
-    new (&fs) LazyFS (cache, &std_config);
 
-    new (&faults_handler_thread) std::thread (fht_worker, &fs);
+    new (&fs) LazyFS (cache, &std_config, &faults_handler_thread, fht_worker);
 
     int status = fs.run (new_argc, new_argv);
 

@@ -7,6 +7,7 @@
 #include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <thread>
 #include <tuple>
 #include <unistd.h>
 
@@ -25,10 +26,15 @@ namespace lazyfs {
 
 LazyFS::LazyFS () {}
 
-LazyFS::LazyFS (Cache* cache, cache::config::Config* config) {
+LazyFS::LazyFS (Cache* cache,
+                cache::config::Config* config,
+                std::thread* faults_handler_thread,
+                void (*fht_worker) (LazyFS* filesystem)) {
 
-    this->FSConfig = config;
-    this->FSCache  = cache;
+    this->FSConfig              = config;
+    this->FSCache               = cache;
+    this->faults_handler_thread = faults_handler_thread;
+    this->fht_worker            = fht_worker;
 }
 
 LazyFS::~LazyFS () {}
@@ -49,6 +55,8 @@ void* LazyFS::lfs_init (struct fuse_conn_info* conn, struct fuse_config* cfg) {
     (void)conn;
 
     // cfg->direct_io = 1;
+
+    new (this_ ()->faults_handler_thread) std::thread (this_ ()->fht_worker, this_ ());
 
     return this_ ();
 }

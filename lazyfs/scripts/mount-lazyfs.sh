@@ -3,10 +3,10 @@
 # ------------------------------------------------
 # Variables that can be changed
 
-# MOUNT_DIR=/tmp/lazyfs
-# ROOT_DIR=/tmp/lazyfs-root
-MOUNT_DIR=/mnt/test-fs/lazyfs
-ROOT_DIR=/mnt/test-fs/lazyfs-root
+MOUNT_DIR=/tmp/lazyfs
+ROOT_DIR=/tmp/lazyfs-root
+# MOUNT_DIR=/mnt/test-fs/lazyfs
+# ROOT_DIR=/mnt/test-fs/lazyfs-root
 
 # ------------------------------------------------
 
@@ -54,7 +54,7 @@ echo -e "::Running lazyfs (stop with ctrl+c or umount-lazyfs.sh)...\n"
 if [ -z "$CMD_FG" ]; then
    echo -e "(running in no foreground mode)\n"
    echo -e "Note: run in foreground to see the <stdio> logs.\n"
-   ./build/lazyfs $MOUNT_DIR --config-path config/default.toml -o allow_other -o modules=subdir -o subdir=$ROOT_DIR
+   ./build/lazyfs $MOUNT_DIR --config-path config/default.toml -o allow_other -o modules=subdir -o subdir=$ROOT_DIR &
 else
    echo -e "(running in foreground mode)\n"
    ./build/lazyfs $MOUNT_DIR --config-path config/default.toml -o allow_other -o modules=subdir -o subdir=$ROOT_DIR -f

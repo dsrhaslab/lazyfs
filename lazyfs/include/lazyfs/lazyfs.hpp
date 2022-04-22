@@ -8,6 +8,7 @@
 #include <cache/engine/backends/custom/custom_cache.hpp>
 #include <lazyfs/fusepp/Fuse-impl.h>
 #include <lazyfs/fusepp/Fuse.h>
+#include <thread>
 
 using namespace cache;
 
@@ -18,10 +19,15 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
   private:
     Cache* FSCache;
     cache::config::Config* FSConfig;
+    std::thread* faults_handler_thread;
+    void (*fht_worker) (LazyFS* filesystem);
 
   public:
     LazyFS ();
-    LazyFS (Cache* cache, cache::config::Config* config);
+    LazyFS (Cache* cache,
+            cache::config::Config* config,
+            std::thread* faults_handler_thread,
+            void (*fht_worker) (LazyFS* filesystem));
     ~LazyFS ();
 
     void fault_clear_cache ();
