@@ -4,7 +4,7 @@ A FUSE Filesystem with its own configurable page cache which can be used to simu
 
 ## Supported operations
 
-Our filesystem implements several system calls that query our custom page cache layer. Currently, **LazyFS** supports most of the operations except **truncate** (in development) and it is **not yet fully optimized**.
+Our filesystem implements several system calls that query our custom page cache layer. Currently, **LazyFS** supports the most important filesystem operations, e.g. read/write/truncate/fsync, but it is **not yet fully optimized**.
 
 ## Installation
 
@@ -73,25 +73,24 @@ The section **[cache]** **requires** that you specify the following:
 To **run the filesystem**, one could use the **mount-lazyfs.sh** script, which calls FUSE with the correct parameters:
 
 ```bash
-# Edit this script to change the MOUNT_DIR and the ROOT_DIR
-#
-# Defaults to:
-#       MOUNT_DIR=/tmp/lazyfs     (FUSE mount point)
-#       ROOT_DIR=/tmp/lazyfs-root (FUSE subdir: 'prepends this directory to all paths')
-
-# Running the filesystem in foreground mode...
-
 cd lazyfs/
 
-./scripts/mount-lazyfs.sh -c config/default.toml --foreground
+# Running LazyFS in the foreground (add '-f/--foregound')
+
+./scripts/mount-lazyfs.sh -c config/default.toml -m /mnt/lazyfs -r /mnt/lazyfs-root -f
+
+# Running LazyFS in the background
+
+./scripts/mount-lazyfs.sh -c config/default.toml -m /mnt/lazyfs -r /mnt/lazyfs-root
+
+# Umount with
+
+./scripts/umount-lazyfs.sh -m /mnt/lazyfs
 
 # Display help
 
 ./scripts/mount-lazyfs.sh --help
-
-# Umount with
-
-./scripts/umount-lazyfs.sh
+./scripts/umount-lazyfs.sh --help
 ```
 
 Finally, to inject faults one could append/echo the clear cache command to the fifo path specified above:
@@ -112,10 +111,11 @@ This section displays the next tasks and some documentation resources:
 
 ### TODO
 
--   [ ] Add **truncate** operation to the page cache
+-   [x] Add **truncate** operation to the page cache **(in tests)**
+-   [x] Add benchmarking tests (w/ Filebench) **(in tests)**
+    - Located at **test/filebench/general-results.table**
+-   [ ] Performance optimizations **(current)**
 -   [ ] Add integrity tests
--   [ ] Add benchmarking tests (w/ Filebench)
--   [ ] Performance optimizations
 -   [ ] Test with more DBs besides PostgreSQL
 -   [ ] Make **rename** operations atomic
 -   [ ] Configure cache to grow until a certain size (dynamically)
