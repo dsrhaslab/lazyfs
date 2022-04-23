@@ -4,11 +4,11 @@ A FUSE Filesystem with its own configurable page cache which can be used to simu
 
 ## Supported operations
 
-Our filesystem implements several system calls that query our custom page cache layer. Currently, **LazyFS** supports the most important filesystem operations, e.g. read/write/truncate/fsync, but it is **not yet fully optimized**.
+Our filesystem implements several system calls that query our custom page cache layer. Currently, **LazyFS** supports the most important filesystem operations, e.g. **read**/**write**/**truncate**/**fsync**, but it is <u>**not yet fully tested and optimized**</u>.
 
 ## Installation
 
-LazyFS was tested with **ext4** (default mount options) as the underlying filesystem. It is C++14 compliant and requires the following packages to be installed:
+LazyFS was tested with **ext4** (default mount options) as the underlying filesystem in both Debian 11 (bullseye) and Ubuntu 20.04 (focal) environment. It is C++14 compliant and requires the following packages to be installed:
 
 -   **CMake** (>= 3.10) and **g++** (>= 9.4.0):
 
@@ -18,7 +18,6 @@ sudo apt install g++ cmake
 
 -   **FUSE** 3
 
-Install and configure FUSE (version 3):
 
 ```bash
 sudo apt install libfuse3-dev libfuse3-3 fuse3
