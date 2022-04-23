@@ -7,7 +7,7 @@ for i in {1..100}
 do
     echo $i >> $FILE
     sleep $APPEND_EVERY
-    if ! (( $i % 10 )); then
+    if ! (( $i % 5 )); then
         echo "clearing cache..."
         echo "lazyfs::clear-cache" > ~/faults-example.fifo
     fi
