@@ -183,11 +183,11 @@ void Page::write_null_from (int block_id, int from_offset) {
 
     int off_first = get_block_offsets (block_id).first;
 
-    std::printf ("%s: from block %d, from offset %d (%d bytes)\n",
-                 __func__,
-                 block_id,
-                 off_first + from_offset,
-                 (int)this->config->IO_BLOCK_SIZE - off_first - from_offset);
+    // std::printf ("%s: from block %d, from offset %d (%d bytes)\n",
+    //             __func__,
+    //             block_id,
+    //            off_first + from_offset,
+    //             (int)this->config->IO_BLOCK_SIZE - off_first - from_offset);
 
     memset (this->data + off_first + from_offset,
             0,

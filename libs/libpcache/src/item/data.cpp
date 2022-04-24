@@ -102,7 +102,7 @@ unordered_map<int, int> Data::truncate_blocks_after (int blk_id, int blk_byte_in
 
             int p_id = it->second->get_page_index_number ();
 
-            std::printf ("%s: it->b_id = %d >= %d (p_id %d)\n", __func__, b_id, blk_id, p_id);
+            // std::printf ("%s: it->b_id = %d >= %d (p_id %d)\n", __func__, b_id, blk_id, p_id);
 
             res.insert ({b_id, p_id});
 

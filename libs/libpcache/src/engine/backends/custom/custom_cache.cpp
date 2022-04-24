@@ -570,7 +570,8 @@ bool CustomCacheEngine::truncate_cached_blocks (string content_owner_id,
 
         if (page->is_page_owner (content_owner_id)) {
 
-            std::printf ("%s: %s is page %d owner\n", __func__, content_owner_id.c_str (), page_id);
+            // std::printf ("%s: %s is page %d owner\n", __func__, content_owner_id.c_str (),
+            // page_id);
 
             if (blk_id == from_block_id && index_inside_block > 0) {
 
