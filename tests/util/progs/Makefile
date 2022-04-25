@@ -1,14 +1,16 @@
 
-compile: write.c read.c fsync.c truncate.c truncate-open.c
+# Compiles all examples
+compile: write.c read.c fsync.c truncate.c .c
 	gcc write.c -o write
 	gcc read.c -o read
 	gcc fsync.c -o fsync
 	gcc truncate.c -o truncate
-	gcc truncate-open.c -o truncate-open
 
+# Clears binaries
 clean:
-	rm -rf a.out write read fsync truncate truncate-open *.o
+	rm -rf a.out write read fsync truncate *.o
 
+# Clears folders for LazyFS tests
 clear_lazyfs:
 	rm -rf /tmp/lazyfs/* /tmp/lazyfs-root/* /tmp/passthrough/* /tmp/passthrough-root/*
 	rm -rf /tmp/lazyfs/.psql_history

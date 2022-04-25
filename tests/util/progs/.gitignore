@@ -1,0 +1,5 @@
+fsync
+read
+write
+truncate
+truncate-open
