@@ -1,5 +1,11 @@
 #!/bin/bash
 
+#------------------------------------------------
+# This script replaces the WORKLOAD_PATH in each
+# Filebench test with the one specified, also it
+# creates the fileset destination folder.
+#------------------------------------------------
+
 HELP_CMD="Please specify the following arguments:\n\t-f: Filebench workload file.\n\t-d: Fileset workload directory."
 
 while getopts h:d:f: flag

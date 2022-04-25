@@ -1,10 +1,14 @@
 #!/bin/bash
 
 #--------------------------------------------------------
-# Edit this variables
-
+# This script generates the summary table under a tests
+# folder. Each individual workload results folder should
+# be first generated with the results.sh script
+#
+# Edit this variable to specify the results folder:
+#
 RESULTS_FOLDER="general-tests"
-
+#
 #--------------------------------------------------------
 
 printf '~%.0s' {1..89}
