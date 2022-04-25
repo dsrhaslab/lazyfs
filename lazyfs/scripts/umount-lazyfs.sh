@@ -1,5 +1,10 @@
 #!/bin/bash
 
+#------------------------------------------------------------------
+# A script to umount the LazyFS with custom arguments:
+# Please run ./umount-lazyfs.sh --help to show help.
+#------------------------------------------------------------------
+
 HELP_MSG="Umount LazyFS with:
 \t-m | --mount.dir   : FUSE mount dir."
 

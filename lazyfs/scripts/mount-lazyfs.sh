@@ -1,5 +1,10 @@
 #!/bin/bash
 
+#------------------------------------------------------------------
+# A script to run the LazyFS with custom arguments:
+# Please run ./mount-lazyfs.sh --help to show help.
+#------------------------------------------------------------------
+
 HELP_MSG="Mount LazyFS with:
 \t-c | --config-path : The path to the LazyFS toml config file.
 \t-f | --foreground  : Run FUSE in foreground.
