@@ -10,6 +10,12 @@ namespace cache::engine::page {
 
 class BlockOffsets {
   private:
+    /**
+     * @brief The offsets within the page where the block is readable.
+     * For example, if a page of 8k has two 4k blocks, the first will
+     * be readable from 0 to 4095 and the other from 4096 to 8191.
+     *
+     */
     // blk_id -> offsets inside the page, e.g. [0-4095] or [4096-8191]
     unordered_map<int, pair<int, int>> block_offset_mapping;
     // blk_id -> max offset readable, e.g. if offsets are [0-4095], the block

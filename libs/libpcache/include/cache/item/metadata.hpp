@@ -6,15 +6,45 @@
 
 namespace cache::item {
 
+/**
+ * @brief Stores the Item metadata values
+ *
+ */
+
 class Metadata {
 
   public:
+    /**
+     * @brief Item size in bytes
+     *
+     */
     off_t size;
+    /**
+     * @brief Item access time
+     *
+     */
     struct timespec atim;
+    /**
+     * @brief Item modify time
+     *
+     */
     struct timespec mtim;
+    /**
+     * @brief Item change time
+     *
+     */
     struct timespec ctim;
 
+    /**
+     * @brief Construct a new Metadata object
+     *
+     */
     Metadata ();
+
+    /**
+     * @brief Pretty prints a metadata object
+     *
+     */
     void print_metadata ();
 };
 
