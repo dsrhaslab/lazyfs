@@ -15,48 +15,146 @@ using namespace cache::engine::page;
 
 namespace cache::engine::backends::custom {
 
+/**
+ * @brief Simple cache engine implementation with LRU management.
+ *
+ */
 class CustomCacheEngine : public PageCacheEngine {
 
+    /**
+     * @brief Locks the page cache engine
+     *
+     */
     static pthread_rwlock_t lock_cache;
 
   private:
+    /**
+     * @brief the LazyFS config object
+     *
+     */
     cache::config::Config* config;
-    // LRU ordered vector
+
+    /**
+     * @brief Cache eviction LRU for page ordering
+     *
+     */
     list<int> lru_main_vector;
-    // maps page_index -> lru_main_vector_iterator_position
+
+    /**
+     * @brief Page id mapped to the LRU iterator position
+     *
+     */
     unordered_map<int, list<int>::iterator> page_order_mapping;
-    // page_index -> page_pointer
+
+    /**
+     * @brief Page id mapped to its reference pointer for fast indexing
+     *
+     */
     unordered_map<int, Page*> search_index;
-    // stores free page ids
+
+    /**
+     * @brief A list of free page ids
+     *
+     */
     vector<int> free_pages;
-    // owner -> [pages-list]
+
+    /**
+     * @brief Maps content owners to the list of their page ids
+     *
+     */
     unordered_map<string, unordered_set<int>> owner_pages_mapping;
-    unordered_map<string, map<int, tuple<int, Page*, pair<int, int>>>> owner_oredered_pages_mapping;
+
+    /**
+     * @brief Maps content associated blocks to the (page id, page ptr, offsets).
+     * This avoids calling find, at, or similar multiple times by using redundancy.
+     *
+     */
+    unordered_map<string, map<int, tuple<int, Page*, pair<int, int>>>> owner_ordered_pages_mapping;
+
+    /**
+     * @brief Maps owners to their free page ids. A free page contains at least one
+     * free block offset.
+     *
+     */
     unordered_map<string, vector<int>> owner_free_pages_mapping;
-    // concurrency control
+
+    /**
+     * @brief Controls concurrency inside the LRU queue
+     *
+     */
     mutex lru_management_mtx;
 
+    /**
+     * @brief Gets a page reference
+     *
+     * @param page_id the page id
+     * @return Page* the page reference
+     */
     Page* _get_page_ptr (int page_id);
+
+    /**
+     * @brief Checks if the cache engine has free pages
+     *
+     * @return true at least one free page
+     * @return false no free pages
+     */
     bool _has_empty_pages ();
+
+    /**
+     * @brief Finds and allocates a free page. If no pages are free and
+     * eviction is not configured, than no page will be allocated.
+     *
+     * @param owner_id the content id
+     * @return pair<int, Page*> the page id or -1 mappend to the page reference or nullptr
+     */
     pair<int, Page*> _get_next_free_page (string owner_id);
-    pair<Page*, pair<int, int>>* _get_free_page_offsets ();
+
+    /**
+     * @brief Manages the LRU queue for a WRITE operation
+     *
+     * @param visited_page_id the page that was written
+     */
     void _apply_lru_after_page_visitation_on_WRITE (int visited_page_id);
+
+    /**
+     * @brief Manages the LRU queue for a READ operation
+     *
+     * @param visited_page_id the page that was read
+     */
     void _apply_lru_after_page_visitation_on_READ (int visited_page_id);
+
+    /**
+     * @brief Adds the block->page mapping to the content id associated data structures
+     *
+     * @param content_owner_id the content id
+     * @param page_id the allocated page
+     * @param block_id the allocated block
+     * @param block_offsets_inside_page the allocated block offsets in that page
+     */
     void _update_owner_pages (string content_owner_id,
                               int page_id,
                               int block_id,
                               pair<int, int> block_offsets_inside_page);
 
   public:
+    /**
+     * @brief Construct a new Custom Cache Engine object
+     *
+     * @param config the LazyFS configuration
+     */
     CustomCacheEngine (cache::config::Config* config);
+
+    /**
+     * @brief Destroy the Custom Cache Engine object
+     *
+     */
     ~CustomCacheEngine ();
+
     map<int, int>
-    // interface method
     allocate_blocks (string content_owner_id,
-                     // block_id -> (allocated_page (or -1 if does not exist)), data, data_length)
                      map<int, tuple<int, const char*, size_t, int>> block_data_mapping,
                      AllocateOperationType operation_type);
-    // (blk_id, <page_id, data_buffer>)
+
     map<int, bool> get_blocks (string content_owner_id,
                                map<int, tuple<int, char*, int>> block_pages);
     bool is_block_cached (string content_owner_id, int page_id, int block_id);

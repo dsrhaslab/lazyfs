@@ -46,7 +46,7 @@ CustomCacheEngine::CustomCacheEngine (cache::config::Config* config) {
 
     this->owner_free_pages_mapping.reserve (5);
     this->owner_pages_mapping.reserve (500);
-    this->owner_oredered_pages_mapping.reserve (500);
+    this->owner_ordered_pages_mapping.reserve (500);
 
     cout << "\t[engine] Pre-allocation finished.\n";
 }
@@ -242,13 +242,13 @@ void CustomCacheEngine::_update_owner_pages (string new_owner,
         if (this->owner_pages_mapping.find (real_owner) != this->owner_pages_mapping.end ()) {
 
             this->owner_pages_mapping.at (real_owner).erase (page_id);
-            this->owner_oredered_pages_mapping.at (real_owner).erase (block_id);
+            this->owner_ordered_pages_mapping.at (real_owner).erase (block_id);
 
             if (this->owner_pages_mapping.at (real_owner).empty ()) {
 
                 this->owner_pages_mapping.erase (real_owner);
                 this->owner_free_pages_mapping.erase (real_owner);
-                this->owner_oredered_pages_mapping.erase (real_owner);
+                this->owner_ordered_pages_mapping.erase (real_owner);
             }
         }
     }
@@ -258,7 +258,7 @@ void CustomCacheEngine::_update_owner_pages (string new_owner,
     if (this->owner_pages_mapping.find (new_owner) != this->owner_pages_mapping.end ()) {
 
         this->owner_pages_mapping.at (new_owner).insert (page_id);
-        this->owner_oredered_pages_mapping.at (new_owner).insert (
+        this->owner_ordered_pages_mapping.at (new_owner).insert (
             {block_id, {page_id, p, block_offsets_inside_page}});
 
     } else {
@@ -270,7 +270,7 @@ void CustomCacheEngine::_update_owner_pages (string new_owner,
         this->owner_pages_mapping.insert (
             pair<string, unordered_set<int>> (new_owner, owner_pages));
         this->owner_free_pages_mapping.insert (pair<string, vector<int>> (new_owner, {}));
-        this->owner_oredered_pages_mapping.insert (
+        this->owner_ordered_pages_mapping.insert (
             {new_owner, {{block_id, {page_id, p, block_offsets_inside_page}}}});
     }
 
@@ -413,17 +413,22 @@ bool CustomCacheEngine::remove_cached_blocks (string owner) {
 
             // add page to free pages...
             this->free_pages.push_back (*page_it);
-            auto pos = this->page_order_mapping.find (*page_it);
-            if (pos != this->page_order_mapping.end ())
-                this->lru_main_vector.erase (pos->second);
-            this->page_order_mapping.erase (*page_it);
+
+            if (this->config->APPLY_LRU_EVICTION) {
+
+                auto pos = this->page_order_mapping.find (*page_it);
+                if (pos != this->page_order_mapping.end ())
+                    this->lru_main_vector.erase (pos->second);
+                this->page_order_mapping.erase (*page_it);
+            }
+
             Page* page_ptr = _get_page_ptr (*page_it);
             page_ptr->reset ();
             page_ptr->change_owner ("none");
         }
 
         this->owner_pages_mapping.erase (owner);
-        this->owner_oredered_pages_mapping.erase (owner);
+        this->owner_ordered_pages_mapping.erase (owner);
     }
 
     pthread_rwlock_unlock (&lock_cache);
@@ -461,7 +466,7 @@ bool CustomCacheEngine::sync_pages (string owner) {
         int wrote_bytes = 0;
         int page_streak = 0;
 
-        auto const& iterate_blocks = this->owner_oredered_pages_mapping.at (owner);
+        auto const& iterate_blocks = this->owner_ordered_pages_mapping.at (owner);
         int page_streak_last_offset =
             (iterate_blocks.begin ()->first) * this->config->IO_BLOCK_SIZE;
 
@@ -533,7 +538,7 @@ bool CustomCacheEngine::rename_owner_pages (string old_owner, string new_owner) 
     unordered_set<int> old_page_mapping = this->owner_pages_mapping.at (old_owner);
     vector<int> old_free_mapping        = this->owner_free_pages_mapping.at (old_owner);
     map<int, tuple<int, Page*, pair<int, int>>> old_ordered_pages =
-        this->owner_oredered_pages_mapping.at (old_owner);
+        this->owner_ordered_pages_mapping.at (old_owner);
 
     for (auto const& it : old_page_mapping) {
         Page* page = _get_page_ptr (it);
@@ -543,11 +548,11 @@ bool CustomCacheEngine::rename_owner_pages (string old_owner, string new_owner) 
 
     this->owner_pages_mapping.erase (old_owner);
     this->owner_free_pages_mapping.erase (old_owner);
-    this->owner_oredered_pages_mapping.erase (old_owner);
+    this->owner_ordered_pages_mapping.erase (old_owner);
 
-    this->owner_pages_mapping[new_owner]          = old_page_mapping;
-    this->owner_free_pages_mapping[new_owner]     = old_free_mapping;
-    this->owner_oredered_pages_mapping[new_owner] = old_ordered_pages;
+    this->owner_pages_mapping[new_owner]         = old_page_mapping;
+    this->owner_free_pages_mapping[new_owner]    = old_free_mapping;
+    this->owner_ordered_pages_mapping[new_owner] = old_ordered_pages;
 
     pthread_rwlock_unlock (&lock_cache);
 
@@ -585,16 +590,21 @@ bool CustomCacheEngine::truncate_cached_blocks (string content_owner_id,
                 page->remove_block (blk_id);
 
                 this->owner_pages_mapping.at (content_owner_id).erase (page_id);
-                this->owner_oredered_pages_mapping.at (content_owner_id).erase (blk_id);
+                this->owner_ordered_pages_mapping.at (content_owner_id).erase (blk_id);
 
                 if (not page->is_page_dirty ()) {
 
                     // add page to free pages...
                     this->free_pages.push_back (page_id);
-                    auto pos = this->page_order_mapping.find (page_id);
-                    if (pos != this->page_order_mapping.end ())
-                        this->lru_main_vector.erase (pos->second);
-                    this->page_order_mapping.erase (page_id);
+
+                    if (this->config->APPLY_LRU_EVICTION) {
+
+                        auto pos = this->page_order_mapping.find (page_id);
+                        if (pos != this->page_order_mapping.end ())
+                            this->lru_main_vector.erase (pos->second);
+                        this->page_order_mapping.erase (page_id);
+                    }
+
                     page->reset ();
                     page->change_owner ("none");
                 }

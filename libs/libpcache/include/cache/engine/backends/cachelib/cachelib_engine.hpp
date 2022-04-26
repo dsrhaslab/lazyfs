@@ -6,8 +6,14 @@
 
 namespace cache::engine::backends::cachelib {
 
-// class CacheLibEngine : public PageCacheEngine {
+/**
+ * @brief This class will be developed to use CacheLib as
+ * the page cache background engine. Check CacheLib documentation
+ * here: https://cachelib.org/
+ *
+ */
 class CacheLibEngine {
+
   public:
     CacheLibEngine ();
     ~CacheLibEngine ();
