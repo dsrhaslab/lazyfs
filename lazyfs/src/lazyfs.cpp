@@ -77,7 +77,7 @@ int LazyFS::lfs_getattr (const char* path, struct stat* stbuf, struct fuse_file_
     if (res == -1)
         return -errno;
 
-    if (S_ISDIR (stbuf->st_mode))
+    if (not S_ISREG (stbuf->st_mode))
         return 0;
 
     bool locked = this_ ()->FSCache->lockItemCheckExists (content_owner);
