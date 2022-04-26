@@ -14,23 +14,72 @@ using namespace cache;
 
 namespace lazyfs {
 
+/**
+ * @brief The LazyFS implementation in C++.
+ *
+ */
 class LazyFS : public Fusepp::Fuse<LazyFS> {
 
   private:
+    /**
+     * @brief The Cache interface
+     *
+     */
     Cache* FSCache;
+
+    /**
+     * @brief The LazyFS configuration
+     *
+     */
     cache::config::Config* FSConfig;
+
+    /**
+     * @brief Faults handler thread / worker.
+     */
     std::thread* faults_handler_thread;
+
+    /**
+     * @brief Faults handler method to run inside the thread.
+     *
+     */
     void (*fht_worker) (LazyFS* filesystem);
 
   public:
+    /**
+     * @brief Construct a new LazyFS object
+     *
+     */
     LazyFS ();
+
+    /**
+     * @brief Construct a new LazyFS object
+     *
+     * @param cache Cache object
+     * @param config LazyFS configuration
+     * @param faults_handler_thread A thread to handle fault requests
+     * @param fht_worker The faults worker logic method
+     */
     LazyFS (Cache* cache,
             cache::config::Config* config,
             std::thread* faults_handler_thread,
             void (*fht_worker) (LazyFS* filesystem));
+
+    /**
+     * @brief Destroy the LazyFS object
+     *
+     */
     ~LazyFS ();
 
+    /**
+     * @brief Fifo: (fault) Clear the cached contents
+     *
+     */
     void fault_clear_cache ();
+
+    /**
+     * @brief Fifo: (info) Display the cache usage
+     *
+     */
     void display_cache_usage ();
 
     static void* lfs_init (struct fuse_conn_info*, struct fuse_config* cfg);
