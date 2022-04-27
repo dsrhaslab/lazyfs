@@ -92,17 +92,25 @@ cd lazyfs/
 ./scripts/umount-lazyfs.sh --help
 ```
 
-Finally, to inject faults one could append/echo the clear cache command to the fifo path specified above:
+Finally, to inject faults one could append/echo the clear cache command to the fifo path specified above.
 
-```bash
-echo "lazyfs::clear-cache" > /my/path/faults-example.fifo
-```
+* **Clear cache,** this command clears any un-fsynced data:
+ 
+    ```bash
+    echo "lazyfs::clear-cache" > /my/path/faults-example.fifo
+    ```
 
-To display the current cache usage:
+* **Checkpoint,** which checkpoints any un-fsynced data by calling write to the underlying filesystem:
 
-```bash
-echo "lazyfs::display-cache-usage" > /my/path/faults-example.fifo
-```
+    ```bash
+    echo "lazyfs::cache-checkpoint" > /my/path/faults-example.fifo
+    ```
+
+* **Show usage,** which displays the current cache usage:
+
+    ```bash
+    echo "lazyfs::display-cache-usage" > /my/path/faults-example.fifo
+    ```
 
 ## Development
 
@@ -112,14 +120,13 @@ This section displays the next tasks and some documentation resources:
 
 -   [x] Add **truncate** operation to the page cache **(in tests)**
 -   [x] Add benchmarking tests (w/ Filebench) **(in tests)**
-    - Located at **test/filebench/general-results.table**
+-   [x] Code documentation
 -   [ ] Performance optimizations **(current)**
 -   [ ] Add integrity tests
 -   [ ] Test with more DBs besides PostgreSQL
 -   [ ] Make **rename** operations atomic
 -   [ ] Configure cache to grow until a certain size (dynamically)
 -   [ ] Add logging to an external file
--   [ ] Code documentation
 
 ### Resources
 
