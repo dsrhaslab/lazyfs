@@ -48,7 +48,7 @@ void LazyFS::command_fault_clear_cache () {
 
 void LazyFS::command_display_cache_usage () {
 
-    std::printf ("\t\t\t[cache] current usage: %0.2lf %% \n", FSCache->get_cache_usage ());
+    std::printf ("\t\t\t[cache] current pages usage: %0.2lf %% \n", FSCache->get_cache_usage ());
 }
 
 void LazyFS::command_checkpoint () {
@@ -640,7 +640,7 @@ int LazyFS::lfs_read (const char* path,
     if (offset > (meta.size - 1))
         return 0;
 
-    // ----------------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------------
 
     int last_pread_chunk_size   = 0;
     int last_pread_chunk_offset = offset;
@@ -665,6 +665,8 @@ int LazyFS::lfs_read (const char* path,
         //              blk_readable_to);
 
         if (this_ ()->FSCache->is_block_cached (OWNER, CURR_BLK_IDX)) {
+
+            // std::printf ("read a block cached %d...\n", CURR_BLK_IDX);
 
             if (last_pread_chunk_size > 0) {
 
@@ -727,6 +729,8 @@ int LazyFS::lfs_read (const char* path,
                needed.
             */
 
+            // std::printf ("\tfile size: %d, block %d not cached\n", (int)meta.size, CURR_BLK_IDX);
+
             bool needs_pread = meta.size > CURR_BLK_IDX * IO_BLOCK_SIZE;
 
             if (fd_caching > 0) {
@@ -760,6 +764,8 @@ int LazyFS::lfs_read (const char* path,
     }
 
     if (last_pread_chunk_size > 0) {
+
+        // std::printf ("\tread chunk of %d\n", last_pread_chunk_size);
 
         int pread_res =
             pread (fd_caching, buf + BUF_ITERATOR, last_pread_chunk_size, last_pread_chunk_offset);

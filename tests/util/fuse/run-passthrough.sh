@@ -7,8 +7,8 @@
 # Edit this variables:
 
 PASSTBIN=/home/gsd/testbed/libfuse/example/passthrough
-MOUNT_DIR=/mnt/test-fs/passthrough
-ROOT_DIR=/mnt/test-fs/passthrough-root
+MOUNT_DIR=/tmp/passthrough
+ROOT_DIR=/tmp/passthrough-root
 
 #---------------------------------------------------------
 

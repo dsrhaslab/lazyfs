@@ -27,7 +27,7 @@
 # Single threaded random reads (2KB I/Os) on a 1GB file.
 # Stops after 128MB ($bytes) has been read.
 
-set $WORKLOAD_PATH="/tmp/passthrough/fb-workload"
+set $WORKLOAD_PATH="/tmp/lazyfs/fb-workload"
 
 set mode quit firstdone
 
@@ -49,12 +49,35 @@ define process name="process-1", instances=1
 # explicitly preallocate files
 create files
 
+echo "current cache usage..."
+system "echo lazyfs::display-cache-usage > /home/gsd/faults-example.fifo"
+
+echo "performing a checkpoint..."
+system "echo lazyfs::cache-checkpoint > /home/gsd/faults-example.fifo"
+sleep 3
+
+echo "current cache usage..."
+system "echo lazyfs::display-cache-usage > /home/gsd/faults-example.fifo"
+
+echo "clearing cached data..."
+system "echo lazyfs::clear-cache > /home/gsd/faults-example.fifo"
+sleep 3
+
+echo "current cache usage..."
+system "echo lazyfs::display-cache-usage > /home/gsd/faults-example.fifo"
+
 # drop file system caches
-system "sync /tmp/passthrough/fb-workload"
+system "sync /tmp/lazyfs/fb-workload"
 system "echo 3 > /proc/sys/vm/drop_caches"
+
+echo "current cache usage..."
+system "echo lazyfs::display-cache-usage > /home/gsd/faults-example.fifo"
 
 echo "time sync"
 system "date '+time sync %s.%N'"
 echo "time sync"
+
+echo "current cache usage..."
+system "echo lazyfs::display-cache-usage > /home/gsd/faults-example.fifo"
 
 run 300
