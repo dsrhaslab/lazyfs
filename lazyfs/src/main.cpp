@@ -36,12 +36,17 @@ void fht_worker (LazyFS* filesystem) {
             if (!strcmp (buffer, "lazyfs::clear-cache")) {
 
                 std::printf ("\t\t[command]: <%s>\n", buffer);
-                filesystem->fault_clear_cache ();
+                filesystem->command_fault_clear_cache ();
 
             } else if (!strcmp (buffer, "lazyfs::display-cache-usage")) {
 
                 std::printf ("\t\t[command]: <%s>\n", buffer);
-                filesystem->display_cache_usage ();
+                filesystem->command_display_cache_usage ();
+
+            } else if (!strcmp (buffer, "lazyfs::cache-checkpoint")) {
+
+                std::printf ("\t\t[command]: <%s>\n", buffer);
+                filesystem->command_checkpoint ();
             }
 
         } else

@@ -39,15 +39,23 @@ LazyFS::LazyFS (Cache* cache,
 
 LazyFS::~LazyFS () {}
 
-void LazyFS::fault_clear_cache () {
-    cout << "\t\t\t[cache]: clearing cached contents...\n";
+void LazyFS::command_fault_clear_cache () {
+
+    std::printf ("\t\t\t[cache]: clearing cached contents...\n");
     FSCache->clear_all_cache ();
-    cout << "\t\t\t[cache]: cache is now empty...\n";
+    std::printf ("\t\t\t[cache]: cache is now empty.\n");
 }
 
-void LazyFS::display_cache_usage () {
+void LazyFS::command_display_cache_usage () {
 
     std::printf ("\t\t\t[cache] current usage: %0.2lf %% \n", FSCache->get_cache_usage ());
+}
+
+void LazyFS::command_checkpoint () {
+
+    std::printf ("\t\t\t[cache]: performing checkpoint...\n");
+    FSCache->full_checkpoint ();
+    std::printf ("\t\t\t[cache]: checkpoint done.\n");
 }
 
 void* LazyFS::lfs_init (struct fuse_conn_info* conn, struct fuse_config* cfg) {

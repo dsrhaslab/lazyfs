@@ -74,13 +74,19 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      * @brief Fifo: (fault) Clear the cached contents
      *
      */
-    void fault_clear_cache ();
+    void command_fault_clear_cache ();
 
     /**
      * @brief Fifo: (info) Display the cache usage
      *
      */
-    void display_cache_usage ();
+    void command_display_cache_usage ();
+
+    /**
+     * @brief Fifo: (sync) Sync all cached data with the underlying FS
+     *
+     */
+    void command_checkpoint ();
 
     static void* lfs_init (struct fuse_conn_info*, struct fuse_config* cfg);
 

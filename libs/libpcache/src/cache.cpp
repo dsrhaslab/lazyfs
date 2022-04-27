@@ -403,4 +403,10 @@ bool Cache::lockItemCheckExists (string cid) {
     return true;
 }
 
+void Cache::full_checkpoint () {
+
+    for (auto const& it : this->contents)
+        this->sync_owner (it.first, false);
+}
+
 } // namespace cache

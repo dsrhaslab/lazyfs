@@ -260,6 +260,12 @@ class Cache {
      * @return false item does not exist
      */
     bool truncate_item (string owner, int new_size);
+
+    /**
+     * @brief Performs a full checkpoint for uncached data
+     *
+     */
+    void full_checkpoint ();
 };
 
 } // namespace cache
