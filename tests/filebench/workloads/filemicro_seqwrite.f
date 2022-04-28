@@ -52,8 +52,8 @@ create files
 # system "sync ."
 # system "echo 3 > /proc/sys/vm/drop_caches"
 
-echo "time sync"
-system "date '+time sync %s.%N'"
-echo "time sync"
+# echo "time sync"
+# system "date '+time sync %s.%N'"
+# echo "time sync"
 
 run 300

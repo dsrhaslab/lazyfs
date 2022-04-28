@@ -80,3 +80,11 @@ Filebench Version 1.5-alpha3
 1.063: Attempting to create fileset more than once, ignoring
 1.064: Starting 1 process-1 instances
 2.066: Running...
+142.077: Run took 140 seconds...
+142.077: Per-Operation Breakdown
+finish-1             0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+close-1              0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+read-1               64888883ops   463455ops/s 1810.4mb/s    0.001ms/op [0.001ms - 0.507ms]
+open-1               1ops        0ops/s   0.0mb/s   68.452ms/op [68.452ms - 68.452ms]
+142.077: IO Summary: 64888884 ops 463454.962 ops/s 463455/0 rd/wr 1810.4mb/s 0.001ms/op
+142.077: Shutting down processes

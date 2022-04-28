@@ -2,7 +2,7 @@
 
 # --------------------------------------------
 
-declare -a workloads_to_run=("filemicro_rread.f" "filemicro_seqread.f")
+declare -a workloads_to_run=("filemicro_createfiles.f")
 workloads_tmp_dir="benchmark-direct-io-0"
 # fs="lazyfs"
 fs="passthrough"

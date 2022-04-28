@@ -21,3 +21,73 @@
 
 # Run 3
 
+
+
+# lazyfs run number 1
+
+Filebench Version 1.5-alpha3
+0.000: Allocated 177MB of shared memory
+0.001: Populating and pre-allocating filesets
+0.001: fileset-1 populated: 1 files, avg. dir. width = 1, avg. dir. depth = -nan, 0 leafdirs, 1024.000MB total size
+0.001: Removing fileset-1 tree (if exists)
+0.002: Pre-allocating directories in fileset-1 tree
+0.003: Pre-allocating files in fileset-1 tree
+7.868: Waiting for pre-allocation to finish (in case of a parallel pre-allocation)
+7.868: Population and pre-allocation of filesets completed
+7.868: Attempting to create fileset more than once, ignoring
+7.868: Starting 1 process-1 instances
+8.870: Running...
+148.882: Run took 140 seconds...
+148.882: Per-Operation Breakdown
+finish-1             0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+close-1              0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+read-1               63588329ops   454165ops/s 1774.1mb/s    0.001ms/op [0.001ms - 17.246ms]
+open-1               1ops        0ops/s   0.0mb/s   68.524ms/op [68.524ms - 68.524ms]
+148.882: IO Summary: 63588330 ops 454165.086 ops/s 454165/0 rd/wr 1774.1mb/s 0.001ms/op
+148.882: Shutting down processes
+
+# lazyfs run number 2
+
+Filebench Version 1.5-alpha3
+0.000: Allocated 177MB of shared memory
+0.001: Populating and pre-allocating filesets
+0.001: fileset-1 populated: 1 files, avg. dir. width = 1, avg. dir. depth = -nan, 0 leafdirs, 1024.000MB total size
+0.001: Removing fileset-1 tree (if exists)
+0.002: Pre-allocating directories in fileset-1 tree
+0.003: Pre-allocating files in fileset-1 tree
+5.941: Waiting for pre-allocation to finish (in case of a parallel pre-allocation)
+5.941: Population and pre-allocation of filesets completed
+5.941: Attempting to create fileset more than once, ignoring
+5.942: Starting 1 process-1 instances
+6.943: Running...
+146.953: Run took 140 seconds...
+146.953: Per-Operation Breakdown
+finish-1             0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+close-1              0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+read-1               63855059ops   456075ops/s 1781.5mb/s    0.001ms/op [0.001ms - 17.288ms]
+open-1               1ops        0ops/s   0.0mb/s   67.278ms/op [67.278ms - 67.278ms]
+146.953: IO Summary: 63855060 ops 456074.871 ops/s 456075/0 rd/wr 1781.5mb/s 0.001ms/op
+146.953: Shutting down processes
+
+# lazyfs run number 3
+
+Filebench Version 1.5-alpha3
+0.000: Allocated 177MB of shared memory
+0.001: Populating and pre-allocating filesets
+0.001: fileset-1 populated: 1 files, avg. dir. width = 1, avg. dir. depth = -nan, 0 leafdirs, 1024.000MB total size
+0.001: Removing fileset-1 tree (if exists)
+0.003: Pre-allocating directories in fileset-1 tree
+0.003: Pre-allocating files in fileset-1 tree
+8.741: Waiting for pre-allocation to finish (in case of a parallel pre-allocation)
+8.741: Population and pre-allocation of filesets completed
+8.741: Attempting to create fileset more than once, ignoring
+8.741: Starting 1 process-1 instances
+9.744: Running...
+149.756: Run took 140 seconds...
+149.756: Per-Operation Breakdown
+finish-1             0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+close-1              0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+read-1               62631184ops   447328ops/s 1747.4mb/s    0.001ms/op [0.001ms - 17.612ms]
+open-1               1ops        0ops/s   0.0mb/s   68.537ms/op [68.537ms - 68.537ms]
+149.756: IO Summary: 62631185 ops 447328.348 ops/s 447328/0 rd/wr 1747.4mb/s 0.001ms/op
+149.756: Shutting down processes

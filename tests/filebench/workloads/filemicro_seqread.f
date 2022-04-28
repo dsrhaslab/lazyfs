@@ -26,7 +26,7 @@
 
 # Single threaded sequential reads (1MB I/Os) on a 1G file.
 
-set $WORKLOAD_PATH="/mnt/test-fs/passthrough/fb-workload"
+set $WORKLOAD_PATH="/mnt/test-fs/lazyfs/fb-workload"
 
 define fileset name="fileset-1", path=$WORKLOAD_PATH, entries=1, dirwidth=1, dirgamma=0,
                filesize=1g, prealloc

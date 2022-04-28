@@ -720,9 +720,20 @@ int LazyFS::lfs_read (const char* path,
                 }
 
                 data_allocated += (read_to - blk_readable_from) + 1;
+
+            } else {
+
+                // todo: there could be a race condition between checking if the block is cached
+                // todo: and retrieving its data, so either lock the operation or go to the else
+                // todo: case
+
+                // goto try_pread;
             }
 
         } else {
+
+            // todo:
+            // try_pread:
 
             /*
                 > Block is not cached, cache it first: If it fails, call pread if
