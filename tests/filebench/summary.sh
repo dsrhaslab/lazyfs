@@ -7,7 +7,21 @@
 #
 # Edit this variable to specify the results folder:
 #
-RESULTS_FOLDER="general-tests"
+
+while getopts r: flag
+do
+    case "${flag}" in
+        r) res_folder=${OPTARG};;
+    esac
+done
+
+if [ -z $res_folder ];
+then
+    echo "specify results folder with '-r <folder>'"
+    exit
+fi
+
+RESULTS_FOLDER=$res_folder
 #
 #--------------------------------------------------------
 

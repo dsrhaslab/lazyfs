@@ -49,8 +49,8 @@ define process name="process-1", instances=1
 create files
 
 # drop file system caches
-system "sync ."
-system "echo 3 > /proc/sys/vm/drop_caches"
+# system "sync ."
+# system "echo 3 > /proc/sys/vm/drop_caches"
 
 echo "time sync"
 system "date '+time sync %s.%N'"

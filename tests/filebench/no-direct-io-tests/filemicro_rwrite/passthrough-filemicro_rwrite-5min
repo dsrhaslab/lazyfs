@@ -1,0 +1,45 @@
+# Test: 
+#
+# Commands:
+#
+#   ./setup-testbed.sh -d /tmp/passthrough/fb-workload -f filemicro_rwrite.f
+#   filebench -f filemicro_rwrite.f
+#
+# Description:
+#
+#   1. Clear all files from FS
+#   2. Run filebench filemicro_rwrite.f
+#   3. Get results
+
+# Run 1
+
+301.991: Run took 300 seconds...
+301.991: Per-Operation Breakdown
+finish-1             0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+close-1              0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+write-1              21260086ops    70862ops/s 276.8mb/s    0.012ms/op [0.007ms - 131.917ms]
+open-1               1ops        0ops/s   0.0mb/s   69.986ms/op [69.986ms - 69.986ms]
+301.991: IO Summary: 21260087 ops 70862.481 ops/s 0/70862 rd/wr 276.8mb/s 0.012ms/op
+301.991: Shutting down processes
+
+# Run 2
+
+302.044: Run took 300 seconds...
+302.045: Per-Operation Breakdown
+finish-1             0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+close-1              0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+write-1              21172340ops    70570ops/s 275.7mb/s    0.013ms/op [0.007ms - 144.185ms]
+open-1               1ops        0ops/s   0.0mb/s   66.302ms/op [66.302ms - 66.302ms]
+302.045: IO Summary: 21172341 ops 70569.919 ops/s 0/70570 rd/wr 275.7mb/s 0.013ms/op
+302.045: Shutting down processes
+
+# Run 3
+
+302.044: Run took 300 seconds...
+302.045: Per-Operation Breakdown
+finish-1             0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+close-1              0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+write-1              21172340ops    70570ops/s 275.7mb/s    0.013ms/op [0.007ms - 144.185ms]
+open-1               1ops        0ops/s   0.0mb/s   66.302ms/op [66.302ms - 66.302ms]
+302.045: IO Summary: 21172341 ops 70569.919 ops/s 0/70570 rd/wr 275.7mb/s 0.013ms/op
+302.045: Shutting down processes

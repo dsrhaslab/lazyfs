@@ -27,7 +27,7 @@
 # Single threaded random reads (2KB I/Os) on a 1GB file.
 # Stops after 128MB ($bytes) has been read.
 
-set $WORKLOAD_PATH="/tmp/passthrough/fb-workload"
+set $WORKLOAD_PATH="/mnt/test-fs/passthrough/fb-workload"
 
 set mode quit firstdone
 
@@ -50,11 +50,11 @@ define process name="process-1", instances=1
 create files
 
 # drop file system caches
-system "sync /tmp/passthrough/fb-workload"
-system "echo 3 > /proc/sys/vm/drop_caches"
+# system "sync /tmp/passthrough/fb-workload"
+# system "echo 3 > /proc/sys/vm/drop_caches"
 
-echo "time sync"
-system "date '+time sync %s.%N'"
-echo "time sync"
+# echo "time sync"
+# system "date '+time sync %s.%N'"
+# echo "time sync"
 
 run 300

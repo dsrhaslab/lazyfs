@@ -1,0 +1,82 @@
+# Test: 
+#
+# Commands:
+#
+#   ./setup-testbed.sh -d /tmp/passthrough/fb-workload -f filemicro_seqread.f.f
+#   filebench -f filemicro_seqread.f.f
+#
+# Description:
+#
+#   1. Clear all files from FS
+#   2. Run filebench filemicro_seqread.f.f
+#   3. Get results
+
+# Run 1
+
+
+# Run 2
+
+
+# Run 3
+
+
+# passthrough run number 1
+
+Filebench Version 1.5-alpha3
+0.000: Allocated 177MB of shared memory
+0.001: Populating and pre-allocating filesets
+0.001: fileset-1 populated: 1 files, avg. dir. width = 1, avg. dir. depth = -nan, 0 leafdirs, 1024.000MB total size
+0.001: Removing fileset-1 tree (if exists)
+0.002: Pre-allocating directories in fileset-1 tree
+0.002: Pre-allocating files in fileset-1 tree
+1.085: Waiting for pre-allocation to finish (in case of a parallel pre-allocation)
+1.085: Population and pre-allocation of filesets completed
+1.085: Attempting to create fileset more than once, ignoring
+1.085: Starting 1 process-1 instances
+2.089: Running...
+142.100: Run took 140 seconds...
+142.101: Per-Operation Breakdown
+finish-1             0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+close-1              0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+read-1               65037713ops   464517ops/s 1814.5mb/s    0.001ms/op [0.001ms - 0.528ms]
+open-1               1ops        0ops/s   0.0mb/s   68.949ms/op [68.949ms - 68.949ms]
+142.101: IO Summary: 65037713 ops 464516.638 ops/s 464517/0 rd/wr 1814.5mb/s 0.001ms/op
+142.101: Shutting down processes
+
+# passthrough run number 2
+
+Filebench Version 1.5-alpha3
+0.000: Allocated 177MB of shared memory
+0.001: Populating and pre-allocating filesets
+0.001: fileset-1 populated: 1 files, avg. dir. width = 1, avg. dir. depth = -nan, 0 leafdirs, 1024.000MB total size
+0.001: Removing fileset-1 tree (if exists)
+0.002: Pre-allocating directories in fileset-1 tree
+0.003: Pre-allocating files in fileset-1 tree
+1.364: Waiting for pre-allocation to finish (in case of a parallel pre-allocation)
+1.364: Population and pre-allocation of filesets completed
+1.364: Attempting to create fileset more than once, ignoring
+1.364: Starting 1 process-1 instances
+2.367: Running...
+142.378: Run took 140 seconds...
+142.378: Per-Operation Breakdown
+finish-1             0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+close-1              0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+read-1               63813631ops   455774ops/s 1780.4mb/s    0.001ms/op [0.001ms - 0.665ms]
+open-1               1ops        0ops/s   0.0mb/s   72.383ms/op [72.383ms - 72.383ms]
+142.378: IO Summary: 63813632 ops 455774.297 ops/s 455774/0 rd/wr 1780.4mb/s 0.001ms/op
+142.378: Shutting down processes
+
+# passthrough run number 3
+
+Filebench Version 1.5-alpha3
+0.000: Allocated 177MB of shared memory
+0.001: Populating and pre-allocating filesets
+0.001: fileset-1 populated: 1 files, avg. dir. width = 1, avg. dir. depth = -nan, 0 leafdirs, 1024.000MB total size
+0.001: Removing fileset-1 tree (if exists)
+0.002: Pre-allocating directories in fileset-1 tree
+0.003: Pre-allocating files in fileset-1 tree
+1.063: Waiting for pre-allocation to finish (in case of a parallel pre-allocation)
+1.063: Population and pre-allocation of filesets completed
+1.063: Attempting to create fileset more than once, ignoring
+1.064: Starting 1 process-1 instances
+2.066: Running...
