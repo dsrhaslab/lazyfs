@@ -1,0 +1,102 @@
+# Test: 
+#
+# Commands:
+#
+#   ./setup-testbed.sh -d /tmp/passthrough/fb-workload -f filemicro_createfiles.f.f
+#   filebench -f filemicro_createfiles.f.f
+#
+# Description:
+#
+#   1. Clear all files from FS
+#   2. Run filebench filemicro_createfiles.f.f
+#   3. Get results
+
+# Run 1
+
+
+# Run 2
+
+
+# Run 3
+
+
+# passthrough run number 1
+
+Filebench Version 1.5-alpha3
+0.000: Allocated 177MB of shared memory
+0.001: Populating and pre-allocating filesets
+0.375: fileset-1 populated: 1000000 files, avg. dir. width = 1000, avg. dir. depth = 2.0, 0 leafdirs, 3906.250MB total size
+0.375: Removing fileset-1 tree (if exists)
+0.376: Pre-allocating directories in fileset-1 tree
+0.433: Pre-allocating files in fileset-1 tree
+3.249: Waiting for pre-allocation to finish (in case of a parallel pre-allocation)
+3.249: Population and pre-allocation of filesets completed
+3.266: time sync
+time sync 1651172960.812089483
+3.277: time sync
+3.277: Attempting to create fileset more than once, ignoring
+3.277: Starting 1 process-1 instances
+4.286: Running...
+104.292: Run took 100 seconds...
+104.292: Per-Operation Breakdown
+finishoncount-1      0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+createwriteclose-1.closefile-1 919310ops     9193ops/s   0.0mb/s    0.004ms/op [0.001ms - 0.295ms]
+createwriteclose-1.write-1 919310ops     9193ops/s  35.9mb/s    0.022ms/op [0.010ms - 44.236ms]
+createwriteclose-1.createfile-1 919310ops     9193ops/s   0.0mb/s    0.073ms/op [0.035ms - 81.169ms]
+createwriteclose-1   0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+104.292: IO Summary: 2757930 ops 27577.550 ops/s 0/9193 rd/wr  35.9mb/s 0.033ms/op
+104.293: Shutting down processes
+
+# passthrough run number 2
+
+Filebench Version 1.5-alpha3
+0.000: Allocated 177MB of shared memory
+0.001: Populating and pre-allocating filesets
+0.376: fileset-1 populated: 1000000 files, avg. dir. width = 1000, avg. dir. depth = 2.0, 0 leafdirs, 3906.250MB total size
+0.377: Removing fileset-1 tree (if exists)
+0.378: Pre-allocating directories in fileset-1 tree
+0.678: Pre-allocating files in fileset-1 tree
+3.417: Waiting for pre-allocation to finish (in case of a parallel pre-allocation)
+3.417: Population and pre-allocation of filesets completed
+3.454: time sync
+time sync 1651173091.716037908
+3.465: time sync
+3.465: Attempting to create fileset more than once, ignoring
+3.465: Starting 1 process-1 instances
+4.474: Running...
+104.481: Run took 100 seconds...
+104.481: Per-Operation Breakdown
+finishoncount-1      0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+createwriteclose-1.closefile-1 898492ops     8984ops/s   0.0mb/s    0.004ms/op [0.001ms - 0.230ms]
+createwriteclose-1.write-1 898492ops     8984ops/s  35.1mb/s    0.024ms/op [0.011ms - 193.039ms]
+createwriteclose-1.createfile-1 898492ops     8984ops/s   0.0mb/s    0.074ms/op [0.033ms - 81.893ms]
+createwriteclose-1   0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+104.481: IO Summary: 2695476 ops 26953.034 ops/s 0/8984 rd/wr  35.1mb/s 0.034ms/op
+104.481: Shutting down processes
+
+# passthrough run number 3
+
+Filebench Version 1.5-alpha3
+0.000: Allocated 177MB of shared memory
+0.001: Populating and pre-allocating filesets
+0.384: fileset-1 populated: 1000000 files, avg. dir. width = 1000, avg. dir. depth = 2.0, 0 leafdirs, 3906.250MB total size
+0.384: Removing fileset-1 tree (if exists)
+0.386: Pre-allocating directories in fileset-1 tree
+0.452: Pre-allocating files in fileset-1 tree
+3.283: Waiting for pre-allocation to finish (in case of a parallel pre-allocation)
+3.283: Population and pre-allocation of filesets completed
+3.319: time sync
+time sync 1651173222.241362917
+3.336: time sync
+3.336: Attempting to create fileset more than once, ignoring
+3.336: Starting 1 process-1 instances
+4.344: Running...
+104.351: Run took 100 seconds...
+104.351: Per-Operation Breakdown
+finishoncount-1      0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+createwriteclose-1.closefile-1 887643ops     8876ops/s   0.0mb/s    0.004ms/op [0.001ms - 0.279ms]
+createwriteclose-1.write-1 887643ops     8876ops/s  34.7mb/s    0.024ms/op [0.011ms - 377.824ms]
+createwriteclose-1.createfile-1 887644ops     8876ops/s   0.0mb/s    0.074ms/op [0.034ms - 103.796ms]
+createwriteclose-1   0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+104.351: IO Summary: 2662930 ops 26627.606 ops/s 0/8876 rd/wr  34.7mb/s 0.034ms/op
+104.351: Shutting down processes

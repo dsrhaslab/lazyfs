@@ -1,0 +1,23 @@
+# Test: 
+#
+# Commands:
+#
+#   ./setup-testbed.sh -d /tmp/lazyfs/fb-workload -f filemicro_createfiles.f.f
+#   filebench -f filemicro_createfiles.f.f
+#
+# Description:
+#
+#   (Using page size in cache of size 32kb / 32768 bytes)
+# 
+#   1. Clear all files from FS
+#   2. Run filebench filemicro_createfiles.f.f
+#   3. Get results
+
+# Run 1
+
+
+# Run 2
+
+
+# Run 3
+

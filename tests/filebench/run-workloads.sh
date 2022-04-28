@@ -2,8 +2,9 @@
 
 # --------------------------------------------
 
-declare -a workloads_to_run=("filemicro_createfiles.f")
-workloads_tmp_dir="benchmark-direct-io-0"
+declare -a workloads_to_run=("filemicro_rread.f" "filemicro_seqread.f" "filemicro_rwrite.f" "filemicro_seqwrite.f" "fileserver.f" "varmail.f" "webserver.f" "filemicro_createfiles.f")
+workloads_tmp_dir="benchmark-direct-io-1"
+workloads_source="workloads/direct-io-1-passthrough"
 # fs="lazyfs"
 fs="passthrough"
 mount_folder="/mnt/test-fs/$fs"
@@ -51,17 +52,17 @@ do
         # ---------------------------------------------------
         echo -e "[$fs:$page_size:workload:$wload:#$run_id] creating workload folders...\n"
         cd .. > /dev/null
-        ./setup-testbed.sh -d $mount_folder/fb-workload -f workloads/$wload 
+        ./setup-testbed.sh -d $mount_folder/fb-workload -f $workloads_source/$wload 
         cd - > /dev/null
         # ---------------------------------------------------
         echo -e "\n[$fs:$page_size:workload:$wload:#$run_id] running...\n"
         if [ "$fs" = "passthrough" ]
         then
             echo -e "\n# $fs run number $run_id\n" >> $wload/$fs*
-            sudo filebench -f ../workloads/$wload >> $wload/$fs*
+            sudo filebench -f ../$workloads_source/$wload >> $wload/$fs*
         else
             echo -e "\n# $fs run number $run_id\n" >> $wload/$fs*$page_size**
-            sudo filebench -f ../workloads/$wload >> $wload/$fs*$page_size**
+            sudo filebench -f ../$workloads_source/$wload >> $wload/$fs*$page_size**
         fi
         # ---------------------------------------------------
         echo -e "[$fs:$page_size:workload:$wload:#$run_id] umounting filesystem...\n"

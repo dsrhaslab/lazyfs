@@ -1,0 +1,23 @@
+# Test: 
+#
+# Commands:
+#
+#   ./setup-testbed.sh -d /tmp/lazyfs/fb-workload -f webserver.f.f
+#   filebench -f webserver.f.f
+#
+# Description:
+#
+#   (Using page size in cache of size 32kb / 32768 bytes)
+# 
+#   1. Clear all files from FS
+#   2. Run filebench webserver.f.f
+#   3. Get results
+
+# Run 1
+
+
+# Run 2
+
+
+# Run 3
+

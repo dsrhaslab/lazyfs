@@ -27,7 +27,7 @@
 # Single threaded random reads (2KB I/Os) on a 1GB file.
 # Stops after 128MB ($bytes) has been read.
 
-set $WORKLOAD_PATH="/mnt/test-fs/lazyfs/fb-workload"
+set $WORKLOAD_PATH="/mnt/test-fs/passthrough/fb-workload"
 
 set mode quit firstdone
 
