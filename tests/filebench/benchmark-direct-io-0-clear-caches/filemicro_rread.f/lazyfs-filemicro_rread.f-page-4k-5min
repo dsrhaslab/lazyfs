@@ -21,3 +21,102 @@
 
 # Run 3
 
+
+# lazyfs run number 1
+
+Filebench Version 1.5-alpha3
+0.000: Allocated 177MB of shared memory
+0.001: Populating and pre-allocating filesets
+0.001: fileset-1 populated: 1 files, avg. dir. width = 1, avg. dir. depth = -nan, 0 leafdirs, 1024.000MB total size
+0.001: Removing fileset-1 tree (if exists)
+0.002: Pre-allocating directories in fileset-1 tree
+0.002: Pre-allocating files in fileset-1 tree
+5.884: Waiting for pre-allocation to finish (in case of a parallel pre-allocation)
+5.884: Population and pre-allocation of filesets completed
+5.884: performing a checkpoint...
+5.884: Sleeping...
+15.886: Slept for 10 seconds...
+15.886: clearing cached data...
+15.888: Sleeping...
+25.890: Slept for 10 seconds...
+26.140: time sync
+time sync 1651235732.433876780
+26.165: time sync
+26.165: current cache usage...
+26.166: Attempting to create fileset more than once, ignoring
+26.166: Starting 1 process-1 instances
+27.174: Running...
+214.188: Run took 187 seconds...
+214.189: Per-Operation Breakdown
+finish-1             1ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+close-1              1ops        0ops/s   0.0mb/s    0.015ms/op [0.015ms - 0.015ms]
+read-1               67108864ops   358843ops/s 1401.7mb/s    0.001ms/op [0.001ms - 27.318ms]
+open-1               1ops        0ops/s   0.0mb/s   33.040ms/op [33.040ms - 33.040ms]
+214.189: IO Summary: 67108866 ops 358843.184 ops/s 358843/0 rd/wr 1401.7mb/s 0.001ms/op
+214.189: Shutting down processes
+
+# lazyfs run number 2
+
+Filebench Version 1.5-alpha3
+0.000: Allocated 177MB of shared memory
+0.001: Populating and pre-allocating filesets
+0.001: fileset-1 populated: 1 files, avg. dir. width = 1, avg. dir. depth = -nan, 0 leafdirs, 1024.000MB total size
+0.001: Removing fileset-1 tree (if exists)
+0.002: Pre-allocating directories in fileset-1 tree
+0.003: Pre-allocating files in fileset-1 tree
+6.202: Waiting for pre-allocation to finish (in case of a parallel pre-allocation)
+6.202: Population and pre-allocation of filesets completed
+6.202: performing a checkpoint...
+6.203: Sleeping...
+16.205: Slept for 10 seconds...
+16.205: clearing cached data...
+16.206: Sleeping...
+26.208: Slept for 10 seconds...
+26.369: time sync
+time sync 1651235973.110938397
+26.380: time sync
+26.380: current cache usage...
+26.381: Attempting to create fileset more than once, ignoring
+26.381: Starting 1 process-1 instances
+27.389: Running...
+215.404: Run took 188 seconds...
+215.404: Per-Operation Breakdown
+finish-1             1ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+close-1              1ops        0ops/s   0.0mb/s    0.009ms/op [0.009ms - 0.009ms]
+read-1               67108864ops   356934ops/s 1394.3mb/s    0.001ms/op [0.001ms - 23.203ms]
+open-1               1ops        0ops/s   0.0mb/s   38.380ms/op [38.380ms - 38.380ms]
+215.404: IO Summary: 67108866 ops 356934.414 ops/s 356934/0 rd/wr 1394.3mb/s 0.001ms/op
+215.404: Shutting down processes
+
+# lazyfs run number 3
+
+Filebench Version 1.5-alpha3
+0.000: Allocated 177MB of shared memory
+0.001: Populating and pre-allocating filesets
+0.001: fileset-1 populated: 1 files, avg. dir. width = 1, avg. dir. depth = -nan, 0 leafdirs, 1024.000MB total size
+0.001: Removing fileset-1 tree (if exists)
+0.002: Pre-allocating directories in fileset-1 tree
+0.003: Pre-allocating files in fileset-1 tree
+6.371: Waiting for pre-allocation to finish (in case of a parallel pre-allocation)
+6.371: Population and pre-allocation of filesets completed
+6.371: performing a checkpoint...
+6.372: Sleeping...
+16.374: Slept for 10 seconds...
+16.374: clearing cached data...
+16.376: Sleeping...
+26.377: Slept for 10 seconds...
+26.543: time sync
+time sync 1651236214.942479329
+26.556: time sync
+26.556: current cache usage...
+26.557: Attempting to create fileset more than once, ignoring
+26.557: Starting 1 process-1 instances
+27.569: Running...
+212.584: Run took 185 seconds...
+212.584: Per-Operation Breakdown
+finish-1             1ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+close-1              1ops        0ops/s   0.0mb/s    0.014ms/op [0.014ms - 0.014ms]
+read-1               67108864ops   362722ops/s 1416.9mb/s    0.001ms/op [0.001ms - 23.099ms]
+open-1               1ops        0ops/s   0.0mb/s   37.796ms/op [37.796ms - 37.796ms]
+212.584: IO Summary: 67108866 ops 362722.205 ops/s 362722/0 rd/wr 1416.9mb/s 0.001ms/op
+212.584: Shutting down processes

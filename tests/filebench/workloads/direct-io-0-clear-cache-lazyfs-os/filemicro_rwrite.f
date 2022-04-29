@@ -27,7 +27,7 @@
 # Single threaded asynchronous ($sync) random writes (2KB I/Os) on a 1GB file.
 # Stops when 128MB ($bytes) has been written.
 
-set $WORKLOAD_PATH="/mnt/test-fs/passthrough/fb-workload"
+set $WORKLOAD_PATH="/mnt/test-fs/lazyfs/fb-workload"
 
 set mode quit firstdone
 

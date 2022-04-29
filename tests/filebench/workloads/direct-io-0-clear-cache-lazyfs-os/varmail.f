@@ -23,7 +23,7 @@
 # Use is subject to license terms.
 #
 
-set $WORKLOAD_PATH="/mnt/test-fs/passthrough/fb-workload"
+set $WORKLOAD_PATH="/mnt/test-fs/lazyfs/fb-workload"
 set $nfiles=1000
 set $meandirwidth=1000000
 set $filesize=cvar(type=cvar-gamma,parameters=mean:16384;gamma:1.5)

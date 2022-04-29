@@ -28,7 +28,7 @@
 # a 1GB file.
 # Stops after 1 series of 1024 ($count) writes has been done.
 
-set $WORKLOAD_PATH="/mnt/test-fs/passthrough/fb-workload"
+set $WORKLOAD_PATH="/mnt/test-fs/lazyfs/fb-workload"
 
 define fileset name="fileset-1", path=$WORKLOAD_PATH, entries=1, dirwidth=1, dirgamma=0,
                filesize=1g

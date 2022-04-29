@@ -32,7 +32,7 @@
 # 1MB I/Os.  The thread stops after 5000 files ($count/num of flowops) have
 # been created and written to.
 
-set $WORKLOAD_PATH="/mnt/test-fs/passthrough/fb-workload"
+set $WORKLOAD_PATH="/mnt/test-fs/lazyfs/fb-workload"
 
 define flowop name=createwriteclose
 {

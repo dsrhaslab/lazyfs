@@ -2,14 +2,15 @@
 
 # --------------------------------------------
 
-declare -a workloads_to_run=("filemicro_rread.f" "filemicro_seqread.f" "filemicro_rwrite.f" "filemicro_seqwrite.f" "fileserver.f" "varmail.f" "webserver.f" "filemicro_createfiles.f")
-workloads_tmp_dir="benchmark-direct-io-1"
-workloads_source="workloads/direct-io-1-passthrough"
-# fs="lazyfs"
-fs="passthrough"
+# declare -a workloads_to_run=("filemicro_rread.f" "filemicro_seqread.f" "filemicro_rwrite.f" "filemicro_seqwrite.f" "fileserver.f" "varmail.f" "webserver.f" "filemicro_createfiles.f")
+declare -a workloads_to_run=("filemicro_seqwrite.f" "fileserver.f" "varmail.f" "webserver.f" "filemicro_createfiles.f")
+workloads_tmp_dir="benchmark-direct-io-0-clear-caches"
+workloads_source="workloads/direct-io-0-clear-cache-lazyfs-os"
+fs="lazyfs"
+# fs="passthrough"
 mount_folder="/mnt/test-fs/$fs"
 root_folder="/mnt/test-fs/$fs-root"
-page_size=""
+page_size="4"
 
 # --------------------------------------------
 
@@ -68,11 +69,11 @@ do
         echo -e "[$fs:$page_size:workload:$wload:#$run_id] umounting filesystem...\n"
         fusermount -uz $mount_folder
         echo -e "[$fs:$page_size:workload:$wload:#$run_id] waiting 15s for next round...\n"
-        sleep 15
+        sleep 20
         # ---------------------------------------------------
     done
     echo -e "[$fs:$page_size:workload:$wload] sleeping 20s for next workload...\n"
-    sleep 20
+    sleep 30
 done
 
 echo -e "process finished...\n"

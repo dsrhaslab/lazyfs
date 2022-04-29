@@ -353,9 +353,9 @@ int LazyFS::lfs_write (const char* path,
                 // std::printf ("calling a sparse write...\n");
 
                 int size_to_fill = offset - file_size_offset;
-                char fill_zeros[size_to_fill];
-                memset (fill_zeros, 0, size_to_fill);
+                char* fill_zeros = (char*)calloc (size_to_fill, 1);
                 lfs_write (path, fill_zeros, size_to_fill, file_size_offset + 1, NULL);
+                free (fill_zeros);
             }
         }
 
