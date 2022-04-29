@@ -312,7 +312,7 @@ int LazyFS::lfs_write (const char* path,
 
     std::string OWNER (path);
 
-    if (fi->direct_io) {
+    if (fi != NULL && fi->direct_io) {
 
         // std::printf ("\t[write] direct_io=1, flushing data...");
 
@@ -338,6 +338,26 @@ int LazyFS::lfs_write (const char* path,
         }
 
         // std::printf ("\twrite: file size before is %d bytes\n", (int)FILE_SIZE_BEFORE);
+
+        // ----------------------------------------------------------------------------------
+
+        if (fi != NULL) {
+
+            int file_size_offset = FILE_SIZE_BEFORE - 1;
+
+            if (file_size_offset < offset) {
+
+                // fill sparse write with zeros, how?
+                // [file_size_offset, offset - 1] = zeros
+
+                // std::printf ("calling a sparse write...\n");
+
+                int size_to_fill = offset - file_size_offset;
+                char fill_zeros[size_to_fill];
+                memset (fill_zeros, 0, size_to_fill);
+                lfs_write (path, fill_zeros, size_to_fill, file_size_offset + 1, NULL);
+            }
+        }
 
         // ----------------------------------------------------------------------------------
 

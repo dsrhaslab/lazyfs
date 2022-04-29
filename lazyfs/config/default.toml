@@ -3,9 +3,9 @@ fifo_path="/home/gsd/faults-example.fifo"
 [cache]
 apply_eviction=false
 [cache.simple]
-custom_size="3GB"
+custom_size="1GB"
 blocks_per_page=1
 # [cache.manual]
-# io_block_size=32768
-# page_size=32768
-# no_pages=70000
+# io_block_size=4096
+# page_size=4096
+# no_pages=5
