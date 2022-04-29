@@ -2,15 +2,15 @@
 
 # --------------------------------------------
 
-# declare -a workloads_to_run=("filemicro_rread.f" "filemicro_seqread.f" "filemicro_rwrite.f" "filemicro_seqwrite.f" "fileserver.f" "varmail.f" "webserver.f" "filemicro_createfiles.f")
-declare -a workloads_to_run=("filemicro_seqwrite.f" "fileserver.f" "varmail.f" "webserver.f" "filemicro_createfiles.f")
+declare -a workloads_to_run=("filemicro_rread.f" "filemicro_seqread.f" "filemicro_rwrite.f" "filemicro_seqwrite.f" "fileserver.f" "varmail.f" "webserver.f" "filemicro_createfiles.f")
+# declare -a workloads_to_run=("filemicro_seqwrite.f" "fileserver.f" "varmail.f" "webserver.f" "filemicro_createfiles.f")
 workloads_tmp_dir="benchmark-direct-io-0-clear-caches"
 workloads_source="workloads/direct-io-0-clear-cache-lazyfs-os"
 fs="lazyfs"
 # fs="passthrough"
 mount_folder="/mnt/test-fs/$fs"
 root_folder="/mnt/test-fs/$fs-root"
-page_size="4"
+page_size="32"
 
 # --------------------------------------------
 
