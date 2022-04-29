@@ -24,10 +24,10 @@
 #
 # ident	"%Z%%M%	%I%	%E% SMI"
 
-# Single threaded random reads (2KB I/Os) on a 1GB file.
-# Stops after 128MB ($bytes) has been read.
+# Single threaded asynchronous ($sync) random writes (2KB I/Os) on a 1GB file.
+# Stops when 128MB ($bytes) has been written.
 
-set $WORKLOAD_PATH="/tmp/lazyfs/fb-workload"
+set $WORKLOAD_PATH="/mnt/test-fs/passthrough/fb-workload"
 
 set mode quit firstdone
 
@@ -39,7 +39,7 @@ define process name="process-1", instances=1
     thread name="thread-1", memsize=4k, instances=1
     {
         flowop openfile name="open-1", filesetname="fileset-1", fd=1, indexed=1
-        flowop read name="read-1", fd=1, iosize=4k, iters=67108864, random
+        flowop write name="write-1", fd=1, iosize=4k, iters=67108864, random
         flowop closefile name="close-1", fd=1
 
         flowop finishoncount name="finish-1", value=1
@@ -49,29 +49,17 @@ define process name="process-1", instances=1
 # explicitly preallocate files
 create files
 
-echo "current cache usage..."
-system "echo lazyfs::display-cache-usage > /home/gsd/faults-example.fifo"
-
 echo "performing a checkpoint..."
 system "echo lazyfs::cache-checkpoint > /home/gsd/faults-example.fifo"
-sleep 3
-
-echo "current cache usage..."
-system "echo lazyfs::display-cache-usage > /home/gsd/faults-example.fifo"
+sleep 10
 
 echo "clearing cached data..."
 system "echo lazyfs::clear-cache > /home/gsd/faults-example.fifo"
-sleep 3
-
-echo "current cache usage..."
-system "echo lazyfs::display-cache-usage > /home/gsd/faults-example.fifo"
+sleep 10
 
 # drop file system caches
-system "sync /tmp/lazyfs/fb-workload"
+system "sync /mnt/test-fs/lazyfs/fb-workload"
 system "echo 3 > /proc/sys/vm/drop_caches"
-
-echo "current cache usage..."
-system "echo lazyfs::display-cache-usage > /home/gsd/faults-example.fifo"
 
 echo "time sync"
 system "date '+time sync %s.%N'"
