@@ -731,12 +731,10 @@ int LazyFS::lfs_read (const char* path,
                 BUF_ITERATOR += (read_to - blk_readable_from) + 1;
                 BYTES_LEFT -= (read_to - blk_readable_from) + 1;
 
-                int reached_offset = blk_readable_from + (read_to - blk_readable_from) + 1;
+                if (read_to < (IO_BLOCK_SIZE - 1) && CURR_BLK_IDX < blk_high) {
 
-                if (reached_offset < (IO_BLOCK_SIZE - 1) && CURR_BLK_IDX < blk_high) {
-
-                    memset (buf + BUF_ITERATOR + reached_offset, 0, IO_BLOCK_SIZE - reached_offset);
-                    BUF_ITERATOR += IO_BLOCK_SIZE - reached_offset;
+                    memset (buf + BUF_ITERATOR + read_to, 0, IO_BLOCK_SIZE - read_to);
+                    BUF_ITERATOR += IO_BLOCK_SIZE - read_to;
                 }
 
                 data_allocated += (read_to - blk_readable_from) + 1;
@@ -781,7 +779,7 @@ int LazyFS::lfs_read (const char* path,
                 // ----------------------------------------------------------------------------------
 
                 if (needs_pread)
-                    last_pread_chunk_size += blk_readable_to + 1;
+                    last_pread_chunk_size += blk_readable_to - blk_readable_from + 1;
 
             } else {
 
@@ -809,7 +807,7 @@ int LazyFS::lfs_read (const char* path,
 
     res = BUF_ITERATOR;
 
-    // std::printf ("\tread return %d bytes\n", res);
+    // std::printf ("\tfile size %d read return %d bytes\n", (int)meta.size, (int)res);
 
     // close (fd_caching);
 
