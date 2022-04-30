@@ -352,10 +352,14 @@ int LazyFS::lfs_write (const char* path,
 
                 // std::printf ("calling a sparse write...\n");
 
-                int size_to_fill = offset - file_size_offset;
-                char* fill_zeros = (char*)calloc (size_to_fill, 1);
-                lfs_write (path, fill_zeros, size_to_fill, file_size_offset + 1, NULL);
-                free (fill_zeros);
+                int size_to_fill = offset - std::max (file_size_offset, 0);
+
+                if (size_to_fill > 0) {
+
+                    char* fill_zeros = (char*)calloc (size_to_fill, 1);
+                    lfs_write (path, fill_zeros, size_to_fill, file_size_offset + 1, NULL);
+                    free (fill_zeros);
+                }
             }
         }
 
@@ -435,16 +439,30 @@ int LazyFS::lfs_write (const char* path,
                     } else {
 
                         const char* cache_buf;
-                        int cache_wr_sz;
+                        size_t cache_wr_sz;
                         int cache_from;
                         int cache_to;
 
                         if (not needs_pread || pread_res == 0) {
 
+                            // std::printf (
+                            //     "\twrite: block %d from %d to %d offset=%jd size=%zu len=%d\n",
+                            //     CURR_BLK_IDX,
+                            //     blk_readable_from,
+                            //     blk_readable_to,
+                            //     offset,
+                            //     size,
+                            //     blk_readable_to - blk_readable_from + 1);
+
                             cache_buf   = buf + data_buffer_iterator;
                             cache_wr_sz = blk_readable_to - blk_readable_from + 1;
                             cache_from  = blk_readable_from;
                             cache_to    = blk_readable_to;
+
+                            // std::printf ("\tif: cache_wr_sz: %d from: %d to: %d\n",
+                            //              cache_wr_sz,
+                            //              cache_from,
+                            //              cache_to);
 
                         } else {
 
@@ -452,9 +470,7 @@ int LazyFS::lfs_write (const char* path,
                                     buf + data_buffer_iterator,
                                     blk_readable_to - blk_readable_from + 1);
 
-                            int st_index = !pread_res ? 0 : (pread_res - 1);
-
-                            if (blk_readable_from - st_index > 0)
+                            if (blk_readable_from - pread_res > 0)
                                 memset (block_caching_buffer + pread_res,
                                         0,
                                         blk_readable_from - pread_res);
@@ -463,11 +479,16 @@ int LazyFS::lfs_write (const char* path,
                             cache_wr_sz = std::max (pread_res, blk_readable_to + 1);
                             cache_from  = 0;
                             cache_to    = cache_wr_sz - 1;
+
+                            // std::printf ("\telse: cache_wr_sz: %d from: %d to: %d\n",
+                            //              cache_wr_sz,
+                            //              cache_from,
+                            //              cache_to);
                         }
 
                         // Increase the ammount of bytes already written from the argument
                         // 'size'
-                        data_allocated += blk_readable_to - blk_readable_from + 1;
+                        data_allocated += cache_wr_sz;
 
                         auto put_res = this_ ()->FSCache->put_data_blocks (
                             OWNER,
@@ -718,7 +739,8 @@ int LazyFS::lfs_read (const char* path,
                 pair<int, int> readable_offsets = GET_BLOCKS_RES.at (CURR_BLK_IDX).second;
 
                 int max_readable_offset = readable_offsets.second;
-                int read_to             = std::min (max_readable_offset, blk_readable_to);
+
+                int read_to = std::min (max_readable_offset, blk_readable_to);
 
                 memcpy (buf + BUF_ITERATOR,
                         read_buffer + blk_readable_from,
