@@ -92,7 +92,7 @@ cd lazyfs/
 ./scripts/umount-lazyfs.sh --help
 ```
 
-Finally, to inject faults one could append/echo the clear cache command to the fifo path specified above.
+Finally, one can control LazyFS by echoing the following commands to the faults fifo file:
 
 * **Clear cache,** this command clears any un-fsynced data:
  
