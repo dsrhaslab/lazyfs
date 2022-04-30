@@ -21,3 +21,123 @@
 
 # Run 3
 
+
+# lazyfs run number 1
+
+Filebench Version 1.5-alpha3
+0.000: Allocated 177MB of shared memory
+0.005: File-server Version 3.0 personality successfully loaded
+0.005: performing a checkpoint...
+0.006: Sleeping...
+10.007: Slept for 10 seconds...
+10.007: clearing cached data...
+10.010: Sleeping...
+20.011: Slept for 10 seconds...
+20.032: time sync
+time sync 1651324269.616713722
+20.044: time sync
+20.044: current cache usage...
+20.045: Populating and pre-allocating filesets
+20.053: bigfileset populated: 10000 files, avg. dir. width = 20, avg. dir. depth = 3.1, 0 leafdirs, 1240.757MB total size
+20.053: Removing bigfileset tree (if exists)
+20.056: Pre-allocating directories in bigfileset tree
+20.099: Pre-allocating files in bigfileset tree
+24.932: Waiting for pre-allocation to finish (in case of a parallel pre-allocation)
+24.932: Population and pre-allocation of filesets completed
+24.933: Starting 1 filereader instances
+25.951: Running...
+325.973: Run took 300 seconds...
+325.973: Per-Operation Breakdown
+statfile1            42092ops      140ops/s   0.0mb/s    0.062ms/op [0.015ms - 1.167ms]
+deletefile1          42092ops      140ops/s   0.0mb/s    0.319ms/op [0.109ms - 2.358ms]
+closefile3           42092ops      140ops/s   0.0mb/s    0.007ms/op [0.002ms - 0.035ms]
+readfile1            42092ops      140ops/s  17.9mb/s    0.488ms/op [0.043ms - 2.200ms]
+openfile2            42093ops      140ops/s   0.0mb/s    0.153ms/op [0.039ms - 0.431ms]
+closefile2           42093ops      140ops/s   0.0mb/s    0.007ms/op [0.001ms - 0.045ms]
+appendfilerand1      42093ops      140ops/s   1.1mb/s    0.312ms/op [0.052ms - 1.479ms]
+openfile1            42093ops      140ops/s   0.0mb/s    0.151ms/op [0.033ms - 0.658ms]
+closefile1           42093ops      140ops/s   0.0mb/s    0.008ms/op [0.002ms - 0.040ms]
+wrtfile1             42093ops      140ops/s  17.6mb/s    5.288ms/op [0.091ms - 40.773ms]
+createfile1          42093ops      140ops/s   0.0mb/s    0.256ms/op [0.075ms - 8.715ms]
+325.973: IO Summary: 463019 ops 1543.287 ops/s 140/281 rd/wr  36.6mb/s 0.641ms/op
+325.973: Shutting down processes
+
+# lazyfs run number 2
+
+Filebench Version 1.5-alpha3
+0.000: Allocated 177MB of shared memory
+0.001: File-server Version 3.0 personality successfully loaded
+0.001: performing a checkpoint...
+0.002: Sleeping...
+10.003: Slept for 10 seconds...
+10.003: clearing cached data...
+10.005: Sleeping...
+20.007: Slept for 10 seconds...
+20.033: time sync
+time sync 1651324621.803505774
+20.042: time sync
+20.042: current cache usage...
+20.042: Populating and pre-allocating filesets
+20.052: bigfileset populated: 10000 files, avg. dir. width = 20, avg. dir. depth = 3.1, 0 leafdirs, 1240.757MB total size
+20.052: Removing bigfileset tree (if exists)
+20.055: Pre-allocating directories in bigfileset tree
+20.104: Pre-allocating files in bigfileset tree
+26.122: Waiting for pre-allocation to finish (in case of a parallel pre-allocation)
+26.122: Population and pre-allocation of filesets completed
+26.122: Starting 1 filereader instances
+27.143: Running...
+327.163: Run took 300 seconds...
+327.163: Per-Operation Breakdown
+statfile1            56676ops      189ops/s   0.0mb/s    0.045ms/op [0.016ms - 0.307ms]
+deletefile1          56676ops      189ops/s   0.0mb/s    0.252ms/op [0.110ms - 4.258ms]
+closefile3           56676ops      189ops/s   0.0mb/s    0.005ms/op [0.002ms - 0.043ms]
+readfile1            56676ops      189ops/s  24.1mb/s    0.378ms/op [0.044ms - 2.835ms]
+openfile2            56677ops      189ops/s   0.0mb/s    0.110ms/op [0.032ms - 0.793ms]
+closefile2           56677ops      189ops/s   0.0mb/s    0.006ms/op [0.001ms - 0.039ms]
+appendfilerand1      56677ops      189ops/s   1.5mb/s    0.236ms/op [0.092ms - 1.917ms]
+openfile1            56677ops      189ops/s   0.0mb/s    0.105ms/op [0.038ms - 0.428ms]
+closefile1           56677ops      189ops/s   0.0mb/s    0.006ms/op [0.002ms - 0.040ms]
+wrtfile1             56677ops      189ops/s  23.7mb/s    3.898ms/op [0.089ms - 43.423ms]
+createfile1          56677ops      189ops/s   0.0mb/s    0.188ms/op [0.081ms - 11.060ms]
+327.163: IO Summary: 623443 ops 2078.006 ops/s 189/378 rd/wr  49.3mb/s 0.475ms/op
+327.163: Shutting down processes
+
+# lazyfs run number 3
+
+Filebench Version 1.5-alpha3
+0.000: Allocated 177MB of shared memory
+0.001: File-server Version 3.0 personality successfully loaded
+0.001: performing a checkpoint...
+0.002: Sleeping...
+10.003: Slept for 10 seconds...
+10.003: clearing cached data...
+10.006: Sleeping...
+20.007: Slept for 10 seconds...
+20.040: time sync
+time sync 1651324975.182449451
+20.051: time sync
+20.051: current cache usage...
+20.052: Populating and pre-allocating filesets
+20.062: bigfileset populated: 10000 files, avg. dir. width = 20, avg. dir. depth = 3.1, 0 leafdirs, 1240.757MB total size
+20.062: Removing bigfileset tree (if exists)
+20.064: Pre-allocating directories in bigfileset tree
+20.111: Pre-allocating files in bigfileset tree
+27.174: Waiting for pre-allocation to finish (in case of a parallel pre-allocation)
+27.174: Population and pre-allocation of filesets completed
+27.174: Starting 1 filereader instances
+28.189: Running...
+328.211: Run took 300 seconds...
+328.211: Per-Operation Breakdown
+statfile1            42261ops      141ops/s   0.0mb/s    0.062ms/op [0.014ms - 1.915ms]
+deletefile1          42261ops      141ops/s   0.0mb/s    0.318ms/op [0.105ms - 1.718ms]
+closefile3           42261ops      141ops/s   0.0mb/s    0.007ms/op [0.002ms - 0.042ms]
+readfile1            42261ops      141ops/s  17.9mb/s    0.486ms/op [0.047ms - 2.088ms]
+openfile2            42261ops      141ops/s   0.0mb/s    0.153ms/op [0.036ms - 0.447ms]
+closefile2           42261ops      141ops/s   0.0mb/s    0.007ms/op [0.001ms - 0.044ms]
+appendfilerand1      42261ops      141ops/s   1.1mb/s    0.311ms/op [0.059ms - 0.784ms]
+openfile1            42261ops      141ops/s   0.0mb/s    0.150ms/op [0.026ms - 0.498ms]
+closefile1           42261ops      141ops/s   0.0mb/s    0.008ms/op [0.002ms - 0.043ms]
+wrtfile1             42261ops      141ops/s  17.7mb/s    5.268ms/op [0.106ms - 40.154ms]
+createfile1          42262ops      141ops/s   0.0mb/s    0.255ms/op [0.078ms - 27.365ms]
+328.211: IO Summary: 464872 ops 1549.465 ops/s 141/282 rd/wr  36.7mb/s 0.638ms/op
+328.211: Shutting down processes

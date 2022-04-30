@@ -97,3 +97,7 @@ read-1               67108864ops   387882ops/s 1515.2mb/s    0.001ms/op [0.001ms
 open-1               1ops        0ops/s   0.0mb/s    0.823ms/op [0.823ms - 0.823ms]
 175.519: IO Summary: 67108866 ops 387882.460 ops/s 387882/0 rd/wr 1515.2mb/s 0.001ms/op
 175.519: Shutting down processes
+
+# passthrough run number 1
+
+Filebench Version 1.5-alpha3

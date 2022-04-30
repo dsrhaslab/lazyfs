@@ -21,3 +21,98 @@
 
 # Run 3
 
+# lazyfs run number 1
+
+Filebench Version 1.5-alpha3
+0.000: Allocated 177MB of shared memory
+0.007: Populating and pre-allocating filesets
+0.197: fileset-1 populated: 500000 files, avg. dir. width = 1000, avg. dir. depth = 1.9, 0 leafdirs, 1953.125MB total size
+0.197: Removing fileset-1 tree (if exists)
+0.199: Pre-allocating directories in fileset-1 tree
+0.231: Pre-allocating files in fileset-1 tree
+1.404: Waiting for pre-allocation to finish (in case of a parallel pre-allocation)
+1.404: Population and pre-allocation of filesets completed
+1.404: performing a checkpoint...
+1.404: Sleeping...
+11.406: Slept for 10 seconds...
+11.406: clearing cached data...
+11.408: Sleeping...
+21.410: Slept for 10 seconds...
+21.432: time sync
+time sync 1651328264.397481040
+21.444: time sync
+21.444: current cache usage...
+21.444: Attempting to create fileset more than once, ignoring
+21.444: Starting 1 process-1 instances
+22.452: Running...
+27.453: Per-Operation Breakdown
+finishoncount-1      0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+createwriteclose-1.closefile-1 6056ops     1211ops/s   0.0mb/s    0.008ms/op [0.002ms - 0.177ms]
+createwriteclose-1.write-1 6056ops     1211ops/s   4.7mb/s    0.475ms/op [0.191ms - 4.399ms]
+createwriteclose-1.createfile-1 6057ops     1211ops/s   0.0mb/s    0.325ms/op [0.085ms - 5.650ms]
+createwriteclose-1   0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+27.453: IO Summary: 18169 ops 3633.530 ops/s 0/1211 rd/wr   4.7mb/s 0.269ms/op
+
+# lazyfs run number 2
+
+Filebench Version 1.5-alpha3
+0.000: Allocated 177MB of shared memory
+0.001: Populating and pre-allocating filesets
+0.181: fileset-1 populated: 500000 files, avg. dir. width = 1000, avg. dir. depth = 1.9, 0 leafdirs, 1953.125MB total size
+0.181: Removing fileset-1 tree (if exists)
+0.183: Pre-allocating directories in fileset-1 tree
+0.208: Pre-allocating files in fileset-1 tree
+1.474: Waiting for pre-allocation to finish (in case of a parallel pre-allocation)
+1.474: Population and pre-allocation of filesets completed
+1.474: performing a checkpoint...
+1.474: Sleeping...
+11.476: Slept for 10 seconds...
+11.476: clearing cached data...
+11.478: Sleeping...
+21.480: Slept for 10 seconds...
+21.502: time sync
+time sync 1651328322.128947735
+21.514: time sync
+21.514: current cache usage...
+21.514: Attempting to create fileset more than once, ignoring
+21.514: Starting 1 process-1 instances
+22.526: Running...
+27.526: Per-Operation Breakdown
+finishoncount-1      0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+createwriteclose-1.closefile-1 6760ops     1352ops/s   0.0mb/s    0.007ms/op [0.002ms - 0.106ms]
+createwriteclose-1.write-1 6760ops     1352ops/s   5.3mb/s    0.433ms/op [0.155ms - 4.373ms]
+createwriteclose-1.createfile-1 6761ops     1352ops/s   0.0mb/s    0.284ms/op [0.069ms - 5.294ms]
+createwriteclose-1   0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+27.526: IO Summary: 20281 ops 4055.887 ops/s 0/1352 rd/wr   5.3mb/s 0.241ms/op
+
+# lazyfs run number 3
+
+Filebench Version 1.5-alpha3
+0.000: Allocated 177MB of shared memory
+0.001: Populating and pre-allocating filesets
+0.181: fileset-1 populated: 500000 files, avg. dir. width = 1000, avg. dir. depth = 1.9, 0 leafdirs, 1953.125MB total size
+0.181: Removing fileset-1 tree (if exists)
+0.183: Pre-allocating directories in fileset-1 tree
+0.214: Pre-allocating files in fileset-1 tree
+1.396: Waiting for pre-allocation to finish (in case of a parallel pre-allocation)
+1.396: Population and pre-allocation of filesets completed
+1.397: performing a checkpoint...
+1.397: Sleeping...
+11.399: Slept for 10 seconds...
+11.399: clearing cached data...
+11.401: Sleeping...
+21.402: Slept for 10 seconds...
+21.425: time sync
+time sync 1651328378.783870324
+21.436: time sync
+21.436: current cache usage...
+21.436: Attempting to create fileset more than once, ignoring
+21.437: Starting 1 process-1 instances
+22.467: Running...
+27.468: Per-Operation Breakdown
+finishoncount-1      0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+createwriteclose-1.closefile-1 6458ops     1292ops/s   0.0mb/s    0.007ms/op [0.002ms - 0.179ms]
+createwriteclose-1.write-1 6458ops     1292ops/s   5.0mb/s    0.446ms/op [0.158ms - 4.237ms]
+createwriteclose-1.createfile-1 6458ops     1292ops/s   0.0mb/s    0.305ms/op [0.072ms - 5.588ms]
+createwriteclose-1   0ops        0ops/s   0.0mb/s    0.000ms/op [0.000ms - 0.000ms]
+27.468: IO Summary: 19374 ops 3874.522 ops/s 0/1292 rd/wr   5.0mb/s 0.253ms/op

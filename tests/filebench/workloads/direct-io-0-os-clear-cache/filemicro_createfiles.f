@@ -34,6 +34,8 @@
 
 set $WORKLOAD_PATH="/mnt/test-fs/passthrough/fb-workload"
 
+set mode quit alldone
+
 define flowop name=createwriteclose
 {
     flowop createfile name="createfile-1", filesetname="fileset-1", fd=1
@@ -41,14 +43,14 @@ define flowop name=createwriteclose
     flowop closefile name="closefile-1", fd=1
 }
 
-define fileset name="fileset-1", path=$WORKLOAD_PATH, entries=1000000, dirwidth=1000,
+define fileset name="fileset-1", path=$WORKLOAD_PATH, entries=500000, dirwidth=1000,
                dirgamma=0, filesize=4k
 
 define process name="process-1", instances=1
 {
     thread name="thread-1", memsize=4k, instances=1
     {
-        flowop createwriteclose name="createwriteclose-1", iters=1000000
+        flowop createwriteclose name="createwriteclose-1", iters=10000
 
         flowop finishoncount name="finishoncount-1", value=1
     }
