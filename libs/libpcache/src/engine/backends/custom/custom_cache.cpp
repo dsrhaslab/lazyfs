@@ -155,11 +155,29 @@ pair<int, Page*> CustomCacheEngine::_get_next_free_page (string owner_id) {
 
         Page* page_to_reset = _get_page_ptr (replace_page_id);
 
+        string old_owner = page_to_reset->get_page_owner ();
+
+        auto blocks = page_to_reset->allocated_block_ids.get_block_readable_offsets ();
+
+        if (this->owner_ordered_pages_mapping.find (old_owner) !=
+            this->owner_ordered_pages_mapping.end ()) {
+
+            for (auto const& it : blocks)
+                this->owner_ordered_pages_mapping.at (old_owner).erase (it.first);
+        }
+
+        if (this->owner_pages_mapping.find (old_owner) != this->owner_pages_mapping.end ()) {
+            this->owner_pages_mapping.at (old_owner).erase (replace_page_id);
+            // todo: if in free pages remove from there
+        }
+
         if (page_to_reset->is_page_dirty ())
             page_to_reset->sync_data ();
 
         // cout << "[engine] _get_next_free_page: Resetting page '" <<
         // replace_page_id << "'...\n";
+
+        // this->owner_ordered_pages_mapping.at (owner);
 
         page_to_reset->reset ();
 
