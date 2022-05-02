@@ -247,12 +247,17 @@ map<int, pair<bool, pair<int, int>>> Cache::get_data_blocks (string cid, map<int
 }
 bool Cache::_delete_item (string cid) {
 
-    Item* item      = _get_content_ptr (cid);
-    std::mutex* mtx = this->item_locks.at (cid);
-    this->item_locks.erase (cid);
-    this->contents.erase (cid);
-    delete item;
-    delete mtx;
+    Item* item = _get_content_ptr (cid);
+    if (item != nullptr) {
+        delete item;
+        if (this->item_locks.find (cid) != this->item_locks.end ()) {
+            std::mutex* mtx = this->item_locks.at (cid);
+            this->item_locks.erase (cid);
+            delete mtx;
+        }
+        this->contents.erase (cid);
+    }
+
     return true;
 }
 
@@ -356,21 +361,21 @@ bool Cache::rename_item (string old_cid, string new_cid) {
 
 bool Cache::remove_cached_item (string owner) {
 
-    if (not has_content_cached (owner))
-        return false;
-
     lockCache ();
 
-    if (this->engine->remove_cached_blocks (owner)) {
-
-        this->_delete_item (owner);
+    if (not has_content_cached (owner)) {
         unlockCache ();
-        return true;
+        return false;
     }
+
+    lockItem (owner);
+
+    this->engine->remove_cached_blocks (owner);
+    this->_delete_item (owner);
 
     unlockCache ();
 
-    return false;
+    return true;
 }
 
 void Cache::clear_all_cache () {

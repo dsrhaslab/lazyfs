@@ -322,19 +322,23 @@ int LazyFS::lfs_write (const char* path,
 
         // ----------------------------------------------------------------------------------
 
+        bool locked_this = this_ ()->FSCache->lockItemCheckExists (OWNER);
+
         bool cache_had_owner = this_ ()->FSCache->has_content_cached (OWNER);
         int FILE_SIZE_BEFORE = 0;
 
-        if (not cache_had_owner) {
+        if (!locked_this || not cache_had_owner) {
 
             struct stat stats;
 
             if (stat (path, &stats) == 0)
                 FILE_SIZE_BEFORE = stats.st_size;
 
-        } else {
+        } else if (locked_this) {
 
             FILE_SIZE_BEFORE = this_ ()->FSCache->get_content_metadata (OWNER)->size;
+
+            this_ ()->FSCache->unlockItem (OWNER);
         }
 
         // std::printf ("\twrite: file size before is %d bytes\n", (int)FILE_SIZE_BEFORE);
