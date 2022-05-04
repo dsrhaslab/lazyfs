@@ -108,12 +108,12 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
 
     off_t lfs_lseek (const char* path, off_t off, int whence, struct fuse_file_info* fi);
 
-#ifdef HAVE_UTIMENSAT
+    //#ifdef HAVE_UTIMENSAT
 
     static int
     lfs_utimens (const char* path, const struct timespec ts[2], struct fuse_file_info* fi);
 
-#endif
+    // #endif
 
 #ifdef HAVE_SETXATTR
 
