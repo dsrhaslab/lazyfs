@@ -132,3 +132,4 @@ This section displays the next tasks and some documentation resources:
 
 -   Access/Modify/Change times: https://stackoverflow.com/questions/3385203/what-is-the-access-time-in-unix
 -   FUSE Cheatsheet: https://www.cs.hmc.edu/~geoff/classes/hmc.cs137.201801/homework/fuse/fuse_doc.html
+-   FUSE Unclear Functions: https://www.cs.nmsu.edu/~pfeiffer/fuse-tutorial/html/unclear.html
