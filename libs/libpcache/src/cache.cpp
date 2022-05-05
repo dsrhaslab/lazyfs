@@ -67,7 +67,9 @@ void Cache::print_engine () { this->engine->print_page_cache_engine (); }
 
 bool Cache::has_content_cached (string cid) {
 
-    return this->contents.find (cid) != this->contents.end ();
+    if (not this->contents.empty ())
+        return this->contents.find (cid) != this->contents.end ();
+    return false;
 }
 
 Item* Cache::_get_content_ptr (string cid) {
@@ -80,9 +82,16 @@ Item* Cache::_get_content_ptr (string cid) {
 
 bool Cache::is_block_cached (string cid, int blk_id) {
 
+    lockCache ();
+
     if (has_content_cached (cid)) {
+        lockItem (cid);
+        unlockCache ();
         int page = this->contents.at (cid)->get_data ()->get_page_id (blk_id);
+        unlockItem (cid);
         return this->engine->is_block_cached (cid, page, blk_id);
+    } else {
+        unlockCache ();
     }
 
     return false;
@@ -211,10 +220,15 @@ map<int, bool> Cache::put_data_blocks (string cid,
 // if block was not found, block_data == null
 map<int, pair<bool, pair<int, int>>> Cache::get_data_blocks (string cid, map<int, char*> blocks) {
 
-    if (!has_content_cached (cid))
+    lockCache ();
+
+    if (!has_content_cached (cid)) {
+        unlockCache ();
         return {};
+    }
 
     lockItem (cid);
+    unlockCache ();
 
     Item* item = _get_content_ptr (cid);
 
@@ -256,8 +270,10 @@ bool Cache::_delete_item (string cid) {
     Item* item = _get_content_ptr (cid);
     if (item != nullptr) {
         delete item;
-        if (this->item_locks.find (cid) != this->item_locks.end ()) {
+        if (!this->item_locks.empty () &&
+            (this->item_locks.find (cid) != this->item_locks.end ())) {
             std::mutex* mtx = this->item_locks.at (cid);
+            mtx->unlock ();
             this->item_locks.erase (cid);
             delete mtx;
         }

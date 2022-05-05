@@ -32,7 +32,7 @@ void Data::print_data () {
 
 int Data::get_page_id (int blk_id) {
 
-    if (!(this->blocks.find (blk_id) != this->blocks.end ()))
+    if (this->blocks.find (blk_id) == this->blocks.end ())
         return -1;
 
     return this->blocks.at (blk_id)->get_page_index_number ();

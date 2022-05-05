@@ -106,22 +106,26 @@ int LazyFS::lfs_getattr (const char* path, struct stat* stbuf, struct fuse_file_
             - size, atime, ctime, mtime
         */
 
-        Metadata* meta  = this_ ()->FSCache->get_content_metadata (content_owner);
-        off_t get_size  = (off_t)meta->size;
-        long remainder  = get_size / this_ ()->FSConfig->IO_BLOCK_SIZE;
-        blkcnt_t blocks = ((remainder + 1) * (long)this_ ()->FSConfig->IO_BLOCK_SIZE) /
-                          (long)this_ ()->FSConfig->DISK_SECTOR_SIZE;
+        Metadata* meta = this_ ()->FSCache->get_content_metadata (content_owner);
 
-        // std::printf ("\tgetattr file size = %d\n", (int)get_size);
+        if (meta != nullptr) {
 
-        stbuf->st_size         = get_size;
-        stbuf->st_blocks       = blocks;
-        stbuf->st_atim.tv_nsec = meta->atim.tv_nsec;
-        stbuf->st_atim.tv_sec  = meta->atim.tv_sec;
-        stbuf->st_ctim.tv_nsec = meta->ctim.tv_nsec;
-        stbuf->st_ctim.tv_sec  = meta->ctim.tv_sec;
-        stbuf->st_mtim.tv_nsec = meta->mtim.tv_nsec;
-        stbuf->st_mtim.tv_sec  = meta->mtim.tv_sec;
+            off_t get_size  = (off_t)meta->size;
+            long remainder  = get_size / this_ ()->FSConfig->IO_BLOCK_SIZE;
+            blkcnt_t blocks = ((remainder + 1) * (long)this_ ()->FSConfig->IO_BLOCK_SIZE) /
+                              (long)this_ ()->FSConfig->DISK_SECTOR_SIZE;
+
+            // std::printf ("\tgetattr file size = %d\n", (int)get_size);
+
+            stbuf->st_size         = get_size;
+            stbuf->st_blocks       = blocks;
+            stbuf->st_atim.tv_nsec = meta->atim.tv_nsec;
+            stbuf->st_atim.tv_sec  = meta->atim.tv_sec;
+            stbuf->st_ctim.tv_nsec = meta->ctim.tv_nsec;
+            stbuf->st_ctim.tv_sec  = meta->ctim.tv_sec;
+            stbuf->st_mtim.tv_nsec = meta->mtim.tv_nsec;
+            stbuf->st_mtim.tv_sec  = meta->mtim.tv_sec;
+        }
 
         if (locked)
             this_ ()->FSCache->unlockItem (content_owner);
@@ -136,20 +140,23 @@ int LazyFS::lfs_getattr (const char* path, struct stat* stbuf, struct fuse_file_
         this_ ()->FSCache->put_data_blocks (content_owner, {}, OP_PASSTHROUGH);
         bool locked = this_ ()->FSCache->lockItemCheckExists (content_owner);
 
-        // std::printf ("\tgetattr file size = %d\n", (int)stbuf->st_size);
+        if (locked) {
 
-        Metadata meta;
-        meta.size = stbuf->st_size;
-        meta.atim = stbuf->st_atim;
-        meta.ctim = stbuf->st_ctim;
-        meta.mtim = stbuf->st_mtim;
+            // std::printf ("\tgetattr file size = %d\n", (int)stbuf->st_size);
 
-        this_ ()->FSCache->update_content_metadata (content_owner,
-                                                    meta,
-                                                    {"size", "atime", "ctime", "mtime"});
+            Metadata meta;
+            meta.size = stbuf->st_size;
+            meta.atim = stbuf->st_atim;
+            meta.ctim = stbuf->st_ctim;
+            meta.mtim = stbuf->st_mtim;
 
-        if (locked)
-            this_ ()->FSCache->unlockItem (content_owner);
+            this_ ()->FSCache->update_content_metadata (content_owner,
+                                                        meta,
+                                                        {"size", "atime", "ctime", "mtime"});
+
+            if (locked)
+                this_ ()->FSCache->unlockItem (content_owner);
+        }
     }
 
     return 0;
@@ -668,6 +675,9 @@ int LazyFS::lfs_read (const char* path,
     Metadata meta;
     if (not cache_had_owner) {
 
+        this_ ()->FSCache->put_data_blocks (OWNER, {}, OP_PASSTHROUGH);
+        bool locked = this_ ()->FSCache->lockItemCheckExists (OWNER);
+
         struct stat stats;
 
         if (stat (path, &stats) == 0)
@@ -677,8 +687,6 @@ int LazyFS::lfs_read (const char* path,
         clock_gettime (CLOCK_REALTIME, &access_time);
         meta.atim = access_time;
 
-        bool locked = this_ ()->FSCache->lockItemCheckExists (OWNER);
-
         this_ ()->FSCache->update_content_metadata (OWNER, meta, {"size", "atime"});
 
         if (locked)
@@ -686,7 +694,18 @@ int LazyFS::lfs_read (const char* path,
 
     } else {
 
-        meta.size = (int)(this_ ()->FSCache->get_content_metadata (OWNER)->size);
+        bool locked = this_ ()->FSCache->lockItemCheckExists (OWNER);
+
+        if (locked) {
+
+            Metadata* old_meta = this_ ()->FSCache->get_content_metadata (OWNER);
+
+            if (old_meta != nullptr)
+                meta.size = old_meta->size;
+
+            this_ ()->FSCache->unlockItem (OWNER);
+        }
+
         // std::printf ("\tread: file has %d bytes\n", (int)meta.size);
     }
 
