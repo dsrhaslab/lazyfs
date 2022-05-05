@@ -1,8 +1,15 @@
 
+/**
+ * @file cache.cpp
+ * @author João Azevedo joao.azevedo@inesctec.pt
+ *
+ * @copyright Copyright (c) 2020-2022 INESC TEC.
+ *
+ */
+
 #include <algorithm>
 #include <cache/cache.hpp>
 #include <cache/constants/constants.hpp>
-#include <cache/engine/backends/cachelib/cachelib_engine.hpp>
 #include <cache/item/item.hpp>
 #include <chrono>
 #include <list>
@@ -16,7 +23,6 @@
 
 using namespace std;
 using namespace cache::engine;
-using namespace cache::engine::backends::cachelib;
 
 namespace cache {
 

@@ -1,3 +1,12 @@
+
+/**
+ * @file constants.hpp
+ * @author João Azevedo joao.azevedo@inesctec.pt
+ *
+ * @copyright Copyright (c) 2020-2022 INESC TEC.
+ *
+ */
+
 #ifndef CACHE_CONSTANTS_HPP
 #define CACHE_CONSTANTS_HPP
 

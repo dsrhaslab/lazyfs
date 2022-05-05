@@ -1,3 +1,12 @@
+
+/**
+ * @file custom_cache.hpp
+ * @author João Azevedo joao.azevedo@inesctec.pt
+ *
+ * @copyright Copyright (c) 2020-2022 INESC TEC.
+ *
+ */
+
 #ifndef CACHE_ENGINE_CUSTOM_HPP
 #define CACHE_ENGINE_CUSTOM_HPP
 

@@ -1,4 +1,12 @@
 
+/**
+ * @file block_info.cpp
+ * @author João Azevedo joao.azevedo@inesctec.pt
+ *
+ * @copyright Copyright (c) 2020-2022 INESC TEC.
+ *
+ */
+
 #include <algorithm>
 #include <cache/item/block_info.hpp>
 #include <iostream>

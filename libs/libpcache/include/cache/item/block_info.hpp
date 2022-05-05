@@ -1,3 +1,12 @@
+
+/**
+ * @file block_info.hpp
+ * @author João Azevedo joao.azevedo@inesctec.pt
+ *
+ * @copyright Copyright (c) 2020-2022 INESC TEC.
+ *
+ */
+
 #ifndef CACHE_ITEM_BLOCK_INFO_H
 #define CACHE_ITEM_BLOCK_INFO_H
 

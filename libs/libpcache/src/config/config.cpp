@@ -1,4 +1,12 @@
 
+/**
+ * @file config.cpp
+ * @author João Azevedo joao.azevedo@inesctec.pt
+ *
+ * @copyright Copyright (c) 2020-2022 INESC TEC.
+ *
+ */
+
 #include <assert.h>
 #include <cache/config/config.hpp>
 #include <cache/constants/constants.hpp>

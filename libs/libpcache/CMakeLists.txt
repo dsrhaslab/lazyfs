@@ -37,7 +37,6 @@ target_include_directories(
 target_sources(
     pcache
     PUBLIC
-    ${PROJECT_SOURCE_DIR}/include/cache/engine/backends/cachelib/cachelib_engine.hpp
     ${PROJECT_SOURCE_DIR}/include/cache/engine/backends/custom/custom_cache.hpp
     ${PROJECT_SOURCE_DIR}/include/cache/engine/page_cache.hpp
     ${PROJECT_SOURCE_DIR}/include/cache/engine/page/page.hpp
@@ -54,9 +53,7 @@ target_sources(
 target_sources(
     pcache
     PRIVATE
-    src/engine/backends/cachelib/cachelib_engine.cpp
     src/engine/backends/custom/custom_cache.cpp
-    src/engine/page_cache.cpp
     src/engine/page/block_offsets.cpp
     src/engine/page/page.cpp
     src/cache.cpp

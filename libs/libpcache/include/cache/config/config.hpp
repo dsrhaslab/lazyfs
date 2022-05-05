@@ -1,3 +1,12 @@
+
+/**
+ * @file config.hpp
+ * @author João Azevedo joao.azevedo@inesctec.pt
+ *
+ * @copyright Copyright (c) 2020-2022 INESC TEC.
+ *
+ */
+
 #ifndef CACHE_CONFIG_HPP
 #define CACHE_CONFIG_HPP
 

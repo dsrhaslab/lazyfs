@@ -1,4 +1,11 @@
-// Hello filesystem class definition
+
+/**
+ * @file lazyfs.hpp
+ * @author João Azevedo joao.azevedo@inesctec.pt
+ *
+ * @copyright Copyright (c) 2020-2022 INESC TEC.
+ *
+ */
 
 #ifndef _LFS_HPP_
 #define _LFS_HPP_

@@ -1,4 +1,12 @@
 
+/**
+ * @file block_offsets.cpp
+ * @author João Azevedo joao.azevedo@inesctec.pt
+ *
+ * @copyright Copyright (c) 2020-2022 INESC TEC.
+ *
+ */
+
 #include <cache/engine/page/block_offsets.hpp>
 #include <iostream>
 #include <map>

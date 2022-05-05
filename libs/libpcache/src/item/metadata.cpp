@@ -1,4 +1,12 @@
 
+/**
+ * @file metadata.cpp
+ * @author João Azevedo joao.azevedo@inesctec.pt
+ *
+ * @copyright Copyright (c) 2020-2022 INESC TEC.
+ *
+ */
+
 #include <cache/item/metadata.hpp>
 #include <iostream>
 #include <string.h>

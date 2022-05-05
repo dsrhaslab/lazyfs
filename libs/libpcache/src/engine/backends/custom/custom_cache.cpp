@@ -1,4 +1,12 @@
 
+/**
+ * @file custom_cache.cpp
+ * @author João Azevedo joao.azevedo@inesctec.pt
+ *
+ * @copyright Copyright (c) 2020-2022 INESC TEC.
+ *
+ */
+
 #include <algorithm>
 #include <assert.h>
 #include <cache/constants/constants.hpp>
