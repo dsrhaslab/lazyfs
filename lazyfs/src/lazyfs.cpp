@@ -910,7 +910,8 @@ int LazyFS::lfs_rename (const char* from, const char* to, unsigned int flags) {
 
     res = rename (from, to);
 
-    this_ ()->FSCache->sync_owner (new_owner, true);
+    if (this_ ()->FSConfig->sync_after_rename)
+        this_ ()->FSCache->sync_owner (new_owner, true);
 
     // std::printf ("\trename:: rename returned %d\n", res);
 

@@ -45,6 +45,11 @@ class Config {
 
   public:
     /**
+     * @brief Wheter to sync dirty data after a rename operation
+     *
+     */
+    bool sync_after_rename = true;
+    /**
      * @brief Specifies if this configuration was specified by the configuration file or not.
      *
      */

@@ -123,6 +123,16 @@ void Config::load_config (string filename) {
         bool eviction_flag = toml::find (cache_settings, "apply_eviction").as_boolean ();
         this->set_eviction_flag (eviction_flag);
     }
+
+    if (data.contains ("filesystem")) {
+
+        const auto& filesystem_settings = toml::find (data, "filesystem");
+
+        if (filesystem_settings.contains ("sync_after_rename")) {
+            bool rename_flag = toml::find (filesystem_settings, "sync_after_rename").as_boolean ();
+            this->sync_after_rename = rename_flag;
+        }
+    }
 }
 
 void Config::set_eviction_flag (bool flag) { this->APPLY_LRU_EVICTION = flag; }
@@ -134,7 +144,8 @@ void Config::print_config () {
     std::printf (
         "\t[config] Using the following (%s) configuration:\n\t\tNo. of pages = %lu\n\t\tPage "
         "size (bytes) = %lu\n\t\tBlock "
-        "size (bytes) = %lu\n\t\tBlocks per page = %d\n\t\tApply eviction = %s\n\t\tTotal = "
+        "size (bytes) = %lu\n\t\tBlocks per page = %d\n\t\tApply eviction = %s\n\t\tSync after "
+        "rename = %s\n\t\tTotal = "
         "%0.3f (KiB) or "
         "%0.3f (MiB) or "
         "%0.3f (GiB)\n",
@@ -144,6 +155,7 @@ void Config::print_config () {
         (size_t)this->IO_BLOCK_SIZE,
         (int)((size_t)this->CACHE_PAGE_SIZE / (size_t)this->IO_BLOCK_SIZE),
         this->APPLY_LRU_EVICTION ? "true" : "false",
+        this->sync_after_rename ? "true" : "false",
         (double)total_bytes / 1024,
         (double)total_bytes / std::pow (1024, 2),
         (double)total_bytes / std::pow (1024, 3));
