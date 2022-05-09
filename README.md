@@ -61,6 +61,9 @@ blocks_per_page=1
 # io_block_size=4096
 # page_size=4096
 # no_pages=10
+
+[filesystem]
+sync_after_rename=true # default option
 ```
 
 The section **[cache]** **requires** that you specify the following:
