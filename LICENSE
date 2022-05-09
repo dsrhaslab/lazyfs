@@ -1,6 +1,28 @@
-MIT License
+Copyright (C) 2022, INESC TEC
 
-Copyright (c) 2022 dsrhaslab
+LazyFS: A FUSE Filesystem with its own internal page cache, which can be used 
+to simulate failures on un-synced writes. On command, LazyFS is able to drop 
+any cached data and therefore simulate a power failure to test if applications 
+are fsyncing as often as they should.
+
+This software is authored by:
+João Pedro Rodrigues Azevedo
+
+This program makes use and is distributed with the following libraries:
+1. fusepp (https://github.com/jachappell/Fusepp)
+2. toml11 (https://github.com/ToruNiina/toml11)
+3. libfuse (https://github.com/libfuse/libfuse)
+
+You can reach INESC TEC Technology Licensing Office (TLO) at info.sal@inesctec.pt, or
+Campus da Faculdade de Engenharia da Universidade do Porto
+Rua Dr. Roberto Frias
+4200-465 Porto
+Portugal
+
+If you use LazyFS in a work that leads to a scientific publication, we would 
+appreciate it if you would kindly cite it in your manuscript.
+
+Licensed under the terms of MIT License
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
