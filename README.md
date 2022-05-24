@@ -1,8 +1,14 @@
 # LazyFS
 
-<div style="text-align: center">
-    <img src=".media/LazyFS.png" width="70%">
-</div>
+<h1 align="center">
+    <img src=".media/LazyFS.png" width="60%">
+    <br>
+    <img src="https://img.shields.io/badge/C++-14-yellow.svg?style=flat&logo=c%2B%2B" />
+    <img src="https://img.shields.io/badge/status-research%20prototype-green.svg" />
+    <a href="https://opensource.org/licenses/BSD-3-Clause">
+        <img src="https://img.shields.io/badge/License-MIT-blue.svg" />
+    </a>
+</h1>
 
 A FUSE Filesystem with its own configurable page cache which can be used to simulate failures on un-fsynced data.
 
