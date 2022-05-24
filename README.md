@@ -1,5 +1,9 @@
 # LazyFS
 
+<div style="text-align: center">
+    <img src=".media/LazyFS.png" width="70%">
+</div>
+
 A FUSE Filesystem with its own configurable page cache which can be used to simulate failures on un-fsynced data.
 
 ## Supported operations
@@ -17,7 +21,6 @@ sudo apt install g++ cmake
 ```
 
 -   **FUSE** 3
-
 
 ```bash
 sudo apt install libfuse3-dev libfuse3-3 fuse3
@@ -97,19 +100,19 @@ cd lazyfs/
 
 Finally, one can control LazyFS by echoing the following commands to the faults fifo file:
 
-* **Clear cache,** this command clears any un-fsynced data:
- 
+-   **Clear cache,** this command clears any un-fsynced data:
+
     ```bash
     echo "lazyfs::clear-cache" > /my/path/faults-example.fifo
     ```
 
-* **Checkpoint,** which checkpoints any un-fsynced data by calling write to the underlying filesystem:
+-   **Checkpoint,** which checkpoints any un-fsynced data by calling write to the underlying filesystem:
 
     ```bash
     echo "lazyfs::cache-checkpoint" > /my/path/faults-example.fifo
     ```
 
-* **Show usage,** which displays the current cache usage:
+-   **Show usage,** which displays the current cache usage:
 
     ```bash
     echo "lazyfs::display-cache-usage" > /my/path/faults-example.fifo
