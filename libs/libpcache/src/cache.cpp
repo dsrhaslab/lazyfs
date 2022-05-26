@@ -351,7 +351,9 @@ int Cache::sync_owner (string owner, bool only_sync_data) {
 
     // sync data
 
-    res = this->engine->sync_pages (owner);
+    size_t last_size = get_content_metadata (owner)->size;
+
+    res = this->engine->sync_pages (owner, last_size);
 
     if (not only_sync_data) {
 

@@ -477,7 +477,7 @@ void CustomCacheEngine::make_block_readable_to_offset (string cid,
     pthread_rwlock_unlock (&lock_cache);
 }
 
-bool CustomCacheEngine::sync_pages (string owner) {
+bool CustomCacheEngine::sync_pages (string owner, size_t size) {
 
     pthread_rwlock_rdlock (&lock_cache);
 
@@ -546,6 +546,8 @@ bool CustomCacheEngine::sync_pages (string owner) {
             }
         }
     }
+
+    ftruncate (fd, size);
 
     close (fd);
 

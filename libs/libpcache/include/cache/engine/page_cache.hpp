@@ -136,7 +136,7 @@ class PageCacheEngine {
      * @return true the pages were synced
      * @return false the content was not found
      */
-    virtual bool sync_pages (string owner) = 0;
+    virtual bool sync_pages (string owner, size_t size) = 0;
 
     /**
      * @brief Renames the content associated with an owner to the new owner
