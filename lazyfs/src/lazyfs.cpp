@@ -1218,6 +1218,8 @@ int LazyFS::lfs_removexattr (const char* path, const char* name) {
 // #ifdef HAVE_UTIMENSAT
 int LazyFS::lfs_utimens (const char* path, const struct timespec ts[2], struct fuse_file_info* fi) {
 
+    // std::printf ("utimens::(path=%s)\n", path);
+
     (void)fi;
     int res;
 
@@ -1225,60 +1227,6 @@ int LazyFS::lfs_utimens (const char* path, const struct timespec ts[2], struct f
     res = utimensat (0, path, ts, AT_SYMLINK_NOFOLLOW);
     if (res == -1)
         return -errno;
-
-    struct stat* stbuf;
-    int stat_res = lstat (path, stbuf);
-
-    if (stat_res >= 0) {
-
-        string owner (path);
-
-        bool locked = this_ ()->FSCache->lockItemCheckExists (owner);
-
-        if (locked) {
-
-            /*
-                Content is cached, must return cached metadata
-                to override existing values:
-                - size, atime, ctime, mtime
-            */
-
-            Metadata new_meta;
-            new_meta.atim = ts[0];
-            new_meta.mtim = ts[1];
-
-            this_ ()->FSCache->update_content_metadata (owner, new_meta, {"atime", "mtime"});
-
-            if (locked)
-                this_ ()->FSCache->unlockItem (owner);
-
-        } else {
-
-            /*
-                Content is not cached, cache this values:
-                - size, atime, ctime, mtime
-            */
-
-            this_ ()->FSCache->put_data_blocks (owner, {}, OP_PASSTHROUGH);
-            bool locked = this_ ()->FSCache->lockItemCheckExists (owner);
-
-            if (locked) {
-
-                Metadata new_meta;
-                new_meta.size = stbuf->st_size;
-                new_meta.atim = ts[0];
-                new_meta.ctim = stbuf->st_ctim;
-                new_meta.mtim = ts[1];
-
-                this_ ()->FSCache->update_content_metadata (owner,
-                                                            new_meta,
-                                                            {"size", "atime", "ctime", "mtime"});
-
-                if (locked)
-                    this_ ()->FSCache->unlockItem (owner);
-            }
-        }
-    }
 
     return 0;
 }
