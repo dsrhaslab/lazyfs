@@ -336,10 +336,14 @@ bool Cache::truncate_item (string owner, int new_size) {
 
 int Cache::sync_owner (string owner, bool only_sync_data) {
 
-    if (!has_content_cached (owner))
-        return -1;
-
     lockCache ();
+
+    if (!has_content_cached (owner)) {
+
+        unlockCache ();
+        return -1;
+    }
+
     lockItem (owner);
     unlockCache ();
 
