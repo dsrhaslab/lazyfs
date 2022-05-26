@@ -74,12 +74,6 @@ class Cache {
      */
     pair<int, int> _get_readable_offsets (string cid, Item* item, int blk);
 
-    /**
-     * @brief A global cache mutex
-     *
-     */
-    mutex lock_cache_mtx;
-
   public:
     /**
      * @brief Construct a new Cache object

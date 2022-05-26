@@ -26,6 +26,12 @@ using namespace cache::engine;
 
 namespace cache {
 
+/**
+ * @brief A global cache mutex
+ *
+ */
+static mutex lock_cache_mtx;
+
 Cache::Cache (cache::config::Config* cache_config, PageCacheEngine* choosenEngine) {
 
     cache_config->print_config ();
@@ -136,7 +142,11 @@ void Cache::lockCache () { lock_cache_mtx.lock (); }
 
 void Cache::unlockCache () { lock_cache_mtx.unlock (); }
 
-void Cache::lockItem (string cid) { this->item_locks.at (cid)->lock (); }
+void Cache::lockItem (string cid) {
+
+    auto const& ilock = this->item_locks.at (cid);
+    ilock->lock ();
+}
 
 void Cache::unlockItem (string cid) { this->item_locks.at (cid)->unlock (); }
 
@@ -367,6 +377,9 @@ bool Cache::rename_item (string old_cid, string new_cid) {
         return false;
     }
 
+    lockItem (old_cid);
+    unlockCache ();
+
     Item* old_item        = _get_content_ptr (old_cid);
     std::mutex* old_mutex = this->item_locks.at (old_cid);
 
@@ -376,7 +389,7 @@ bool Cache::rename_item (string old_cid, string new_cid) {
     this->contents.insert (std::make_pair (new_cid, old_item));
     this->item_locks.insert (std::make_pair (new_cid, old_mutex));
 
-    unlockCache ();
+    old_mutex->unlock ();
 
     return this->engine->rename_owner_pages (old_cid, new_cid);
 }
@@ -423,11 +436,19 @@ bool Cache::lockItemCheckExists (string cid) {
         return false;
     }
 
-    lockItem (cid);
+    try {
 
-    unlockCache ();
+        lockItem (cid);
 
-    return true;
+        unlockCache ();
+        return true;
+
+    } catch (...) {
+
+        unlockCache ();
+
+        return false;
+    }
 }
 
 void Cache::full_checkpoint () {
