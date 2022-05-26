@@ -906,6 +906,8 @@ int LazyFS::lfs_rename (const char* from, const char* to, unsigned int flags) {
     string last_owner (from);
     string new_owner (to);
 
+    lfs_unlink (to);
+
     res = this_ ()->FSCache->rename_item (last_owner, new_owner) ? 0 : -1;
 
     res = rename (from, to);
