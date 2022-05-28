@@ -395,7 +395,7 @@ int LazyFS::lfs_write (const char* path,
         int blk_readable_to      = 0;
         int data_allocated       = 0;
         int data_buffer_iterator = 0;
-        int fd_caching           = fd;
+        int fd_caching           = open (path, O_RDONLY);
 
         char block_caching_buffer[IO_BLOCK_SIZE];
         map<int, tuple<const char*, size_t, int, int>> put_mapping;
@@ -429,7 +429,7 @@ int LazyFS::lfs_write (const char* path,
 
             bool is_block_cached = this_ ()->FSCache->is_block_cached (OWNER, CURR_BLK_IDX);
 
-            if (not is_block_cached) {
+            if (is_block_cached == 0) {
 
                 bool needs_pread = FILE_SIZE_BEFORE > CURR_BLK_IDX * IO_BLOCK_SIZE;
 
@@ -446,11 +446,13 @@ int LazyFS::lfs_write (const char* path,
 
                     int pread_res = 0;
 
-                    if (needs_pread)
+                    if (needs_pread) {
+
                         pread_res = pread (fd_caching,
                                            block_caching_buffer,
                                            IO_BLOCK_SIZE,
                                            CURR_BLK_IDX * IO_BLOCK_SIZE);
+                    }
 
                     if (pread_res < 0) {
 
@@ -467,7 +469,7 @@ int LazyFS::lfs_write (const char* path,
                         int cache_from;
                         int cache_to;
 
-                        if (not needs_pread || pread_res == 0) {
+                        if ((not needs_pread) || (pread_res == 0)) {
 
                             // std::printf (
                             //     "\twrite: block %d from %d to %d offset=%jd size=%zu len=%d\n",
@@ -566,6 +568,7 @@ int LazyFS::lfs_write (const char* path,
                                                            blk_readable_from,
                                                            blk_readable_to}}},
                                                         OP_WRITE);
+
                 bool curr_block_put_exists = put_res.find (CURR_BLK_IDX) != put_res.end ();
 
                 if (!curr_block_put_exists || put_res.at (CURR_BLK_IDX) == false) {
@@ -619,6 +622,8 @@ int LazyFS::lfs_write (const char* path,
 
         if (locked)
             this_ ()->FSCache->unlockItem (OWNER);
+
+        close (fd_caching);
     }
 
     // ----------------------------------------------------------------------------------
