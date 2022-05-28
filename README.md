@@ -73,6 +73,7 @@ blocks_per_page=1
 
 [filesystem]
 sync_after_rename=true # default option
+log_all_operations=false # default option
 ```
 
 The section **[cache]** **requires** that you specify the following:

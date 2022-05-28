@@ -45,6 +45,11 @@ class Config {
 
   public:
     /**
+     * @brief Wheter to log filesystem operations to stdout
+     *
+     */
+    bool log_all_operations = false;
+    /**
      * @brief Wheter to sync dirty data after a rename operation
      *
      */

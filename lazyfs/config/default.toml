@@ -11,3 +11,4 @@ blocks_per_page=1
 # no_pages=140000
 [filesystem]
 sync_after_rename=true
+log_all_operations=false

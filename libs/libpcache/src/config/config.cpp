@@ -132,6 +132,11 @@ void Config::load_config (string filename) {
             bool rename_flag = toml::find (filesystem_settings, "sync_after_rename").as_boolean ();
             this->sync_after_rename = rename_flag;
         }
+
+        if (filesystem_settings.contains ("log_all_operations")) {
+            bool log_all_ops = toml::find (filesystem_settings, "log_all_operations").as_boolean ();
+            this->log_all_operations = log_all_ops;
+        }
     }
 }
 
