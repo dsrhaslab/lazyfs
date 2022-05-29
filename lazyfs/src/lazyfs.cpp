@@ -318,9 +318,9 @@ int LazyFS::lfs_write (const char* path,
     int res;
 
     (void)fi;
-    if (fi == NULL)
+    if (fi == NULL) {
         fd = open (path, O_WRONLY);
-    else
+    } else
         fd = fi->fh;
 
     if (fd == -1)
@@ -429,7 +429,7 @@ int LazyFS::lfs_write (const char* path,
 
             bool is_block_cached = this_ ()->FSCache->is_block_cached (OWNER, CURR_BLK_IDX);
 
-            if (is_block_cached == 0) {
+            if (is_block_cached == false) {
 
                 bool needs_pread = FILE_SIZE_BEFORE > CURR_BLK_IDX * IO_BLOCK_SIZE;
 
@@ -514,7 +514,7 @@ int LazyFS::lfs_write (const char* path,
 
                         // Increase the ammount of bytes already written from the argument
                         // 'size'
-                        data_allocated += cache_wr_sz;
+                        data_allocated += blk_readable_to - blk_readable_from + 1;
 
                         auto put_res = this_ ()->FSCache->put_data_blocks (
                             OWNER,
@@ -523,7 +523,7 @@ int LazyFS::lfs_write (const char* path,
 
                         bool curr_block_put_exists = put_res.find (CURR_BLK_IDX) != put_res.end ();
 
-                        if (!curr_block_put_exists || put_res.at (CURR_BLK_IDX) == false) {
+                        if (!curr_block_put_exists || (put_res.at (CURR_BLK_IDX) == false)) {
 
                             // Block allocation in cache failed
 
@@ -728,10 +728,12 @@ int LazyFS::lfs_read (const char* path,
     int last_pread_chunk_size   = 0;
     int last_pread_chunk_offset = offset;
 
+    int blk_readable_from = 0;
+    int blk_readable_to   = 0;
+
     for (int CURR_BLK_IDX = blk_low; CURR_BLK_IDX <= blk_high; CURR_BLK_IDX++) {
 
-        int blk_readable_from = (CURR_BLK_IDX == blk_low) ? (offset % IO_BLOCK_SIZE) : 0;
-        int blk_readable_to   = 0;
+        blk_readable_from = (CURR_BLK_IDX == blk_low) ? (offset % IO_BLOCK_SIZE) : 0;
 
         if (CURR_BLK_IDX == blk_high)
             blk_readable_to = ((offset + size - 1) % IO_BLOCK_SIZE);
@@ -742,14 +744,7 @@ int LazyFS::lfs_read (const char* path,
         else if (CURR_BLK_IDX == blk_high)
             blk_readable_to = size - data_allocated - 1;
 
-        // std::printf ("\tread: blk %d read from %d to %d\n",
-        //              CURR_BLK_IDX,
-        //              blk_readable_from,
-        //              blk_readable_to);
-
         if (this_ ()->FSCache->is_block_cached (OWNER, CURR_BLK_IDX)) {
-
-            // std::printf ("read a block cached %d...\n", CURR_BLK_IDX);
 
             if (last_pread_chunk_size > 0) {
 
@@ -762,11 +757,17 @@ int LazyFS::lfs_read (const char* path,
                 BYTES_LEFT -= pread_res;
 
                 last_pread_chunk_size   = 0;
-                last_pread_chunk_offset = CURR_BLK_IDX * IO_BLOCK_SIZE;
+                last_pread_chunk_offset = (CURR_BLK_IDX + 1) * IO_BLOCK_SIZE;
+
+            } else if (CURR_BLK_IDX + 1 < blk_high) {
+
+                last_pread_chunk_offset = (CURR_BLK_IDX + 1) * IO_BLOCK_SIZE;
             }
 
-            if (BYTES_LEFT <= 0)
+            if (BYTES_LEFT <= 0) {
+
                 break;
+            }
 
             /*
                 > Block is cached, so buffer was filled with the requested data:
@@ -787,10 +788,6 @@ int LazyFS::lfs_read (const char* path,
                 memcpy (buf + BUF_ITERATOR,
                         read_buffer + blk_readable_from,
                         (read_to - blk_readable_from) + 1);
-
-                // std::printf ("\tread: copy %d bytes from %d\n",
-                //              (read_to - blk_readable_from) + 1,
-                //              blk_readable_from);
 
                 BUF_ITERATOR += (read_to - blk_readable_from) + 1;
                 BYTES_LEFT -= (read_to - blk_readable_from) + 1;
@@ -821,8 +818,6 @@ int LazyFS::lfs_read (const char* path,
                 > Block is not cached, cache it first: If it fails, call pread if
                needed.
             */
-
-            // std::printf ("\tfile size: %d, block %d not cached\n", (int)meta.size, CURR_BLK_IDX);
 
             bool needs_pread = meta.size > CURR_BLK_IDX * IO_BLOCK_SIZE;
 
@@ -857,9 +852,6 @@ int LazyFS::lfs_read (const char* path,
     }
 
     if (last_pread_chunk_size > 0) {
-
-        // std::printf ("\tread chunk of %d\n", last_pread_chunk_size);
-
         int pread_res =
             pread (fd_caching, buf + BUF_ITERATOR, last_pread_chunk_size, last_pread_chunk_offset);
 

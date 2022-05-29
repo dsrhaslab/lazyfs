@@ -519,9 +519,13 @@ bool CustomCacheEngine::sync_pages (string owner, size_t size) {
 
                 struct iovec iov[page_streak];
 
+                page_streak_last_offset =
+                    (current_block_id - page_streak + 1) * this->config->IO_BLOCK_SIZE;
+
                 for (int p_id = 0; p_id < page_streak; p_id++) {
 
-                    int streak_block        = current_block_id - page_streak + p_id + 1;
+                    int streak_block = current_block_id - page_streak + p_id + 1;
+
                     auto const& streak_pair = page_chunk[p_id];
                     // auto const& streak_pair     = iterate_blocks.at (streak_block);
                     Page* page_ptr = get<1> (streak_pair);
