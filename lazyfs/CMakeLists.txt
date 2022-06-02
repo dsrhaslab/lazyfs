@@ -34,3 +34,31 @@ target_sources(
 )
 
 target_link_libraries(${CMAKE_PROJECT_NAME} fuse3 Threads::Threads libpcache.so)
+
+# ------------------ LazyFS tests ------------------
+
+option(LAZYFS_BUILD_TESTS "Build PAIO unit tests" ON)
+
+if (LAZYFS_BUILD_TESTS)
+
+    enable_testing()
+
+    # Import Google GTest
+
+    include(FetchContent)
+
+    FetchContent_Declare(
+    googletest
+    GIT_REPOSITORY https://github.com/google/googletest.git
+    GIT_TAG        release-1.11.0
+    )
+    FetchContent_MakeAvailable(googletest)
+
+    add_library(GTest::GTest INTERFACE IMPORTED)
+    target_link_libraries(GTest::GTest INTERFACE gtest_main)
+
+    add_executable(test_write tests/test_write.cpp)
+    target_link_libraries(test_write GTest::GTest gtest_main)
+    add_test(test-example test_write)
+
+endif()
