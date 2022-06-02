@@ -206,6 +206,9 @@ int LazyFS::lfs_open (const char* path, struct fuse_file_info* fi) {
 
     // --------------------------------------------------------------------------
 
+    if (fi->flags & O_TRUNC)
+        lfs_truncate (path, 0, fi);
+
     int access_mode = fi->flags & O_ACCMODE;
 
     if (this_ ()->FSConfig->log_all_operations)
