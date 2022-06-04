@@ -43,10 +43,11 @@ done
 set -- "${POSITIONAL_ARGS[@]}"
 
 CURRENT_DIR=$PWD
+ANY_TEST_FAILED=0
 
 log_with_time() {
     now=$(date +"%T")
-    echo "[$now] $1"
+    echo -e "[$now] $1"
 }
 
 build_tests() {
@@ -67,8 +68,19 @@ setup_testbed() {
     sudo rm -rf $MOUNT_DIR/* $ROOT_DIR/*
 
     log_with_time "mounting LazyFS in $MOUNT_DIR"
-    ./scripts/mount-lazyfs.sh -m $MOUNT_DIR -r $ROOT_DIR -c $CONFIG > /dev/null
+    ./scripts/mount-lazyfs.sh -m $MOUNT_DIR -r $ROOT_DIR -c $CONFIG
     sleep $TIME_MOUNT
+
+    RUN_FLAG=$(findmnt -T $MOUNT_DIR | grep lazyfs | wc -c)
+    if [[ "$RUN_FLAG" != "0" ]]; then
+        RUN_FLAG="TRUE"
+    else
+        RUN_FLAG="FALSE"
+        log_with_time "\e[31mLazyFS running = \e[32m$RUN_FLAG\e[0m"
+        exit
+    fi
+
+    log_with_time "\e[31mLazyFS running = \e[32m$RUN_FLAG\e[0m"
 }
 
 teardown_testbed() {
@@ -80,15 +92,27 @@ teardown_testbed() {
 
     log_with_time "clearing folder contents"
     sudo rm -rf $MOUNT_DIR/* $ROOT_DIR/*
+
+    RUN_FLAG=$(findmnt -T $MOUNT_DIR | grep lazyfs | wc -c)
+    if [[ "$RUN_FLAG" != "0" ]]; then
+        RUN_FLAG="TRUE"
+    else
+        RUN_FLAG="FALSE"
+    fi
+    log_with_time "\e[31mLazyFS running = \e[32m$RUN_FLAG\e[0m"
 }
 
 run_tests() {
 
     cd $CURRENT_DIR/../build
-
     for test in test*; do
         log_with_time "running $test..."
-        ./$test $MOUNT_DIR
+        if ./$test $MOUNT_DIR; then
+            log_with_time "\e[32mtest $test passed...\e[0m"
+        else
+            ANY_TEST_FAILED=1
+            log_with_time "\e[31mtest $test failed!\e[0m"
+        fi
     done
 }
 
@@ -101,5 +125,13 @@ build_tests
 setup_testbed
 run_tests
 teardown_testbed
+
+if [ $ANY_TEST_FAILED -eq 1 ]; then
+    log_with_time "\e[31mSome tests failed!\e[0m"
+    exit -1
+else
+    log_with_time "\e[32mAll tests passed!\e[0m"
+    exit 0
+fi
 
 #-------------------------------------------#
