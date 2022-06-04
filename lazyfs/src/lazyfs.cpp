@@ -762,7 +762,7 @@ int LazyFS::lfs_read (const char* path,
                 last_pread_chunk_size   = 0;
                 last_pread_chunk_offset = (CURR_BLK_IDX + 1) * IO_BLOCK_SIZE;
 
-            } else if (CURR_BLK_IDX + 1 < blk_high) {
+            } else if (CURR_BLK_IDX < blk_high) {
 
                 last_pread_chunk_offset = (CURR_BLK_IDX + 1) * IO_BLOCK_SIZE;
             }
