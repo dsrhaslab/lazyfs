@@ -133,6 +133,9 @@ TEST (WriteTests, WriteSparseBlocks1) {
     ASSERT_EQ (lseek (fd, 0, SEEK_END), 2 * IO_BLOCK_SIZE + 10);
 
     // Rewrite 20 bytes from block
+    memset (buf, 0, IO_BLOCK_SIZE);
+    ASSERT_EQ (pwrite (fd, buf, IO_BLOCK_SIZE, 3 * IO_BLOCK_SIZE), IO_BLOCK_SIZE);
+    ASSERT_EQ (lseek (fd, 0, SEEK_END), 4 * IO_BLOCK_SIZE);
 
     ASSERT_TRUE (close (fd) >= 0);
 }
@@ -143,15 +146,16 @@ TEST (WriteTests, WriteSparseBlocks1CheckIntegrity) {
 
     ASSERT_TRUE (fd >= 0);
 
-    char buf[IO_BLOCK_SIZE * 2 + 10];
-    char buf_expected[IO_BLOCK_SIZE * 2 + 10];
+    char buf[IO_BLOCK_SIZE * 4];
+    char buf_expected[IO_BLOCK_SIZE * 4];
     memset (buf_expected, 0, IO_BLOCK_SIZE - 10);
     memset (buf_expected + IO_BLOCK_SIZE - 10, 'A', 10);
     memset (buf_expected + IO_BLOCK_SIZE, 0, IO_BLOCK_SIZE - 10);
     memset (buf_expected + IO_BLOCK_SIZE * 2 - 10, 'B', 20);
+    memset (buf_expected + IO_BLOCK_SIZE * 2 + 10, 0, IO_BLOCK_SIZE * 2 - 10);
 
-    ASSERT_EQ (pread (fd, buf, IO_BLOCK_SIZE * 2 + 10, 0), IO_BLOCK_SIZE * 2 + 10);
-    ASSERT_TRUE (!memcmp (buf, buf_expected, IO_BLOCK_SIZE * 2 + 10));
+    ASSERT_EQ (pread (fd, buf, IO_BLOCK_SIZE * 4, 0), IO_BLOCK_SIZE * 4);
+    ASSERT_TRUE (!memcmp (buf, buf_expected, IO_BLOCK_SIZE * 4));
 
     ASSERT_TRUE (close (fd) >= 0);
 
