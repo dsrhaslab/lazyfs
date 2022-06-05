@@ -52,6 +52,10 @@ log_with_time() {
 
 build_tests() {
 
+    cd $CURRENT_DIR/../../libs/libpcache
+    ./build.sh
+    cd -
+
     cd $CURRENT_DIR/..
 
     log_with_time "building tests"
