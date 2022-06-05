@@ -1,0 +1,26 @@
+name: build
+on: 
+  push:
+    branches:
+      - dev-lazyfs-unit-tests
+jobs:
+    build-libs:
+        runs-on: bullseye
+        steps:
+            - name: Check out repository code
+              uses: actions/checkout@v2
+
+            - name: Set up cache
+              uses: actions/cache@v2
+              with:
+                  path: ~/build
+                  key: build-lazyfs
+
+            - name: Install dependencies
+              run: sudo apt install g++ cmake libfuse3-dev libfuse3-3 fuse3
+
+            - name: Set up FUSE configuration
+              run: sed -i "/\\s*user_allow_other/s/^#//g" "/etc/fuse.conf"
+
+            - name: Build repo and run tests
+              run: cd lazyfs/scripts && ./run-tests -m /tmp/lazyfs -r /tmp/lazyfs-root
