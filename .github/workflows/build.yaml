@@ -23,4 +23,6 @@ jobs:
               run: sudo sed -i "/\\s*user_allow_other/s/^#//g" "/etc/fuse.conf"
 
             - name: Build repo and run tests
-              run: cd lazyfs/scripts && ./run-tests.sh -m /tmp/lazyfs -r /tmp/lazyfs-root/
+              run: |
+                sudo sed -i '/\[faults]/ {n; s/=.*/="/faults-example.fifo"/}' lazyfs/config/default.toml
+                cd lazyfs/scripts && ./run-tests.sh -m /tmp/lazyfs -r /tmp/lazyfs-root/
