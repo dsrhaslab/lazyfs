@@ -72,6 +72,7 @@ setup_testbed() {
     sudo rm -rf $MOUNT_DIR/* $ROOT_DIR/*
 
     log_with_time "mounting LazyFS in $MOUNT_DIR"
+    mkdir -p $MOUNT_DIR $ROOT_DIR
     ./scripts/mount-lazyfs.sh -m $MOUNT_DIR -r $ROOT_DIR -c $CONFIG
     sleep $TIME_MOUNT
 
