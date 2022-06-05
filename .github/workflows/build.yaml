@@ -23,4 +23,4 @@ jobs:
               run: sudo sed -i "/\\s*user_allow_other/s/^#//g" "/etc/fuse.conf"
 
             - name: Build repo and run tests
-              run: cd lazyfs/scripts && ./run-tests -m /tmp/lazyfs -r /tmp/lazyfs-root
+              run: cd lazyfs/scripts && ./run-tests.sh -m /tmp/lazyfs -r /tmp/lazyfs-root/
