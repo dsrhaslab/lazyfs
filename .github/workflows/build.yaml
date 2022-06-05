@@ -20,7 +20,7 @@ jobs:
               run: sudo apt install g++ cmake libfuse3-dev libfuse3-3 fuse3
 
             - name: Set up FUSE configuration
-              run: sed -i "/\\s*user_allow_other/s/^#//g" "/etc/fuse.conf"
+              run: sudo sed -i "/\\s*user_allow_other/s/^#//g" "/etc/fuse.conf"
 
             - name: Build repo and run tests
               run: cd lazyfs/scripts && ./run-tests -m /tmp/lazyfs -r /tmp/lazyfs-root
