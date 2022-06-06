@@ -59,6 +59,9 @@ if (LAZYFS_BUILD_TESTS)
 
     add_executable(test_write tests/test_write.cpp)
     add_executable(test_consistency_clear_cache tests/test_consistency_clear_cache.cpp)
+    add_executable(test_truncate_clear_cache tests/test_truncate_clear_cache.cpp)
     target_link_libraries(test_write GTest::GTest gtest_main)
     target_link_libraries(test_consistency_clear_cache GTest::GTest gtest_main)
+    target_link_libraries(test_truncate_clear_cache GTest::GTest gtest_main)
+
 endif()

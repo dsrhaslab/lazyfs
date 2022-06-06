@@ -2,7 +2,7 @@ name: build
 on: 
   push:
     branches:
-      - currently-in-tests-run-off
+      - dev-lazyfs-unit-tests
 jobs:
     build-lazyfs:
         runs-on: ubuntu-latest
@@ -25,5 +25,5 @@ jobs:
             - name: Build repo and run tests
               run: |
                 sudo sed -i "s|fifo_path=.*|fifo_path=\"$(pwd)\/faults-example.fifo\"|" lazyfs/config/default.toml
-                sudo sed -i "s|\#define.*FAULTS_PIPE_PATH.*|\#define FAULTS_PIPE_PATH \"$(pwd)\/faults-example.fifo\"|" lazyfs/tests/test_consistency_clear_cache.cpp
+                sudo sed -s -i "s|\#define.*FAULTS_PIPE_PATH.*|\#define FAULTS_PIPE_PATH \"$(pwd)\/faults-example.fifo\"|" lazyfs/tests/*_clear_cache.cpp
                 cd lazyfs/scripts && ./run-tests.sh -m /tmp/lazyfs -r /tmp/lazyfs-root/

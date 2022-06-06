@@ -55,8 +55,8 @@ TEST (ConsitencyAfterCacheClearTests, SimpleReadBlocks_SyncOff) {
     ASSERT_EQ (pwrite (fd, buf, IO_BLOCK_SIZE, 0), IO_BLOCK_SIZE);
     ASSERT_EQ (pread (fd, buf, IO_BLOCK_SIZE, 0), IO_BLOCK_SIZE);
 
-    // ASSERT_EQ (clear_cache_command (), 0);
-    // ASSERT_EQ (pread (fd, buf, IO_BLOCK_SIZE, 0), IO_BLOCK_SIZE);
+    ASSERT_EQ (clear_cache_command (), 0);
+    ASSERT_EQ (pread (fd, buf, IO_BLOCK_SIZE, 0), 0);
 
     ASSERT_TRUE (close (fd) >= 0);
 
