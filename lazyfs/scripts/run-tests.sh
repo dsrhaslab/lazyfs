@@ -3,7 +3,7 @@
 # A script to run LazyFS tests
 #-------------------------------------------#
 
-TIME_MOUNT=2
+TIME_MOUNT=3
 CONFIG=config/default.toml
 
 #-------------------------------------------#

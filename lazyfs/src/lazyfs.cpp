@@ -72,6 +72,10 @@ void* LazyFS::lfs_init (struct fuse_conn_info* conn, struct fuse_config* cfg) {
 
     // cfg->direct_io = 1;
 
+    cfg->entry_timeout    = 0;
+    cfg->attr_timeout     = 0;
+    cfg->negative_timeout = 0;
+
     new (this_ ()->faults_handler_thread) std::thread (this_ ()->fht_worker, this_ ());
 
     return this_ ();

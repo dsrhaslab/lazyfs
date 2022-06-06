@@ -157,7 +157,7 @@ TEST (ConsitencyAfterCacheClearTests, SparseSyncsConsistencyCheck) {
 
     ASSERT_EQ (clear_cache_command (), 0);
 
-    // ASSERT_EQ (lseek (fd, 0, SEEK_END), IO_BLOCK_SIZE);
+    ASSERT_EQ (lseek (fd, 0, SEEK_END), IO_BLOCK_SIZE);
 
     ASSERT_TRUE (close (fd) >= 0);
 
