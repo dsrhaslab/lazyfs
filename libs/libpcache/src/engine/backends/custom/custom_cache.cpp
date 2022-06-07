@@ -483,7 +483,7 @@ bool CustomCacheEngine::sync_pages (string owner, size_t size) {
 
     char const* path;
     path   = owner.c_str ();
-    int fd = open (path, O_WRONLY);
+    int fd = open (path, O_CREAT | O_WRONLY);
 
     // std::printf ("\tengine: (fsync) %s opened descriptor %d\n", owner.c_str (), fd);
 
