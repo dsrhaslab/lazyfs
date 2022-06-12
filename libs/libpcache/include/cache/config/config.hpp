@@ -53,7 +53,7 @@ class Config {
      * @brief Wheter to sync dirty data after a rename operation
      *
      */
-    bool sync_after_rename = true;
+    bool sync_after_rename = false;
     /**
      * @brief Specifies if this configuration was specified by the configuration file or not.
      *
