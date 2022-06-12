@@ -72,7 +72,7 @@ blocks_per_page=1
 # no_pages=10
 
 [filesystem]
-sync_after_rename=true # default option
+sync_after_rename=false # default option
 log_all_operations=false # default option
 ```
 
@@ -81,6 +81,13 @@ The section **[cache]** **requires** that you specify the following:
 -   **apply_eviction**: Whether the cache should behave like the real page cache, evicting pages when the cache fills to the maximum;
 
 -   **[cache.simple]** or **[cache.manual]**: To setup the cache size and internal organization. For now, one could just specify as seen in the example, the **custom_size** in (Gb/Mb/Kb) and the **number of blocks in each page** (you can just leave 1 as default). For manual configurations, comment out the simple configuration and uncoment/change the example above to suit your needs.
+
+Other available parameters:
+
+- faults.**fifo_path**: The absolute path where the faults pipe should be created;
+- filesystem.**sync_after_rename**: Whether to implicitly perform a sync after a rename operation;
+- filesystem.**log_all_operations**: Just experimental for quick debugging in stdout. The LazyFS roadmap will include better logging in the future.
+
 
 To **run the filesystem**, one could use the **mount-lazyfs.sh** script, which calls FUSE with the correct parameters:
 
@@ -131,12 +138,12 @@ This section displays the next tasks and some documentation resources:
 
 ### TODO
 
--   [x] Add **truncate** operation to the page cache **(in tests)**
--   [x] Add benchmarking tests (w/ Filebench) **(in tests)**
+-   [x] Add **truncate** operation to the page cache
+-   [x] Add benchmarking tests (w/ Filebench)
 -   [x] Code documentation
 -   [ ] Performance optimizations **(current)**
--   [ ] Add integrity tests
--   [ ] Test with more DBs besides PostgreSQL
+-   [ ] Add integrity tests **(current)**
+-   [ ] Test with more DBs **(current)**
 -   [ ] Make **rename** operations atomic
 -   [ ] Configure cache to grow until a certain size (dynamically)
 -   [ ] Add logging to an external file

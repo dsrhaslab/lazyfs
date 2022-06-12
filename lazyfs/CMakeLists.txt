@@ -37,7 +37,7 @@ target_link_libraries(${CMAKE_PROJECT_NAME} fuse3 Threads::Threads libpcache.so)
 
 # ------------------ LazyFS tests ------------------
 
-option(LAZYFS_BUILD_TESTS "Build PAIO unit tests" ON)
+option(LAZYFS_BUILD_TESTS "Build LazyFS unit tests" ON)
 
 if (LAZYFS_BUILD_TESTS)
 
