@@ -18,7 +18,7 @@ Our filesystem implements several system calls that query our custom page cache 
 
 ## Installation
 
-LazyFS was tested with **ext4** (default mount options) as the underlying filesystem in both Debian 11 (bullseye) and Ubuntu 20.04 (focal) environment. It is C++14 compliant and requires the following packages to be installed:
+LazyFS was tested with **ext4** (default mount options) as the underlying filesystem in both Debian 11 (bullseye) and Ubuntu 20.04 (focal) environment. It is C++17 compliant and requires the following packages to be installed:
 
 -   **CMake** (>= 3.10) and **g++** (>= 9.4.0):
 
