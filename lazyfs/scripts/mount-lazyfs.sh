@@ -75,5 +75,5 @@ if [ -z "$CMD_FG" ]; then
    ./build/lazyfs $MOUNT_DIR --config-path config/default.toml -o allow_other -o modules=subdir -o subdir=$ROOT_DIR &
 else
    echo -e "(running in foreground mode)\n"
-   ./build/lazyfs $MOUNT_DIR --config-path config/default.toml -o allow_other -o modules=subdir -o subdir=$ROOT_DIR -f
+   ./build/lazyfs $MOUNT_DIR --config-path config/default.toml -o allow_other -o modules=subdir -o subdir=$ROOT_DIR -s -f
 fi

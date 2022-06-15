@@ -905,6 +905,50 @@ int LazyFS::lfs_fsync (const char* path, int isdatasync, struct fuse_file_info* 
     return res;
 }
 
+int LazyFS::lfs_recursive_rename (const char* from,
+                                  const char* to,
+                                  unsigned int flags,
+                                  string new_prepend,
+                                  string last_prepend) {
+
+    char path[1000];
+    struct dirent* dp;
+    DIR* dir = opendir (from);
+
+    // Unable to open directory stream
+    if (!dir)
+        return 0;
+
+    while ((dp = readdir (dir)) != NULL) {
+        if (strcmp (dp->d_name, ".") != 0 && strcmp (dp->d_name, "..") != 0) {
+
+            // Construct new path from our base path
+            strcpy (path, from);
+            strcat (path, "/");
+            strcat (path, dp->d_name);
+
+            // printf ("%s\n", path);
+
+            if (dp->d_type == DT_REG) {
+
+                char should_be[1000];
+                sprintf (should_be,
+                         "%s%s",
+                         new_prepend.c_str (),
+                         string (path).substr (last_prepend.size ()).c_str ());
+
+                lfs_rename (path, should_be, flags);
+            }
+
+            lfs_recursive_rename (path, to, flags, new_prepend, last_prepend);
+        }
+    }
+
+    closedir (dir);
+
+    return 0;
+}
+
 int LazyFS::lfs_rename (const char* from, const char* to, unsigned int flags) {
 
     if (this_ ()->FSConfig->log_all_operations)
@@ -918,16 +962,27 @@ int LazyFS::lfs_rename (const char* from, const char* to, unsigned int flags) {
     string last_owner (from);
     string new_owner (to);
 
+    bool exists_last_owner = this_ ()->FSCache->has_content_cached (last_owner);
+
     lfs_unlink (to);
 
-    res = this_ ()->FSCache->rename_item (last_owner, new_owner) ? 0 : -1;
+    if (!exists_last_owner) {
 
-    res = rename (from, to);
+        // from: is a dir, because getattr does not cache dirs
 
-    if (this_ ()->FSConfig->sync_after_rename)
-        this_ ()->FSCache->sync_owner (new_owner, true);
+        lfs_recursive_rename (from, to, flags, new_owner, last_owner);
 
-    // std::printf ("\trename:: rename returned %d\n", res);
+        res = rename (from, to);
+
+    } else {
+
+        res = this_ ()->FSCache->rename_item (last_owner, new_owner) ? 0 : -1;
+
+        res = rename (from, to);
+
+        if (this_ ()->FSConfig->sync_after_rename)
+            this_ ()->FSCache->sync_owner (new_owner, true);
+    }
 
     if (res == -1)
         return -errno;

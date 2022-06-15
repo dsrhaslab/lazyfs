@@ -95,6 +95,22 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      */
     void command_checkpoint ();
 
+    /**
+     * @brief Calls rename recursively to all child files and directories
+     *
+     * @param from the current subpath
+     * @param to desired path
+     * @param flags fuse rename flags
+     * @param new_prepend desired path prefix
+     * @param last_prepend last prefix to remove
+     * @return int
+     */
+    static int lfs_recursive_rename (const char* from,
+                                     const char* to,
+                                     unsigned int flags,
+                                     string new_prepend,
+                                     string last_prepend);
+
     static void* lfs_init (struct fuse_conn_info*, struct fuse_config* cfg);
 
     static void lfs_destroy (void*);
