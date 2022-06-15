@@ -26,11 +26,7 @@ using namespace cache::config;
 
 namespace cache::engine::backends::custom {
 
-pthread_rwlock_t CustomCacheEngine::lock_cache = PTHREAD_RWLOCK_INITIALIZER;
-
 CustomCacheEngine::CustomCacheEngine (cache::config::Config* config) {
-
-    pthread_rwlock_init (&lock_cache, NULL);
 
     this->config = config;
 
@@ -68,12 +64,10 @@ CustomCacheEngine::~CustomCacheEngine () {
 
 double CustomCacheEngine::get_engine_usage () {
 
-    pthread_rwlock_wrlock (&lock_cache);
+    std::lock_guard<std::shared_mutex> lock (lock_cache_mtx);
 
     int used_pages = this->config->CACHE_NR_PAGES - this->free_pages.size ();
     double usage   = ((double)(used_pages * 1.0) / this->config->CACHE_NR_PAGES) * 100;
-
-    pthread_rwlock_unlock (&lock_cache);
 
     return usage;
 }
@@ -312,7 +306,7 @@ map<int, bool> CustomCacheEngine::get_blocks (string content_owner_id,
 
     for (auto it = begin (block_pages); it != end (block_pages); it++) {
 
-        pthread_rwlock_rdlock (&lock_cache);
+        std::shared_lock<std::shared_mutex> lock (lock_cache_mtx);
 
         int blk_id            = it->first;
         int page_id           = get<0> (it->second);
@@ -337,8 +331,6 @@ map<int, bool> CustomCacheEngine::get_blocks (string content_owner_id,
             if (this->config->APPLY_LRU_EVICTION)
                 _apply_lru_after_page_visitation_on_READ (page_id);
         }
-
-        pthread_rwlock_unlock (&lock_cache);
     }
 
     return res_block_data;
@@ -354,7 +346,9 @@ map<int, int> CustomCacheEngine::allocate_blocks (
 
     for (auto it = begin (block_data_mapping); it != end (block_data_mapping); it++) {
 
-        pthread_rwlock_wrlock (&lock_cache);
+        std::unique_lock<std::shared_mutex> lock (lock_cache_mtx, std::defer_lock);
+
+        lock.lock ();
 
         int blk_id          = it->first;
         int page_id         = get<0> (it->second);
@@ -381,7 +375,7 @@ map<int, int> CustomCacheEngine::allocate_blocks (
 
                 res_block_allocated_pages.insert (pair<int, int> (blk_id, page_id));
 
-                pthread_rwlock_unlock (&lock_cache);
+                lock.unlock ();
 
                 // skip page allocation algorithm
                 continue;
@@ -418,7 +412,7 @@ map<int, int> CustomCacheEngine::allocate_blocks (
             res_block_allocated_pages.insert (pair<int, int> (blk_id, -1));
         }
 
-        pthread_rwlock_unlock (&lock_cache);
+        lock.unlock ();
     }
 
     return res_block_allocated_pages;
@@ -426,7 +420,7 @@ map<int, int> CustomCacheEngine::allocate_blocks (
 
 bool CustomCacheEngine::remove_cached_blocks (string owner) {
 
-    pthread_rwlock_wrlock (&lock_cache);
+    std::unique_lock<std::shared_mutex> lock (lock_cache_mtx);
 
     if (this->owner_free_pages_mapping.find (owner) != this->owner_free_pages_mapping.end ())
         this->owner_free_pages_mapping.erase (owner);
@@ -457,8 +451,6 @@ bool CustomCacheEngine::remove_cached_blocks (string owner) {
         this->owner_ordered_pages_mapping.erase (owner);
     }
 
-    pthread_rwlock_unlock (&lock_cache);
-
     return true;
 }
 
@@ -467,19 +459,17 @@ void CustomCacheEngine::make_block_readable_to_offset (string cid,
                                                        int block_id,
                                                        int offset) {
 
-    pthread_rwlock_wrlock (&lock_cache);
+    std::unique_lock<std::shared_mutex> lock (lock_cache_mtx);
 
     Page* page_ptr = _get_page_ptr (page_id);
     if (page_ptr->is_page_owner (cid)) {
         page_ptr->make_block_readable_to (block_id, offset);
     }
-
-    pthread_rwlock_unlock (&lock_cache);
 }
 
 bool CustomCacheEngine::sync_pages (string owner, size_t size) {
 
-    pthread_rwlock_rdlock (&lock_cache);
+    std::unique_lock<std::shared_mutex> lock (lock_cache_mtx);
 
     char const* path;
     path   = owner.c_str ();
@@ -555,14 +545,12 @@ bool CustomCacheEngine::sync_pages (string owner, size_t size) {
 
     close (fd);
 
-    pthread_rwlock_unlock (&lock_cache);
-
     return 0;
 }
 
 bool CustomCacheEngine::rename_owner_pages (string old_owner, string new_owner) {
 
-    pthread_rwlock_wrlock (&lock_cache);
+    std::unique_lock<std::shared_mutex> lock (lock_cache_mtx);
 
     if (this->owner_pages_mapping.find (old_owner) == this->owner_pages_mapping.end ())
         return false;
@@ -586,8 +574,6 @@ bool CustomCacheEngine::rename_owner_pages (string old_owner, string new_owner) 
     this->owner_free_pages_mapping[new_owner]    = old_free_mapping;
     this->owner_ordered_pages_mapping[new_owner] = old_ordered_pages;
 
-    pthread_rwlock_unlock (&lock_cache);
-
     return true;
 }
 
@@ -596,7 +582,7 @@ bool CustomCacheEngine::truncate_cached_blocks (string content_owner_id,
                                                 int from_block_id,
                                                 int index_inside_block) {
 
-    pthread_rwlock_wrlock (&lock_cache);
+    std::unique_lock<std::shared_mutex> lock (lock_cache_mtx);
 
     for (auto const& blk : blocks_to_remove) {
 
@@ -643,8 +629,6 @@ bool CustomCacheEngine::truncate_cached_blocks (string content_owner_id,
             }
         }
     }
-
-    pthread_rwlock_unlock (&lock_cache);
 
     return true;
 }

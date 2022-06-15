@@ -12,10 +12,13 @@
 
 #include <cache/engine/page/page.hpp>
 #include <cache/engine/page_cache.hpp>
+#include <iostream>
 #include <list>
 #include <map>
 #include <mutex>
 #include <set>
+#include <shared_mutex>
+#include <thread>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -34,7 +37,7 @@ class CustomCacheEngine : public PageCacheEngine {
      * @brief Locks the page cache engine
      *
      */
-    static pthread_rwlock_t lock_cache;
+    std::shared_mutex lock_cache_mtx;
 
   private:
     /**
