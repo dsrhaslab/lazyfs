@@ -18,6 +18,7 @@
 #include <thread>
 #include <tuple>
 #include <unistd.h>
+#include <vector>
 
 // include in one .cpp file
 #include <cache/cache.hpp>
@@ -905,46 +906,95 @@ int LazyFS::lfs_fsync (const char* path, int isdatasync, struct fuse_file_info* 
     return res;
 }
 
-int LazyFS::lfs_recursive_rename (const char* from,
-                                  const char* to,
-                                  unsigned int flags,
-                                  string new_prepend,
-                                  string last_prepend) {
+int LazyFS::lfs_is_dir_empty (const char* dirname) {
 
-    char path[1000];
-    struct dirent* dp;
-    DIR* dir = opendir (from);
+    struct dirent* from_DIRENT;
+    DIR* from_DIR = opendir (dirname);
 
-    // Unable to open directory stream
-    if (!dir)
-        return 0;
+    if (!from_DIR)
+        return -1;
 
-    while ((dp = readdir (dir)) != NULL) {
-        if (strcmp (dp->d_name, ".") != 0 && strcmp (dp->d_name, "..") != 0) {
+    int nr_files = 0;
 
-            // Construct new path from our base path
-            strcpy (path, from);
-            strcat (path, "/");
-            strcat (path, dp->d_name);
+    while ((from_DIRENT = readdir (from_DIR)) != NULL) {
 
-            // printf ("%s\n", path);
+        if (++nr_files > 2)
+            break;
+    }
 
-            if (dp->d_type == DT_REG) {
+    closedir (from_DIR);
 
-                char should_be[1000];
-                sprintf (should_be,
-                         "%s%s",
-                         new_prepend.c_str (),
-                         string (path).substr (last_prepend.size ()).c_str ());
+    return (nr_files <= 2) ? 1 : 0;
+}
 
-                lfs_rename (path, should_be, flags);
-            }
+void LazyFS::lfs_get_dir_filenames (const char* dirname, std::vector<string>* result) {
 
-            lfs_recursive_rename (path, to, flags, new_prepend, last_prepend);
+    struct dirent* from_DIRENT;
+    DIR* from_DIR = opendir (dirname);
+
+    if (!from_DIR)
+        return;
+
+    while ((from_DIRENT = readdir (from_DIR)) != NULL) {
+
+        // skip "." and ".." folders
+
+        if (strcmp (from_DIRENT->d_name, ".") != 0 && strcmp (from_DIRENT->d_name, "..") != 0) {
+
+            string base_path = string (string (dirname) + "/" + string (from_DIRENT->d_name));
+
+            if (from_DIRENT->d_type == DT_REG)
+                result->push_back (base_path);
+
+            lfs_get_dir_filenames (base_path.c_str (), result);
         }
     }
 
-    closedir (dir);
+    closedir (from_DIR);
+}
+
+int LazyFS::lfs_recursive_rename (const char* from, const char* to, unsigned int flags) {
+
+    std::vector<string> from_dir_filepaths;
+    lfs_get_dir_filenames (from, &from_dir_filepaths);
+
+    // Check if destination folder exists
+
+    struct stat to_stat;
+    if (!stat (to, &to_stat) && S_ISDIR (to_stat.st_mode)) {
+
+        // destination folder exists and is a directory
+        // prepend with new prepend and merge
+
+        int is_empty = lfs_is_dir_empty (to);
+
+        if (is_empty == 1) {
+
+            goto replace_prepend;
+
+        } else if (is_empty == 0) {
+
+            errno = ENOTEMPTY;
+
+            return -1;
+        }
+
+    } else {
+
+    replace_prepend:
+
+        // destination folder doesn't exist
+        // all 'from' paths should be replaced with the new prepend
+
+        for (auto const& it : from_dir_filepaths) {
+
+            lfs_unlink (to);
+
+            this_ ()->FSCache->rename_item (it, string (to + it.substr (string (from).size ())))
+                ? 0
+                : -1;
+        }
+    }
 
     return 0;
 }
@@ -964,17 +1014,17 @@ int LazyFS::lfs_rename (const char* from, const char* to, unsigned int flags) {
 
     bool exists_last_owner = this_ ()->FSCache->has_content_cached (last_owner);
 
-    lfs_unlink (to);
-
     if (!exists_last_owner) {
 
         // from: is a dir, because getattr does not cache dirs
 
-        lfs_recursive_rename (from, to, flags, new_owner, last_owner);
+        lfs_recursive_rename (from, to, flags);
 
         res = rename (from, to);
 
     } else {
+
+        lfs_unlink (to);
 
         res = this_ ()->FSCache->rename_item (last_owner, new_owner) ? 0 : -1;
 
@@ -1122,7 +1172,8 @@ int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_fil
     if (locked)
         this_ ()->FSCache->unlockItem (owner);
 
-    // todo: should file times update after truncate, even if truncate_size == current file size?
+    // todo: should file times update after truncate, even if truncate_size == current file
+    // size?
 
     // this_ ()->FSCache->print_cache ();
     // this_ ()->FSCache->print_engine ();

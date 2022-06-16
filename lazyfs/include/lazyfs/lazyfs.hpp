@@ -16,6 +16,7 @@
 #include <lazyfs/fusepp/Fuse-impl.h>
 #include <lazyfs/fusepp/Fuse.h>
 #include <thread>
+#include <vector>
 
 using namespace cache;
 
@@ -96,20 +97,31 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
     void command_checkpoint ();
 
     /**
+     * @brief Checks whether a directory is empty of not by counting the number of entries.
+     *        It must be <= 2 to be empty, only containing "." and ".."
+     *
+     * @param dirname the path for the directory
+     * @return int 1 if is empty, 0 if not empty and -1 if an error occurred
+     */
+    static int lfs_is_dir_empty (const char* dirname);
+
+    /**
+     * @brief Returns a vector with the list of regular file names of all childs of a directory
+     *
+     * @param dirname the directory path
+     * @param result list of filenames
+     */
+    static void lfs_get_dir_filenames (const char* dirname, std::vector<string>* result);
+
+    /**
      * @brief Calls rename recursively to all child files and directories
      *
      * @param from the current subpath
      * @param to desired path
      * @param flags fuse rename flags
-     * @param new_prepend desired path prefix
-     * @param last_prepend last prefix to remove
      * @return int
      */
-    static int lfs_recursive_rename (const char* from,
-                                     const char* to,
-                                     unsigned int flags,
-                                     string new_prepend,
-                                     string last_prepend);
+    static int lfs_recursive_rename (const char* from, const char* to, unsigned int flags);
 
     static void* lfs_init (struct fuse_conn_info*, struct fuse_config* cfg);
 
