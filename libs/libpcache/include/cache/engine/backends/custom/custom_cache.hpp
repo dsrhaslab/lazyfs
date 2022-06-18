@@ -173,13 +173,13 @@ class CustomCacheEngine : public PageCacheEngine {
     void print_page_cache_engine ();
     double get_engine_usage ();
     bool remove_cached_blocks (string content_owner_id);
-    bool sync_pages (string owner, size_t size);
+    bool sync_pages (string owner, off_t size);
     void make_block_readable_to_offset (string cid, int page_id, int block_id, int offset);
     bool rename_owner_pages (string old_owner, string new_owner);
     bool truncate_cached_blocks (string content_owner_id,
                                  unordered_map<int, int> blocks_to_remove,
                                  int from_block_id,
-                                 int index_inside_block);
+                                 off_t index_inside_block);
 };
 
 } // namespace cache::engine::backends::custom

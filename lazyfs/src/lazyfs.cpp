@@ -116,10 +116,14 @@ int LazyFS::lfs_getattr (const char* path, struct stat* stbuf, struct fuse_file_
 
         if (meta != nullptr) {
 
-            off_t get_size  = (off_t)meta->size;
-            long remainder  = get_size / this_ ()->FSConfig->IO_BLOCK_SIZE;
-            blkcnt_t blocks = ((remainder + 1) * (long)this_ ()->FSConfig->IO_BLOCK_SIZE) /
-                              (long)this_ ()->FSConfig->DISK_SECTOR_SIZE;
+            off_t get_size            = meta->size;
+            blkcnt_t blocks_ioblksize = 0;
+
+            if (get_size > 0)
+                blocks_ioblksize = ((get_size - 1) / this_ ()->FSConfig->IO_BLOCK_SIZE) + 1;
+
+            blkcnt_t blocks = (blocks_ioblksize * this_ ()->FSConfig->IO_BLOCK_SIZE) /
+                              this_ ()->FSConfig->DISK_SECTOR_SIZE;
 
             // std::printf ("\tgetattr file size = %d\n", (int)get_size);
 
@@ -352,8 +356,8 @@ int LazyFS::lfs_write (const char* path,
 
         bool locked_this = this_ ()->FSCache->lockItemCheckExists (OWNER);
 
-        bool cache_had_owner = this_ ()->FSCache->has_content_cached (OWNER);
-        int FILE_SIZE_BEFORE = 0;
+        bool cache_had_owner   = this_ ()->FSCache->has_content_cached (OWNER);
+        off_t FILE_SIZE_BEFORE = 0;
 
         if (!locked_this || not cache_had_owner) {
 
@@ -375,7 +379,7 @@ int LazyFS::lfs_write (const char* path,
 
         if (fi != NULL) {
 
-            int file_size_offset = FILE_SIZE_BEFORE - 1;
+            off_t file_size_offset = FILE_SIZE_BEFORE - 1;
 
             if (file_size_offset < offset) {
 
@@ -384,7 +388,7 @@ int LazyFS::lfs_write (const char* path,
 
                 // std::printf ("calling a sparse write...\n");
 
-                int size_to_fill = offset - std::max (file_size_offset, 0);
+                off_t size_to_fill = offset - std::max (file_size_offset, (off_t)0);
 
                 if (size_to_fill > 0) {
 
@@ -604,7 +608,7 @@ int LazyFS::lfs_write (const char* path,
 
         bool locked = this_ ()->FSCache->lockItemCheckExists (OWNER);
 
-        int was_written_until_offset = offset + size;
+        off_t was_written_until_offset = offset + size;
 
         Metadata meta;
         meta.size = was_written_until_offset > FILE_SIZE_BEFORE ? was_written_until_offset
@@ -1083,16 +1087,16 @@ int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_fil
             2: Content exists? Fill size_before -> size with zeros
         */
 
-        size_t IO_BLOCK_SIZE       = this_ ()->FSConfig->IO_BLOCK_SIZE;
-        int file_size              = previous_metadata->size;
-        int add_bytes_from_offset  = file_size;
-        int add_bytes_total        = truncate_size - add_bytes_from_offset;
-        int blk_low                = add_bytes_from_offset / IO_BLOCK_SIZE;
-        int blk_high               = (add_bytes_from_offset + add_bytes_total - 1) / IO_BLOCK_SIZE;
-        int blk_readable_from      = 0;
-        int blk_readable_to        = 0;
-        int data_allocated         = 0;
-        bool caching_blocks_failed = false;
+        size_t IO_BLOCK_SIZE        = this_ ()->FSConfig->IO_BLOCK_SIZE;
+        off_t file_size             = previous_metadata->size;
+        off_t add_bytes_from_offset = file_size;
+        off_t add_bytes_total       = truncate_size - add_bytes_from_offset;
+        int blk_low                 = add_bytes_from_offset / IO_BLOCK_SIZE;
+        int blk_high                = (add_bytes_from_offset + add_bytes_total - 1) / IO_BLOCK_SIZE;
+        int blk_readable_from       = 0;
+        int blk_readable_to         = 0;
+        off_t data_allocated        = 0;
+        bool caching_blocks_failed  = false;
 
         char buf[IO_BLOCK_SIZE];
         memset (buf, '0', IO_BLOCK_SIZE);
@@ -1171,12 +1175,6 @@ int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_fil
 
     if (locked)
         this_ ()->FSCache->unlockItem (owner);
-
-    // todo: should file times update after truncate, even if truncate_size == current file
-    // size?
-
-    // this_ ()->FSCache->print_cache ();
-    // this_ ()->FSCache->print_engine ();
 
     if (res == -1)
         return -errno;

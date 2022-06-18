@@ -136,7 +136,7 @@ class PageCacheEngine {
      * @return true the pages were synced
      * @return false the content was not found
      */
-    virtual bool sync_pages (string owner, size_t size) = 0;
+    virtual bool sync_pages (string owner, off_t size) = 0;
 
     /**
      * @brief Renames the content associated with an owner to the new owner
@@ -162,7 +162,7 @@ class PageCacheEngine {
     virtual bool truncate_cached_blocks (string content_owner_id,
                                          unordered_map<int, int> blocks_to_remove,
                                          int from_block_id,
-                                         int index_inside_block) = 0;
+                                         off_t index_inside_block) = 0;
 };
 
 } // namespace cache::engine

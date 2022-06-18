@@ -467,7 +467,7 @@ void CustomCacheEngine::make_block_readable_to_offset (string cid,
     }
 }
 
-bool CustomCacheEngine::sync_pages (string owner, size_t size) {
+bool CustomCacheEngine::sync_pages (string owner, off_t size) {
 
     std::unique_lock<std::shared_mutex> lock (lock_cache_mtx);
 
@@ -479,11 +479,11 @@ bool CustomCacheEngine::sync_pages (string owner, size_t size) {
 
     if (this->owner_pages_mapping.find (owner) != this->owner_pages_mapping.end ()) {
 
-        int wrote_bytes = 0;
-        int page_streak = 0;
+        off_t wrote_bytes = 0;
+        off_t page_streak = 0;
 
         auto const& iterate_blocks = this->owner_ordered_pages_mapping.at (owner);
-        int page_streak_last_offset =
+        off_t page_streak_last_offset =
             (iterate_blocks.begin ()->first) * this->config->IO_BLOCK_SIZE;
 
         vector<tuple<int, Page*, pair<int, int>>> page_chunk;
@@ -580,7 +580,7 @@ bool CustomCacheEngine::rename_owner_pages (string old_owner, string new_owner) 
 bool CustomCacheEngine::truncate_cached_blocks (string content_owner_id,
                                                 unordered_map<int, int> blocks_to_remove,
                                                 int from_block_id,
-                                                int index_inside_block) {
+                                                off_t index_inside_block) {
 
     std::unique_lock<std::shared_mutex> lock (lock_cache_mtx);
 
