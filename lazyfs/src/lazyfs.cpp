@@ -1099,7 +1099,7 @@ int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_fil
         bool caching_blocks_failed  = false;
 
         char buf[IO_BLOCK_SIZE];
-        memset (buf, '0', IO_BLOCK_SIZE);
+        memset (buf, 0, IO_BLOCK_SIZE);
 
         for (int CURR_BLK_IDX = blk_low; CURR_BLK_IDX <= blk_high; CURR_BLK_IDX++) {
 
