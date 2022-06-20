@@ -71,11 +71,10 @@ void* LazyFS::lfs_init (struct fuse_conn_info* conn, struct fuse_config* cfg) {
 
     (void)conn;
 
-    // cfg->direct_io = 1;
-
     cfg->entry_timeout    = 0;
     cfg->attr_timeout     = 0;
     cfg->negative_timeout = 0;
+    // cfg->direct_io        = 1;
 
     new (this_ ()->faults_handler_thread) std::thread (this_ ()->fht_worker, this_ ());
 
@@ -745,6 +744,9 @@ int LazyFS::lfs_read (const char* path,
 
     for (int CURR_BLK_IDX = blk_low; CURR_BLK_IDX <= blk_high; CURR_BLK_IDX++) {
 
+        if ((CURR_BLK_IDX * IO_BLOCK_SIZE) > meta.size)
+            break;
+
         blk_readable_from = (CURR_BLK_IDX == blk_low) ? (offset % IO_BLOCK_SIZE) : 0;
 
         if (CURR_BLK_IDX == blk_high)
@@ -807,7 +809,6 @@ int LazyFS::lfs_read (const char* path,
                 if (read_to < (IO_BLOCK_SIZE - 1) && CURR_BLK_IDX < blk_high) {
 
                     memset (buf + BUF_ITERATOR + read_to, 0, IO_BLOCK_SIZE - read_to);
-                    BUF_ITERATOR += IO_BLOCK_SIZE - read_to;
                 }
 
                 data_allocated += (read_to - blk_readable_from) + 1;
@@ -874,10 +875,6 @@ int LazyFS::lfs_read (const char* path,
     // ---------------------------------------------------------
 
     res = BUF_ITERATOR;
-
-    // std::printf ("\tfile size %d read return %d bytes\n", (int)meta.size, (int)res);
-
-    // close (fd_caching);
 
     if (res == -1)
         res = -errno;
