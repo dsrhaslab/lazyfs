@@ -293,7 +293,7 @@ bool Cache::_delete_item (string cid) {
     return true;
 }
 
-bool Cache::truncate_item (string owner, int new_size) {
+bool Cache::truncate_item (string owner, off_t new_size) {
 
     lockCache ();
 
@@ -318,8 +318,8 @@ bool Cache::truncate_item (string owner, int new_size) {
         return true;
     }
 
-    int truncate_from_block_id    = new_size / this->cache_config->IO_BLOCK_SIZE;
-    int truncate_from_block_index = new_size % this->cache_config->IO_BLOCK_SIZE;
+    int truncate_from_block_id      = new_size / this->cache_config->IO_BLOCK_SIZE;
+    off_t truncate_from_block_index = new_size % this->cache_config->IO_BLOCK_SIZE;
 
     auto res = item->get_data ()->truncate_blocks_after (truncate_from_block_id,
                                                          truncate_from_block_index);
@@ -351,7 +351,7 @@ int Cache::sync_owner (string owner, bool only_sync_data) {
 
     // sync data
 
-    size_t last_size = get_content_metadata (owner)->size;
+    off_t last_size = get_content_metadata (owner)->size;
 
     res = this->engine->sync_pages (owner, last_size);
 

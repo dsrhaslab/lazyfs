@@ -262,7 +262,7 @@ class Cache {
      * @return true item exists
      * @return false item does not exist
      */
-    bool truncate_item (string owner, int new_size);
+    bool truncate_item (string owner, off_t new_size);
 
     /**
      * @brief Performs a full checkpoint for uncached data

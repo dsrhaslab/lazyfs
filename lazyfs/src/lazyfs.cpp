@@ -18,6 +18,7 @@
 #include <thread>
 #include <tuple>
 #include <unistd.h>
+#include <vector>
 
 // include in one .cpp file
 #include <cache/cache.hpp>
@@ -70,11 +71,10 @@ void* LazyFS::lfs_init (struct fuse_conn_info* conn, struct fuse_config* cfg) {
 
     (void)conn;
 
-    // cfg->direct_io = 1;
-
     cfg->entry_timeout    = 0;
     cfg->attr_timeout     = 0;
     cfg->negative_timeout = 0;
+    // cfg->direct_io        = 1;
 
     new (this_ ()->faults_handler_thread) std::thread (this_ ()->fht_worker, this_ ());
 
@@ -115,10 +115,14 @@ int LazyFS::lfs_getattr (const char* path, struct stat* stbuf, struct fuse_file_
 
         if (meta != nullptr) {
 
-            off_t get_size  = (off_t)meta->size;
-            long remainder  = get_size / this_ ()->FSConfig->IO_BLOCK_SIZE;
-            blkcnt_t blocks = ((remainder + 1) * (long)this_ ()->FSConfig->IO_BLOCK_SIZE) /
-                              (long)this_ ()->FSConfig->DISK_SECTOR_SIZE;
+            off_t get_size            = meta->size;
+            blkcnt_t blocks_ioblksize = 0;
+
+            if (get_size > 0)
+                blocks_ioblksize = ((get_size - 1) / this_ ()->FSConfig->IO_BLOCK_SIZE) + 1;
+
+            blkcnt_t blocks = (blocks_ioblksize * this_ ()->FSConfig->IO_BLOCK_SIZE) /
+                              this_ ()->FSConfig->DISK_SECTOR_SIZE;
 
             // std::printf ("\tgetattr file size = %d\n", (int)get_size);
 
@@ -351,8 +355,8 @@ int LazyFS::lfs_write (const char* path,
 
         bool locked_this = this_ ()->FSCache->lockItemCheckExists (OWNER);
 
-        bool cache_had_owner = this_ ()->FSCache->has_content_cached (OWNER);
-        int FILE_SIZE_BEFORE = 0;
+        bool cache_had_owner   = this_ ()->FSCache->has_content_cached (OWNER);
+        off_t FILE_SIZE_BEFORE = 0;
 
         if (!locked_this || not cache_had_owner) {
 
@@ -374,7 +378,7 @@ int LazyFS::lfs_write (const char* path,
 
         if (fi != NULL) {
 
-            int file_size_offset = FILE_SIZE_BEFORE - 1;
+            off_t file_size_offset = FILE_SIZE_BEFORE - 1;
 
             if (file_size_offset < offset) {
 
@@ -383,7 +387,7 @@ int LazyFS::lfs_write (const char* path,
 
                 // std::printf ("calling a sparse write...\n");
 
-                int size_to_fill = offset - std::max (file_size_offset, 0);
+                off_t size_to_fill = offset - std::max (file_size_offset, (off_t)0);
 
                 if (size_to_fill > 0) {
 
@@ -603,7 +607,7 @@ int LazyFS::lfs_write (const char* path,
 
         bool locked = this_ ()->FSCache->lockItemCheckExists (OWNER);
 
-        int was_written_until_offset = offset + size;
+        off_t was_written_until_offset = offset + size;
 
         Metadata meta;
         meta.size = was_written_until_offset > FILE_SIZE_BEFORE ? was_written_until_offset
@@ -740,6 +744,9 @@ int LazyFS::lfs_read (const char* path,
 
     for (int CURR_BLK_IDX = blk_low; CURR_BLK_IDX <= blk_high; CURR_BLK_IDX++) {
 
+        if ((CURR_BLK_IDX * IO_BLOCK_SIZE) > meta.size)
+            break;
+
         blk_readable_from = (CURR_BLK_IDX == blk_low) ? (offset % IO_BLOCK_SIZE) : 0;
 
         if (CURR_BLK_IDX == blk_high)
@@ -802,7 +809,6 @@ int LazyFS::lfs_read (const char* path,
                 if (read_to < (IO_BLOCK_SIZE - 1) && CURR_BLK_IDX < blk_high) {
 
                     memset (buf + BUF_ITERATOR + read_to, 0, IO_BLOCK_SIZE - read_to);
-                    BUF_ITERATOR += IO_BLOCK_SIZE - read_to;
                 }
 
                 data_allocated += (read_to - blk_readable_from) + 1;
@@ -870,10 +876,6 @@ int LazyFS::lfs_read (const char* path,
 
     res = BUF_ITERATOR;
 
-    // std::printf ("\tfile size %d read return %d bytes\n", (int)meta.size, (int)res);
-
-    // close (fd_caching);
-
     if (res == -1)
         res = -errno;
 
@@ -905,6 +907,99 @@ int LazyFS::lfs_fsync (const char* path, int isdatasync, struct fuse_file_info* 
     return res;
 }
 
+int LazyFS::lfs_is_dir_empty (const char* dirname) {
+
+    struct dirent* from_DIRENT;
+    DIR* from_DIR = opendir (dirname);
+
+    if (!from_DIR)
+        return -1;
+
+    int nr_files = 0;
+
+    while ((from_DIRENT = readdir (from_DIR)) != NULL) {
+
+        if (++nr_files > 2)
+            break;
+    }
+
+    closedir (from_DIR);
+
+    return (nr_files <= 2) ? 1 : 0;
+}
+
+void LazyFS::lfs_get_dir_filenames (const char* dirname, std::vector<string>* result) {
+
+    struct dirent* from_DIRENT;
+    DIR* from_DIR = opendir (dirname);
+
+    if (!from_DIR)
+        return;
+
+    while ((from_DIRENT = readdir (from_DIR)) != NULL) {
+
+        // skip "." and ".." folders
+
+        if (strcmp (from_DIRENT->d_name, ".") != 0 && strcmp (from_DIRENT->d_name, "..") != 0) {
+
+            string base_path = string (string (dirname) + "/" + string (from_DIRENT->d_name));
+
+            if (from_DIRENT->d_type == DT_REG)
+                result->push_back (base_path);
+
+            lfs_get_dir_filenames (base_path.c_str (), result);
+        }
+    }
+
+    closedir (from_DIR);
+}
+
+int LazyFS::lfs_recursive_rename (const char* from, const char* to, unsigned int flags) {
+
+    std::vector<string> from_dir_filepaths;
+    lfs_get_dir_filenames (from, &from_dir_filepaths);
+
+    // Check if destination folder exists
+
+    struct stat to_stat;
+    if (!stat (to, &to_stat) && S_ISDIR (to_stat.st_mode)) {
+
+        // destination folder exists and is a directory
+        // prepend with new prepend and merge
+
+        int is_empty = lfs_is_dir_empty (to);
+
+        if (is_empty == 1) {
+
+            goto replace_prepend;
+
+        } else if (is_empty == 0) {
+
+            errno = ENOTEMPTY;
+
+            return -1;
+        }
+
+    } else {
+
+    replace_prepend:
+
+        // destination folder doesn't exist
+        // all 'from' paths should be replaced with the new prepend
+
+        for (auto const& it : from_dir_filepaths) {
+
+            lfs_unlink (to);
+
+            this_ ()->FSCache->rename_item (it, string (to + it.substr (string (from).size ())))
+                ? 0
+                : -1;
+        }
+    }
+
+    return 0;
+}
+
 int LazyFS::lfs_rename (const char* from, const char* to, unsigned int flags) {
 
     if (this_ ()->FSConfig->log_all_operations)
@@ -918,16 +1013,27 @@ int LazyFS::lfs_rename (const char* from, const char* to, unsigned int flags) {
     string last_owner (from);
     string new_owner (to);
 
-    lfs_unlink (to);
+    bool exists_last_owner = this_ ()->FSCache->has_content_cached (last_owner);
 
-    res = this_ ()->FSCache->rename_item (last_owner, new_owner) ? 0 : -1;
+    if (!exists_last_owner) {
 
-    res = rename (from, to);
+        // from: is a dir, because getattr does not cache dirs
 
-    if (this_ ()->FSConfig->sync_after_rename)
-        this_ ()->FSCache->sync_owner (new_owner, true);
+        lfs_recursive_rename (from, to, flags);
 
-    // std::printf ("\trename:: rename returned %d\n", res);
+        res = rename (from, to);
+
+    } else {
+
+        lfs_unlink (to);
+
+        res = this_ ()->FSCache->rename_item (last_owner, new_owner) ? 0 : -1;
+
+        res = rename (from, to);
+
+        if (this_ ()->FSConfig->sync_after_rename)
+            this_ ()->FSCache->sync_owner (new_owner, true);
+    }
 
     if (res == -1)
         return -errno;
@@ -978,16 +1084,16 @@ int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_fil
             2: Content exists? Fill size_before -> size with zeros
         */
 
-        size_t IO_BLOCK_SIZE       = this_ ()->FSConfig->IO_BLOCK_SIZE;
-        int file_size              = previous_metadata->size;
-        int add_bytes_from_offset  = file_size;
-        int add_bytes_total        = truncate_size - add_bytes_from_offset;
-        int blk_low                = add_bytes_from_offset / IO_BLOCK_SIZE;
-        int blk_high               = (add_bytes_from_offset + add_bytes_total - 1) / IO_BLOCK_SIZE;
-        int blk_readable_from      = 0;
-        int blk_readable_to        = 0;
-        int data_allocated         = 0;
-        bool caching_blocks_failed = false;
+        size_t IO_BLOCK_SIZE        = this_ ()->FSConfig->IO_BLOCK_SIZE;
+        off_t file_size             = previous_metadata->size;
+        off_t add_bytes_from_offset = file_size;
+        off_t add_bytes_total       = truncate_size - add_bytes_from_offset;
+        int blk_low                 = add_bytes_from_offset / IO_BLOCK_SIZE;
+        int blk_high                = (add_bytes_from_offset + add_bytes_total - 1) / IO_BLOCK_SIZE;
+        int blk_readable_from       = 0;
+        int blk_readable_to         = 0;
+        off_t data_allocated        = 0;
+        bool caching_blocks_failed  = false;
 
         char buf[IO_BLOCK_SIZE];
         memset (buf, 0, IO_BLOCK_SIZE);
@@ -1066,11 +1172,6 @@ int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_fil
 
     if (locked)
         this_ ()->FSCache->unlockItem (owner);
-
-    // todo: should file times update after truncate, even if truncate_size == current file size?
-
-    // this_ ()->FSCache->print_cache ();
-    // this_ ()->FSCache->print_engine ();
 
     if (res == -1)
         return -errno;

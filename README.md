@@ -18,7 +18,7 @@ Our filesystem implements several system calls that query our custom page cache 
 
 ## Installation
 
-LazyFS was tested with **ext4** (default mount options) as the underlying filesystem in both Debian 11 (bullseye) and Ubuntu 20.04 (focal) environment. It is C++14 compliant and requires the following packages to be installed:
+LazyFS was tested with **ext4** (default mount options) as the underlying filesystem in both Debian 11 (bullseye) and Ubuntu 20.04 (focal) environment. It is C++17 compliant and requires the following packages to be installed:
 
 -   **CMake** (>= 3.10) and **g++** (>= 9.4.0):
 
@@ -153,3 +153,9 @@ This section displays the next tasks and some documentation resources:
 -   Access/Modify/Change times: https://stackoverflow.com/questions/3385203/what-is-the-access-time-in-unix
 -   FUSE Cheatsheet: https://www.cs.hmc.edu/~geoff/classes/hmc.cs137.201801/homework/fuse/fuse_doc.html
 -   FUSE Unclear Functions: https://www.cs.nmsu.edu/~pfeiffer/fuse-tutorial/html/unclear.html
+
+## Contact
+
+For more information please contact:
+
+* João Azevedo - [joao.azevedo@inesctec.pt](mailto:joao.azevedo@inesctec.pt)
