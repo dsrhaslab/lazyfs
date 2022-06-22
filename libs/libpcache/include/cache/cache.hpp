@@ -16,6 +16,7 @@
 #include <iostream>
 #include <map>
 #include <mutex>
+#include <shared_mutex>
 #include <unordered_map>
 
 using namespace std;
@@ -34,6 +35,8 @@ namespace cache {
 
 class Cache {
 
+    std::shared_mutex lock_cache_mtx;
+
   private:
     /**
      * @brief A cache configuration object
@@ -49,7 +52,7 @@ class Cache {
      * @brief Maps each content to a lock mutex
      *
      */
-    unordered_map<string, mutex*> item_locks;
+    unordered_map<string, shared_mutex*> item_locks;
     /**
      * @brief Cache engine abstraction object
      *
@@ -200,18 +203,6 @@ class Cache {
      * @return false the item was not locked
      */
     bool lockItemCheckExists (string cid);
-
-    /**
-     * @brief Locks the cache globally.
-     *
-     */
-    void lockCache ();
-
-    /**
-     * @brief Unlocks the cache.
-     *
-     */
-    void unlockCache ();
 
     /**
      * @brief Get the cache usage in pages

@@ -26,12 +26,6 @@ using namespace cache::engine;
 
 namespace cache {
 
-/**
- * @brief A global cache mutex
- *
- */
-static mutex lock_cache_mtx;
-
 Cache::Cache (cache::config::Config* cache_config, PageCacheEngine* choosenEngine) {
 
     cache_config->print_config ();
@@ -88,16 +82,18 @@ Item* Cache::_get_content_ptr (string cid) {
 
 bool Cache::is_block_cached (string cid, int blk_id) {
 
-    lockCache ();
+    std::unique_lock<shared_mutex> lock (lock_cache_mtx, std::defer_lock);
+
+    lock.lock ();
 
     if (has_content_cached (cid)) {
         lockItem (cid);
-        unlockCache ();
+        lock.unlock ();
         int page = this->contents.at (cid)->get_data ()->get_page_id (blk_id);
         unlockItem (cid);
         return this->engine->is_block_cached (cid, page, blk_id);
     } else {
-        unlockCache ();
+        lock.unlock ();
     }
 
     return false;
@@ -132,15 +128,11 @@ Item* Cache::_create_item (string cid) {
 
     Item* cid_item = new Item ();
 
-    this->item_locks.insert (make_pair (cid, new mutex ()));
+    this->item_locks.insert (make_pair (cid, new shared_mutex ()));
     this->contents.insert (make_pair (cid, cid_item));
 
     return cid_item;
 }
-
-void Cache::lockCache () { lock_cache_mtx.lock (); }
-
-void Cache::unlockCache () { lock_cache_mtx.unlock (); }
 
 void Cache::lockItem (string cid) {
 
@@ -148,7 +140,11 @@ void Cache::lockItem (string cid) {
     ilock->lock ();
 }
 
-void Cache::unlockItem (string cid) { this->item_locks.at (cid)->unlock (); }
+void Cache::unlockItem (string cid) {
+
+    auto const& ilock = this->item_locks.at (cid);
+    ilock->unlock ();
+}
 
 pair<int, int> Cache::_get_readable_offsets (string cid, Item* item, int blk_id) {
 
@@ -171,7 +167,9 @@ map<int, bool> Cache::put_data_blocks (string cid,
 
     map<int, tuple<int, const char*, size_t, int>> put_mapping;
 
-    lockCache ();
+    std::unique_lock<shared_mutex> lock (lock_cache_mtx, std::defer_lock);
+
+    lock.lock ();
 
     Item* item = _get_content_ptr (cid);
 
@@ -180,7 +178,7 @@ map<int, bool> Cache::put_data_blocks (string cid,
         item = _create_item (cid);
 
     lockItem (cid);
-    unlockCache ();
+    lock.unlock ();
 
     for (auto const& it : blocks) {
 
@@ -230,15 +228,16 @@ map<int, bool> Cache::put_data_blocks (string cid,
 // if block was not found, block_data == null
 map<int, pair<bool, pair<int, int>>> Cache::get_data_blocks (string cid, map<int, char*> blocks) {
 
-    lockCache ();
+    std::unique_lock<shared_mutex> lock (lock_cache_mtx, std::defer_lock);
+    lock.lock ();
 
     if (!has_content_cached (cid)) {
-        unlockCache ();
+        lock.unlock ();
         return {};
     }
 
     lockItem (cid);
-    unlockCache ();
+    lock.unlock ();
 
     Item* item = _get_content_ptr (cid);
 
@@ -282,7 +281,7 @@ bool Cache::_delete_item (string cid) {
         delete item;
         if (!this->item_locks.empty () &&
             (this->item_locks.find (cid) != this->item_locks.end ())) {
-            std::mutex* mtx = this->item_locks.at (cid);
+            std::shared_mutex* mtx = this->item_locks.at (cid);
             mtx->unlock ();
             this->item_locks.erase (cid);
             delete mtx;
@@ -295,15 +294,16 @@ bool Cache::_delete_item (string cid) {
 
 bool Cache::truncate_item (string owner, off_t new_size) {
 
-    lockCache ();
+    std::unique_lock<shared_mutex> lock (lock_cache_mtx, std::defer_lock);
+    lock.lock ();
 
     if (not has_content_cached (owner)) {
-        unlockCache ();
+        lock.unlock ();
         return false;
     }
 
     lockItem (owner);
-    unlockCache ();
+    lock.unlock ();
 
     Item* item = _get_content_ptr (owner);
 
@@ -336,16 +336,17 @@ bool Cache::truncate_item (string owner, off_t new_size) {
 
 int Cache::sync_owner (string owner, bool only_sync_data) {
 
-    lockCache ();
+    std::unique_lock<shared_mutex> lock (lock_cache_mtx, std::defer_lock);
+    lock.lock ();
 
     if (!has_content_cached (owner)) {
 
-        unlockCache ();
+        lock.unlock ();
         return -1;
     }
 
     lockItem (owner);
-    unlockCache ();
+    lock.unlock ();
 
     int res;
 
@@ -376,18 +377,19 @@ int Cache::sync_owner (string owner, bool only_sync_data) {
 
 bool Cache::rename_item (string old_cid, string new_cid) {
 
-    lockCache ();
+    std::unique_lock<shared_mutex> lock (lock_cache_mtx, std::defer_lock);
+    lock.lock ();
 
     if (not has_content_cached (old_cid)) {
-        unlockCache ();
+        lock.unlock ();
         return false;
     }
 
     lockItem (old_cid);
-    unlockCache ();
+    lock.unlock ();
 
-    Item* old_item        = _get_content_ptr (old_cid);
-    std::mutex* old_mutex = this->item_locks.at (old_cid);
+    Item* old_item               = _get_content_ptr (old_cid);
+    std::shared_mutex* old_mutex = this->item_locks.at (old_cid);
 
     this->contents.erase (old_cid);
     this->item_locks.erase (old_cid);
@@ -402,10 +404,11 @@ bool Cache::rename_item (string old_cid, string new_cid) {
 
 bool Cache::remove_cached_item (string owner) {
 
-    lockCache ();
+    std::unique_lock<shared_mutex> lock (lock_cache_mtx, std::defer_lock);
+    lock.lock ();
 
     if (not has_content_cached (owner)) {
-        unlockCache ();
+        lock.unlock ();
         return false;
     }
 
@@ -414,7 +417,7 @@ bool Cache::remove_cached_item (string owner) {
     this->engine->remove_cached_blocks (owner);
     this->_delete_item (owner);
 
-    unlockCache ();
+    lock.unlock ();
 
     return true;
 }
@@ -435,10 +438,11 @@ void Cache::clear_all_cache () {
 
 bool Cache::lockItemCheckExists (string cid) {
 
-    lockCache ();
+    std::unique_lock<shared_mutex> lock (lock_cache_mtx, std::defer_lock);
+    lock.lock ();
 
     if (not has_content_cached (cid)) {
-        unlockCache ();
+        lock.unlock ();
         return false;
     }
 
@@ -446,12 +450,12 @@ bool Cache::lockItemCheckExists (string cid) {
 
         lockItem (cid);
 
-        unlockCache ();
+        lock.unlock ();
         return true;
 
     } catch (...) {
 
-        unlockCache ();
+        lock.unlock ();
 
         return false;
     }
