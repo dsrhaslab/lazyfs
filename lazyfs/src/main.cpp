@@ -10,6 +10,7 @@
 #include <cache/config/config.hpp>
 #include <errno.h>
 #include <lazyfs/lazyfs.hpp>
+#include <lazyfs/utilities.hpp>
 #include <string>
 #include <thread>
 #include <unistd.h>
@@ -26,11 +27,11 @@ void fht_worker (LazyFS* filesystem) {
 
     int fd;
     if ((fd = open (std_config.FIFO_PATH.c_str (), O_RDWR)) < 0) {
-        std::printf ("\t[faults] fifo opening failed: (error) %s\n", strerror (errno));
+        _print_with_time ("[faults] fifo opening failed: (error) " + string (strerror (errno)));
         return;
     }
 
-    std::printf ("\t[faults] worker is waiting for fault messages...\n");
+    _print_with_time ("[faults] worker is waiting for fault commands...");
 
     char buffer[MAX_READ_CHUNK];
 
@@ -43,25 +44,25 @@ void fht_worker (LazyFS* filesystem) {
 
             if (!strcmp (buffer, "lazyfs::clear-cache")) {
 
-                std::printf ("\t\t[command]: <%s>\n", buffer);
+                _print_with_time ("[command]: <" + string (buffer) + ">");
                 filesystem->command_fault_clear_cache ();
 
             } else if (!strcmp (buffer, "lazyfs::display-cache-usage")) {
 
-                std::printf ("\t\t[command]: <%s>\n", buffer);
+                _print_with_time ("[command]: <" + string (buffer) + ">");
                 filesystem->command_display_cache_usage ();
 
             } else if (!strcmp (buffer, "lazyfs::cache-checkpoint")) {
 
-                std::printf ("\t\t[command]: <%s>\n", buffer);
+                _print_with_time ("[command]: <" + string (buffer) + ">");
                 filesystem->command_checkpoint ();
+            } else {
+                _print_with_time ("[command]: unknown <" + string (buffer) + ">");
             }
 
         } else
             break;
     }
-
-    std::printf ("\t[faults] worker exited (read returned %d)...\n", ret);
 
     close (fd);
 }
@@ -77,11 +78,12 @@ int main (int argc, char* argv[]) {
     for (i = 0, new_argc = 0; (i < argc) && (new_argc < MAX_ARGS); i++)
         if (!strcmp (argv[i], "--config-path")) {
             if (strcasestr (argv[i + 1], "-o")) {
-                std::printf ("[lazyfs] path not specified, using path 'config/default.toml'...\n");
+                _print_with_time (
+                    "[lazyfs] path not specified, using path 'config/default.toml'...");
 
             } else {
                 config_path = argv[i + 1];
-                std::printf ("[lazyfs] config path %s...\n", argv[i++ + 1]);
+                _print_with_time ("[lazyfs] config path " + string (argv[i++ + 1]));
                 path_specified = true;
             }
         } else
@@ -90,23 +92,24 @@ int main (int argc, char* argv[]) {
     if (!path_specified)
         config_path = "config/default.toml";
 
-    std::printf ("[lazyfs] starting the lazy filesystem...\n");
+    _print_with_time ("[lazyfs] starting LazyFS...");
 
     std_config.load_config (config_path);
 
-    std::printf ("\t[faults] trying to create fifo %s...\n", std_config.FIFO_PATH.c_str ());
+    _print_with_time ("[faults] trying to create fifo " + std_config.FIFO_PATH);
 
     if (mkfifo (std_config.FIFO_PATH.c_str (), 0777) < 0) {
         if (errno != EEXIST) {
-            std::printf ("\t[faults] could not create faults fifo: (error) %s\n", strerror (errno));
-            std::printf ("[lazyfs] stopping the lazy filesystem...\n");
+            _print_with_time ("[faults] could not create faults fifo: (error) " +
+                              string (strerror (errno)));
+            _print_with_time ("[lazyfs] stopping LazyFS...");
             return -1;
         } else
-            std::printf ("\t[faults] faults fifo exists, setting up worker...\n");
+            _print_with_time ("[faults] faults fifo exists, setting up worker...");
     } else
-        std::printf ("\t[faults] fifo created.\n");
+        _print_with_time ("[faults] fifo created.");
 
-    std::printf ("[lazyfs] reading configuration...\n");
+    _print_with_time ("[lazyfs] reading configuration...");
 
     CustomCacheEngine* engine = new CustomCacheEngine (&std_config);
     Cache* cache              = new Cache (&std_config, engine);

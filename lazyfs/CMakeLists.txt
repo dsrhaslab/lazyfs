@@ -20,6 +20,7 @@ add_executable(${CMAKE_PROJECT_NAME})
 target_sources(
     ${CMAKE_PROJECT_NAME}
     PUBLIC
+    ${PROJECT_SOURCE_DIR}/include/lazyfs/utilities.hpp
     ${PROJECT_SOURCE_DIR}/include/lazyfs/lazyfs.hpp
     ${PROJECT_SOURCE_DIR}/include/lazyfs/fusepp/Fuse.cpp
     ${PROJECT_SOURCE_DIR}/include/lazyfs/fusepp/Fuse-impl.h
@@ -29,6 +30,7 @@ target_sources(
 target_sources(
     ${CMAKE_PROJECT_NAME}
     PRIVATE
+    src/utilities.cpp
     src/lazyfs.cpp
     src/main.cpp
 )

@@ -7,7 +7,9 @@
  *
  */
 
+#include <chrono>
 #include <cmath>
+#include <ctime>
 #include <dirent.h>
 #include <iostream>
 #include <lazyfs/lazyfs.hpp>
@@ -20,12 +22,13 @@
 #include <unistd.h>
 #include <vector>
 
-// include in one .cpp file
+// LazyFS specific imports
 #include <cache/cache.hpp>
 #include <cache/config/config.hpp>
 #include <cache/constants/constants.hpp>
 #include <cache/engine/backends/custom/custom_cache.hpp>
 #include <lazyfs/fusepp/Fuse-impl.h>
+#include <lazyfs/utilities.hpp>
 
 using namespace std;
 using namespace cache;
@@ -50,21 +53,22 @@ LazyFS::~LazyFS () {}
 
 void LazyFS::command_fault_clear_cache () {
 
-    std::printf ("\t\t\t[cache]: clearing cached contents...\n");
+    _print_with_time ("[cache]: clearing cached contents...");
     FSCache->clear_all_cache ();
-    std::printf ("\t\t\t[cache]: cache is now empty.\n");
+    _print_with_time ("[cache]: cache is now empty.");
 }
 
 void LazyFS::command_display_cache_usage () {
 
-    std::printf ("\t\t\t[cache] current pages usage: %0.2lf %% \n", FSCache->get_cache_usage ());
+    _print_with_time (
+        "[cache] current pages usage: " + std::to_string (FSCache->get_cache_usage ()) + "%");
 }
 
 void LazyFS::command_checkpoint () {
 
-    std::printf ("\t\t\t[cache]: performing checkpoint...\n");
+    _print_with_time ("[cache]: performing checkpoint...");
     FSCache->full_checkpoint ();
-    std::printf ("\t\t\t[cache]: checkpoint done.\n");
+    _print_with_time ("[cache]: checkpoint done...");
 }
 
 void* LazyFS::lfs_init (struct fuse_conn_info* conn, struct fuse_config* cfg) {
@@ -86,7 +90,7 @@ void LazyFS::lfs_destroy (void*) {}
 int LazyFS::lfs_getattr (const char* path, struct stat* stbuf, struct fuse_file_info* fi) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        std::printf ("getattr::(path=%s, ...)\n", path);
+        _print_with_time ("getattr::(path=" + string (path) + ", ...)");
 
     (void)fi;
     int res;
@@ -179,7 +183,8 @@ int LazyFS::lfs_readdir (const char* path,
                          enum fuse_readdir_flags flags) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        std::printf ("readdir::(path=%s, offset=%d, ...)\n", path, (int)offset);
+        _print_with_time ("readdir::(path=" + string (path) + ", offset=" + to_string (offset) +
+                          " ...)");
 
     DIR* dp;
     struct dirent* de;
@@ -220,10 +225,11 @@ int LazyFS::lfs_open (const char* path, struct fuse_file_info* fi) {
     int access_mode = fi->flags & O_ACCMODE;
 
     if (this_ ()->FSConfig->log_all_operations)
-        std::printf ("open::(path=%s, mode=%s...)\n",
-                     path,
-                     access_mode == O_TRUNC ? "O_TRUNC"
-                                            : access_mode == O_WRONLY ? "O_WRONLY" : "O_OTHER");
+        _print_with_time ("open::(path=" + string (path) + ", mode=" +
+                          (((access_mode == O_TRUNC) || (fi->flags & O_TRUNC))
+                               ? "O_TRUNC"
+                               : access_mode == O_WRONLY ? "O_WRONLY" : "O_OTHER") +
+                          " ...)");
 
     string owner (path);
     struct timespec time_register;
@@ -274,10 +280,11 @@ int LazyFS::lfs_create (const char* path, mode_t mode, struct fuse_file_info* fi
     int access_mode = fi->flags & O_ACCMODE;
 
     if (this_ ()->FSConfig->log_all_operations)
-        std::printf ("create::(path=%s, mode=%s...)\n",
-                     path,
-                     access_mode == O_TRUNC ? "O_TRUNC"
-                                            : access_mode == O_WRONLY ? "O_WRONLY" : "O_OTHER");
+        _print_with_time ("create::(path=" + string (path) + ", mode=" +
+                          (((access_mode == O_TRUNC) || (fi->flags & O_TRUNC))
+                               ? "O_TRUNC"
+                               : access_mode == O_WRONLY ? "O_WRONLY" : "O_OTHER") +
+                          " ...)");
 
     string owner (path);
     struct timespec time_register;
@@ -323,7 +330,8 @@ int LazyFS::lfs_write (const char* path,
                        struct fuse_file_info* fi) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        std::printf ("write::(path=%s, size=%d, offset=%d)\n", path, (int)size, (int)offset);
+        _print_with_time ("write::(path=" + string (path) + ", size=" + to_string (size) +
+                          ", offset=" + to_string (offset) + " ...)");
 
     int fd;
     int res;
@@ -663,7 +671,8 @@ int LazyFS::lfs_read (const char* path,
                       struct fuse_file_info* fi) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        std::printf ("read::(path=%s,size=%d,offset=%d, ...)\n", path, (int)size, (int)offset);
+        _print_with_time ("read::(path=" + string (path) + ", size=" + to_string (size) +
+                          ", offset=" + to_string (offset) + " ...)");
 
     int fd;
     int res;
@@ -891,7 +900,8 @@ int LazyFS::lfs_read (const char* path,
 int LazyFS::lfs_fsync (const char* path, int isdatasync, struct fuse_file_info* fi) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        std::printf ("fsync::(path=%s, isdatasync=%d, ...)\n", path, isdatasync);
+        _print_with_time ("fsync::(path=" + string (path) +
+                          ", isdatasync=" + to_string (isdatasync) + " ...)");
 
     string owner (path);
 
@@ -1003,7 +1013,7 @@ int LazyFS::lfs_recursive_rename (const char* from, const char* to, unsigned int
 int LazyFS::lfs_rename (const char* from, const char* to, unsigned int flags) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        std::printf ("rename::(from=%s,to=%s, ...)\n", from, to);
+        _print_with_time ("rename::(from=" + string (from) + ", to=" + string (to) + " ...)");
 
     int res;
 
@@ -1044,7 +1054,8 @@ int LazyFS::lfs_rename (const char* from, const char* to, unsigned int flags) {
 int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_file_info* fi) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        std::printf ("truncate::(path=%s, size=%zu, ...)\n", path, truncate_size);
+        _print_with_time ("truncate::(path=" + string (path) +
+                          ", size=" + to_string (truncate_size) + " ...)");
 
     int res;
 
@@ -1182,7 +1193,7 @@ int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_fil
 int LazyFS::lfs_symlink (const char* from, const char* to) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        std::printf ("symlink::(from=%s, to=%s...)\n", from, to);
+        _print_with_time ("symlink::(from=" + string (from) + ", to=" + string (to) + " ...)");
 
     int res;
 
@@ -1196,7 +1207,7 @@ int LazyFS::lfs_symlink (const char* from, const char* to) {
 int LazyFS::lfs_access (const char* path, int mask) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        std::printf ("access::(path=%s, ...)\n", path);
+        _print_with_time ("access::(path=" + string (path) + " ...)");
 
     int res;
 
@@ -1210,7 +1221,7 @@ int LazyFS::lfs_access (const char* path, int mask) {
 int LazyFS::lfs_mkdir (const char* path, mode_t mode) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        std::printf ("mkdir::(path=%s, ...)\n", path);
+        _print_with_time ("mkdir::(path=" + string (path) + " ...)");
 
     int res;
 
@@ -1224,7 +1235,7 @@ int LazyFS::lfs_mkdir (const char* path, mode_t mode) {
 int LazyFS::lfs_link (const char* from, const char* to) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        std::printf ("link::(from=%s, to=%s...)\n", from, to);
+        _print_with_time ("link::(from=" + string (from) + ", to=" + string (to) + " ...)");
 
     int res;
 
@@ -1238,7 +1249,7 @@ int LazyFS::lfs_link (const char* from, const char* to) {
 int LazyFS::lfs_readlink (const char* path, char* buf, size_t size) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        std::printf ("readlink::(path=%s...)\n", path);
+        _print_with_time ("readlink::(path=" + string (path) + " ...)");
 
     int res;
 
@@ -1253,7 +1264,7 @@ int LazyFS::lfs_readlink (const char* path, char* buf, size_t size) {
 int LazyFS::lfs_release (const char* path, struct fuse_file_info* fi) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        std::printf ("release::(path=%s...)\n", path);
+        _print_with_time ("release::(path=" + string (path) + " ...)");
 
     (void)path;
 
@@ -1265,7 +1276,7 @@ int LazyFS::lfs_release (const char* path, struct fuse_file_info* fi) {
 int LazyFS::lfs_rmdir (const char* path) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        std::printf ("rmdir::(path=%s...)\n", path);
+        _print_with_time ("rmdir::(path=" + string (path) + " ...)");
 
     int res;
 
@@ -1279,7 +1290,7 @@ int LazyFS::lfs_rmdir (const char* path) {
 int LazyFS::lfs_chmod (const char* path, mode_t mode, struct fuse_file_info* fi) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        std::printf ("chmod::(path=%s...)\n", path);
+        _print_with_time ("chmod::(path=" + string (path) + " ...)");
 
     (void)fi;
     int res;
@@ -1294,7 +1305,7 @@ int LazyFS::lfs_chmod (const char* path, mode_t mode, struct fuse_file_info* fi)
 int LazyFS::lfs_chown (const char* path, uid_t uid, gid_t gid, fuse_file_info* fi) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        std::printf ("chown::(path=%s...)\n", path);
+        _print_with_time ("chown::(path=" + string (path) + " ...)");
 
     (void)fi;
     int res;
@@ -1359,7 +1370,7 @@ int LazyFS::lfs_removexattr (const char* path, const char* name) {
 int LazyFS::lfs_utimens (const char* path, const struct timespec ts[2], struct fuse_file_info* fi) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        std::printf ("utimens::(path=%s)\n", path);
+        _print_with_time ("utimens::(path=" + string (path) + " ...)");
 
     (void)fi;
     int res;
@@ -1376,7 +1387,7 @@ int LazyFS::lfs_utimens (const char* path, const struct timespec ts[2], struct f
 off_t LazyFS::lfs_lseek (const char* path, off_t off, int whence, struct fuse_file_info* fi) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        std::printf ("lseek::(path=%s, off=%d, ...)\n", path, (int)off);
+        _print_with_time ("lseek::(path=" + string (path) + ", off=" + to_string (off) + " ...)");
 
     int fd;
     off_t res;
@@ -1402,7 +1413,7 @@ off_t LazyFS::lfs_lseek (const char* path, off_t off, int whence, struct fuse_fi
 int LazyFS::lfs_unlink (const char* path) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        std::printf ("unlink::(path=%s, ...)\n", path);
+        _print_with_time ("unlink::(path=" + string (path) + " ...)");
 
     int res;
 
