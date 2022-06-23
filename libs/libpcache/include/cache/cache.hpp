@@ -52,7 +52,7 @@ class Cache {
      * @brief Maps each content to a lock mutex
      *
      */
-    unordered_map<string, shared_mutex*> item_locks;
+    unordered_map<string, std::shared_mutex*> item_locks;
     /**
      * @brief Cache engine abstraction object
      *

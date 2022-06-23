@@ -20,6 +20,7 @@
 #include <sys/xattr.h>
 #include <thread>
 #include <tuple>
+#include <utility>
 
 using namespace std;
 using namespace cache::engine;
@@ -42,9 +43,9 @@ Cache::~Cache () {
         delete it.second;
     }
 
-    for (auto const& it : this->item_locks) {
-        delete it.second;
-    }
+    // for (auto const& it : this->item_locks) {
+    //     delete it.second;
+    // }
 
     // delete this->cache_config;
 }
@@ -82,21 +83,17 @@ Item* Cache::_get_content_ptr (string cid) {
 
 bool Cache::is_block_cached (string cid, int blk_id) {
 
-    std::unique_lock<shared_mutex> lock (lock_cache_mtx, std::defer_lock);
+    std::lock_guard<shared_mutex> lock (lock_cache_mtx);
 
-    lock.lock ();
+    bool is_cached = false;
 
     if (has_content_cached (cid)) {
-        lockItem (cid);
-        lock.unlock ();
-        int page = this->contents.at (cid)->get_data ()->get_page_id (blk_id);
-        unlockItem (cid);
-        return this->engine->is_block_cached (cid, page, blk_id);
-    } else {
-        lock.unlock ();
+
+        int page  = this->contents.at (cid)->get_data ()->get_page_id (blk_id);
+        is_cached = this->engine->is_block_cached (cid, page, blk_id);
     }
 
-    return false;
+    return is_cached;
 }
 
 // returns true if content was found and metadata updated
@@ -128,23 +125,15 @@ Item* Cache::_create_item (string cid) {
 
     Item* cid_item = new Item ();
 
-    this->item_locks.insert (make_pair (cid, new shared_mutex ()));
+    this->item_locks.insert (make_pair (cid, new std::shared_mutex ()));
     this->contents.insert (make_pair (cid, cid_item));
 
     return cid_item;
 }
 
-void Cache::lockItem (string cid) {
+void Cache::lockItem (string cid) { item_locks[cid]->lock (); }
 
-    auto const& ilock = this->item_locks.at (cid);
-    ilock->lock ();
-}
-
-void Cache::unlockItem (string cid) {
-
-    auto const& ilock = this->item_locks.at (cid);
-    ilock->unlock ();
-}
+void Cache::unlockItem (string cid) { item_locks[cid]->unlock (); }
 
 pair<int, int> Cache::_get_readable_offsets (string cid, Item* item, int blk_id) {
 
@@ -168,7 +157,6 @@ map<int, bool> Cache::put_data_blocks (string cid,
     map<int, tuple<int, const char*, size_t, int>> put_mapping;
 
     std::unique_lock<shared_mutex> lock (lock_cache_mtx, std::defer_lock);
-
     lock.lock ();
 
     Item* item = _get_content_ptr (cid);
@@ -281,10 +269,8 @@ bool Cache::_delete_item (string cid) {
         delete item;
         if (!this->item_locks.empty () &&
             (this->item_locks.find (cid) != this->item_locks.end ())) {
-            std::shared_mutex* mtx = this->item_locks.at (cid);
-            mtx->unlock ();
+            unlockItem (cid);
             this->item_locks.erase (cid);
-            delete mtx;
         }
         this->contents.erase (cid);
     }
@@ -377,27 +363,22 @@ int Cache::sync_owner (string owner, bool only_sync_data) {
 
 bool Cache::rename_item (string old_cid, string new_cid) {
 
-    std::unique_lock<shared_mutex> lock (lock_cache_mtx, std::defer_lock);
-    lock.lock ();
+    std::unique_lock<shared_mutex> lock (lock_cache_mtx);
 
     if (not has_content_cached (old_cid)) {
-        lock.unlock ();
         return false;
     }
 
-    lockItem (old_cid);
-    lock.unlock ();
+    auto locked_item_mutex = item_locks[old_cid];
+    std::unique_lock<std::shared_mutex> lock_item (*locked_item_mutex);
 
-    Item* old_item               = _get_content_ptr (old_cid);
-    std::shared_mutex* old_mutex = this->item_locks.at (old_cid);
+    Item* old_item = _get_content_ptr (old_cid);
 
     this->contents.erase (old_cid);
     this->item_locks.erase (old_cid);
 
     this->contents.insert (std::make_pair (new_cid, old_item));
-    this->item_locks.insert (std::make_pair (new_cid, old_mutex));
-
-    old_mutex->unlock ();
+    this->item_locks.insert (std::make_pair (new_cid, locked_item_mutex));
 
     return this->engine->rename_owner_pages (old_cid, new_cid);
 }
@@ -438,11 +419,9 @@ void Cache::clear_all_cache () {
 
 bool Cache::lockItemCheckExists (string cid) {
 
-    std::unique_lock<shared_mutex> lock (lock_cache_mtx, std::defer_lock);
-    lock.lock ();
+    std::lock_guard<shared_mutex> lock (lock_cache_mtx);
 
     if (not has_content_cached (cid)) {
-        lock.unlock ();
         return false;
     }
 
@@ -450,15 +429,9 @@ bool Cache::lockItemCheckExists (string cid) {
 
         lockItem (cid);
 
-        lock.unlock ();
         return true;
 
-    } catch (...) {
-
-        lock.unlock ();
-
-        return false;
-    }
+    } catch (...) { return false; }
 }
 
 void Cache::full_checkpoint () {
