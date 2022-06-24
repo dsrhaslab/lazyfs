@@ -48,3 +48,5 @@ build/
 
 # Vscode files
 .vscode/**
+
+*.log
