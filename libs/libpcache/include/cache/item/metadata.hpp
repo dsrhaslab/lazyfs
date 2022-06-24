@@ -24,6 +24,11 @@ class Metadata {
 
   public:
     /**
+     * @brief Number of hard links associated with the inode
+     *
+     */
+    nlink_t nlinks;
+    /**
      * @brief Item size in bytes
      *
      */

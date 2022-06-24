@@ -39,6 +39,11 @@ class Cache {
 
   private:
     /**
+     * @brief Maps filenames to the corresponding inodes
+     *
+     */
+    unordered_map<string, string> file_inode_mapping;
+    /**
      * @brief A cache configuration object
      *
      */
@@ -227,7 +232,7 @@ class Cache {
      * @param only_sync_data only sync data from content
      * @return int true if item was removed
      */
-    int sync_owner (string owner, bool only_sync_data);
+    int sync_owner (string owner, bool only_sync_data, char* orig_path);
 
     /**
      * @brief Renames an item id
@@ -260,6 +265,9 @@ class Cache {
      *
      */
     void full_checkpoint ();
+
+    string get_original_inode (string path);
+    void insert_inode_mapping (string path, string inode);
 };
 
 } // namespace cache

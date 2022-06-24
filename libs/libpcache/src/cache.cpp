@@ -33,6 +33,7 @@ Cache::Cache (cache::config::Config* cache_config, PageCacheEngine* choosenEngin
     this->engine       = choosenEngine;
     this->cache_config = cache_config;
     this->contents.reserve (1000);
+    this->file_inode_mapping.reserve (1000);
 }
 
 Cache::~Cache () {
@@ -65,6 +66,24 @@ void Cache::print_cache () {
 }
 
 void Cache::print_engine () { this->engine->print_page_cache_engine (); }
+
+string Cache::get_original_inode (string path) {
+    lock_guard<std::shared_mutex> lock (lock_cache_mtx);
+    if (this->file_inode_mapping.find (path) != this->file_inode_mapping.end ()) {
+        return this->file_inode_mapping.at (path);
+    }
+    return "";
+}
+
+void Cache::insert_inode_mapping (string path, string inode) {
+
+    lock_guard<std::shared_mutex> lock (lock_cache_mtx);
+    this->file_inode_mapping[path] = inode;
+    Metadata* oldmeta              = get_content_metadata (inode);
+    Metadata newmeta;
+    newmeta.nlinks = oldmeta->nlinks + 1;
+    this->update_content_metadata (inode, newmeta, {"nlinks"});
+}
 
 bool Cache::has_content_cached (string cid) {
 
@@ -320,7 +339,7 @@ bool Cache::truncate_item (string owner, off_t new_size) {
     return true;
 }
 
-int Cache::sync_owner (string owner, bool only_sync_data) {
+int Cache::sync_owner (string owner, bool only_sync_data, char* orig_path) {
 
     std::unique_lock<shared_mutex> lock (lock_cache_mtx, std::defer_lock);
     lock.lock ();
@@ -340,7 +359,7 @@ int Cache::sync_owner (string owner, bool only_sync_data) {
 
     off_t last_size = get_content_metadata (owner)->size;
 
-    res = this->engine->sync_pages (owner, last_size);
+    res = this->engine->sync_pages (owner, last_size, orig_path);
 
     if (not only_sync_data) {
 
@@ -363,24 +382,16 @@ int Cache::sync_owner (string owner, bool only_sync_data) {
 
 bool Cache::rename_item (string old_cid, string new_cid) {
 
-    std::unique_lock<shared_mutex> lock (lock_cache_mtx);
+    std::lock_guard<shared_mutex> lock (lock_cache_mtx);
 
-    if (not has_content_cached (old_cid)) {
-        return false;
+    if (this->file_inode_mapping.find (old_cid) != this->file_inode_mapping.end ()) {
+        string inode = this->file_inode_mapping.at (old_cid);
+        this->file_inode_mapping.erase (old_cid);
+        this->file_inode_mapping[new_cid] = inode;
+        return true;
     }
 
-    auto locked_item_mutex = item_locks[old_cid];
-    std::unique_lock<std::shared_mutex> lock_item (*locked_item_mutex);
-
-    Item* old_item = _get_content_ptr (old_cid);
-
-    this->contents.erase (old_cid);
-    this->item_locks.erase (old_cid);
-
-    this->contents.insert (std::make_pair (new_cid, old_item));
-    this->item_locks.insert (std::make_pair (new_cid, locked_item_mutex));
-
-    return this->engine->rename_owner_pages (old_cid, new_cid);
+    return false;
 }
 
 bool Cache::remove_cached_item (string owner) {
@@ -389,6 +400,12 @@ bool Cache::remove_cached_item (string owner) {
     lock.lock ();
 
     if (not has_content_cached (owner)) {
+        lock.unlock ();
+        return false;
+    }
+
+    Item* item = _get_content_ptr (owner);
+    if (item->get_metadata ()->nlinks > 1) {
         lock.unlock ();
         return false;
     }
@@ -436,8 +453,8 @@ bool Cache::lockItemCheckExists (string cid) {
 
 void Cache::full_checkpoint () {
 
-    for (auto const& it : this->contents)
-        this->sync_owner (it.first, false);
+    for (auto const& it : this->file_inode_mapping)
+        this->sync_owner (it.second, false, (char*)it.first.c_str ());
 }
 
 } // namespace cache

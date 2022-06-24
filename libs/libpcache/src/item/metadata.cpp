@@ -37,7 +37,10 @@ int timespec2str (char* buf, int len, struct timespec* ts) {
     return 0;
 }
 
-Metadata::Metadata () { size = 0; }
+Metadata::Metadata () {
+    size   = 0;
+    nlinks = 1;
+}
 
 void Metadata::print_metadata () {
 
@@ -49,12 +52,13 @@ void Metadata::print_metadata () {
     timespec2str (mtime_buf, sizeof (mtime_buf), &this->mtim);
     timespec2str (ctime_buf, sizeof (ctime_buf), &this->ctim);
 
-    std::printf (
-        "\t\t> size = %d\n\t\t> access_time = %s\n\t\t> modify_time = %s\n\t\t> change_time = %s\n",
-        (int)this->size,
-        atime_buf,
-        mtime_buf,
-        ctime_buf);
+    std::printf ("\t\t> size = %d\n\t\t> access_time = %s\n\t\t> modify_time = %s\n\t\t> "
+                 "change_time = %s\n\t\t> nlinks = %lu\n",
+                 (int)this->size,
+                 atime_buf,
+                 mtime_buf,
+                 ctime_buf,
+                 nlinks);
 }
 
 } // namespace cache::item

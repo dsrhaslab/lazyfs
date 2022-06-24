@@ -44,6 +44,8 @@ void Item::update_metadata (Metadata new_meta, vector<string> values_to_update) 
             oldmeta->ctim = new_meta.ctim;
         else if (str == "mtime")
             oldmeta->mtim = new_meta.mtim;
+        else if (str == "nlinks")
+            oldmeta->nlinks = new_meta.nlinks;
     }
 }
 

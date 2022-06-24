@@ -79,6 +79,7 @@ void* LazyFS::lfs_init (struct fuse_conn_info* conn, struct fuse_config* cfg) {
     cfg->entry_timeout    = 0;
     cfg->attr_timeout     = 0;
     cfg->negative_timeout = 0;
+    cfg->use_ino          = 1;
     // cfg->direct_io        = 1;
 
     new (this_ ()->faults_handler_thread) std::thread (this_ ()->fht_worker, this_ ());
@@ -91,7 +92,7 @@ void LazyFS::lfs_destroy (void*) {}
 int LazyFS::lfs_getattr (const char* path, struct stat* stbuf, struct fuse_file_info* fi) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        _print_with_time ("getattr::(path=" + string (path) + ", ...)");
+        _print_with_time ("[fs] getattr::(path=" + string (path) + ", ...)");
 
     (void)fi;
     int res;
@@ -106,17 +107,43 @@ int LazyFS::lfs_getattr (const char* path, struct stat* stbuf, struct fuse_file_
     if (not S_ISREG (stbuf->st_mode))
         return 0;
 
-    bool locked = this_ ()->FSCache->lockItemCheckExists (content_owner);
+    string inode = this_ ()->FSCache->get_original_inode (content_owner);
+    bool locked  = this_ ()->FSCache->lockItemCheckExists (inode);
 
-    if (locked) {
+    if (!locked && inode.empty ()) {
+
+        inode = to_string (stbuf->st_ino);
+
+        this_ ()->FSCache->put_data_blocks (inode, {}, OP_PASSTHROUGH);
+        this_ ()->FSCache->insert_inode_mapping (content_owner, inode);
+        bool locked = this_ ()->FSCache->lockItemCheckExists (inode);
+
+        if (locked) {
+
+            Metadata meta;
+            meta.size   = stbuf->st_size;
+            meta.atim   = stbuf->st_atim;
+            meta.ctim   = stbuf->st_ctim;
+            meta.mtim   = stbuf->st_mtim;
+            meta.nlinks = stbuf->st_nlink;
+
+            this_ ()->FSCache->update_content_metadata (
+                inode,
+                meta,
+                {"size", "atime", "ctime", "mtime", "nlinks"});
+
+            this_ ()->FSCache->unlockItem (inode);
+        }
+
+    } else if (locked) {
 
         /*
-            Content is cached, must return cached metadata
-            to override existing values:
-            - size, atime, ctime, mtime
-        */
+        Content is cached, must return cached metadata
+        to override existing values:
+        - size, atime, ctime, mtime
+    */
 
-        Metadata* meta = this_ ()->FSCache->get_content_metadata (content_owner);
+        Metadata* meta = this_ ()->FSCache->get_content_metadata (inode);
 
         if (meta != nullptr) {
 
@@ -129,8 +156,6 @@ int LazyFS::lfs_getattr (const char* path, struct stat* stbuf, struct fuse_file_
             blkcnt_t blocks = (blocks_ioblksize * this_ ()->FSConfig->IO_BLOCK_SIZE) /
                               this_ ()->FSConfig->DISK_SECTOR_SIZE;
 
-            // std::printf ("\tgetattr file size = %d\n", (int)get_size);
-
             stbuf->st_size         = get_size;
             stbuf->st_blocks       = blocks;
             stbuf->st_atim.tv_nsec = meta->atim.tv_nsec;
@@ -139,39 +164,13 @@ int LazyFS::lfs_getattr (const char* path, struct stat* stbuf, struct fuse_file_
             stbuf->st_ctim.tv_sec  = meta->ctim.tv_sec;
             stbuf->st_mtim.tv_nsec = meta->mtim.tv_nsec;
             stbuf->st_mtim.tv_sec  = meta->mtim.tv_sec;
+            stbuf->st_nlink        = meta->nlinks;
         }
 
-        if (locked)
-            this_ ()->FSCache->unlockItem (content_owner);
-
-    } else {
-
-        /*
-            Content is not cached, cache this values:
-            - size, atime, ctime, mtime
-        */
-
-        this_ ()->FSCache->put_data_blocks (content_owner, {}, OP_PASSTHROUGH);
-        bool locked = this_ ()->FSCache->lockItemCheckExists (content_owner);
-
-        if (locked) {
-
-            // std::printf ("\tgetattr file size = %d\n", (int)stbuf->st_size);
-
-            Metadata meta;
-            meta.size = stbuf->st_size;
-            meta.atim = stbuf->st_atim;
-            meta.ctim = stbuf->st_ctim;
-            meta.mtim = stbuf->st_mtim;
-
-            this_ ()->FSCache->update_content_metadata (content_owner,
-                                                        meta,
-                                                        {"size", "atime", "ctime", "mtime"});
-
-            if (locked)
-                this_ ()->FSCache->unlockItem (content_owner);
-        }
+        this_ ()->FSCache->unlockItem (inode);
     }
+
+    this_ ()->FSCache->print_cache ();
 
     return 0;
 }
@@ -184,8 +183,8 @@ int LazyFS::lfs_readdir (const char* path,
                          enum fuse_readdir_flags flags) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        _print_with_time ("readdir::(path=" + string (path) + ", offset=" + to_string (offset) +
-                          " ...)");
+        _print_with_time ("[fs] readdir::(path=" + string (path) +
+                          ", offset=" + to_string (offset) + " ...)");
 
     DIR* dp;
     struct dirent* de;
@@ -218,29 +217,31 @@ int LazyFS::lfs_open (const char* path, struct fuse_file_info* fi) {
 
     res = open (path, fi->flags);
 
-    // --------------------------------------------------------------------------
+    string owner (path);
+    string inode = this_ ()->FSCache->get_original_inode (owner);
 
-    if (fi->flags & O_TRUNC)
-        lfs_truncate (path, 0, fi);
+    // --------------------------------------------------------------------------
 
     int access_mode = fi->flags & O_ACCMODE;
 
     if (this_ ()->FSConfig->log_all_operations)
-        _print_with_time ("open::(path=" + string (path) + ", mode=" +
+        _print_with_time ("[fs] open::(path=" + string (path) + ", mode=" +
                           (((access_mode == O_TRUNC) || (fi->flags & O_TRUNC))
                                ? "O_TRUNC"
                                : access_mode == O_WRONLY ? "O_WRONLY" : "O_OTHER") +
                           " ...)");
 
-    string owner (path);
+    if (fi->flags & O_TRUNC)
+        lfs_truncate (path, 0, fi);
+
     struct timespec time_register;
     clock_gettime (CLOCK_REALTIME, &time_register);
     Metadata meta;
     vector<string> update_meta_values;
 
-    if (!this_ ()->FSCache->has_content_cached (owner)) {
+    if (!this_ ()->FSCache->has_content_cached (inode)) {
         // just to cache the metadata
-        this_ ()->FSCache->put_data_blocks (owner, {}, OP_PASSTHROUGH);
+        this_ ()->FSCache->put_data_blocks (inode, {}, OP_PASSTHROUGH);
         update_meta_values.push_back ("atime");
         meta.atim = time_register;
     }
@@ -257,10 +258,10 @@ int LazyFS::lfs_open (const char* path, struct fuse_file_info* fi) {
         update_meta_values.push_back ("mtime");
     }
 
-    bool locked = this_ ()->FSCache->lockItemCheckExists (owner);
-    this_ ()->FSCache->update_content_metadata (owner, meta, update_meta_values);
+    bool locked = this_ ()->FSCache->lockItemCheckExists (inode);
+    this_ ()->FSCache->update_content_metadata (inode, meta, update_meta_values);
     if (locked)
-        this_ ()->FSCache->unlockItem (owner);
+        this_ ()->FSCache->unlockItem (inode);
 
     // --------------------------------------------------------------------------
 
@@ -278,24 +279,29 @@ int LazyFS::lfs_create (const char* path, mode_t mode, struct fuse_file_info* fi
 
     res = open (path, fi->flags, mode);
 
+    struct stat stbuf;
+    lfs_getattr (path, &stbuf, fi);
+
+    string owner (path);
+    string inode = to_string (stbuf.st_ino);
+
     int access_mode = fi->flags & O_ACCMODE;
 
     if (this_ ()->FSConfig->log_all_operations)
-        _print_with_time ("create::(path=" + string (path) + ", mode=" +
+        _print_with_time ("[fs] create::(path=" + string (path) + ", mode=" +
                           (((access_mode == O_TRUNC) || (fi->flags & O_TRUNC))
                                ? "O_TRUNC"
                                : access_mode == O_WRONLY ? "O_WRONLY" : "O_OTHER") +
                           " ...)");
 
-    string owner (path);
     struct timespec time_register;
     clock_gettime (CLOCK_REALTIME, &time_register);
     Metadata meta;
     vector<string> update_meta_values;
 
-    if (!this_ ()->FSCache->has_content_cached (owner)) {
+    if (!this_ ()->FSCache->has_content_cached (inode)) {
         // just to cache the metadata
-        this_ ()->FSCache->put_data_blocks (owner, {}, OP_PASSTHROUGH);
+        this_ ()->FSCache->put_data_blocks (inode, {}, OP_PASSTHROUGH);
         update_meta_values.push_back ("atime");
         meta.atim = time_register;
     }
@@ -312,10 +318,10 @@ int LazyFS::lfs_create (const char* path, mode_t mode, struct fuse_file_info* fi
         update_meta_values.push_back ("mtime");
     }
 
-    bool locked = this_ ()->FSCache->lockItemCheckExists (owner);
-    this_ ()->FSCache->update_content_metadata (owner, meta, update_meta_values);
+    bool locked = this_ ()->FSCache->lockItemCheckExists (inode);
+    this_ ()->FSCache->update_content_metadata (inode, meta, update_meta_values);
     if (locked)
-        this_ ()->FSCache->unlockItem (owner);
+        this_ ()->FSCache->unlockItem (inode);
 
     if (res == -1)
         return -errno;
@@ -331,7 +337,7 @@ int LazyFS::lfs_write (const char* path,
                        struct fuse_file_info* fi) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        _print_with_time ("write::(path=" + string (path) + ", size=" + to_string (size) +
+        _print_with_time ("[fs] write::(path=" + string (path) + ", size=" + to_string (size) +
                           ", offset=" + to_string (offset) + " ...)");
 
     int fd;
@@ -346,11 +352,13 @@ int LazyFS::lfs_write (const char* path,
     if (fd == -1)
         return -errno;
 
+    std::string OWNER (path);
+
+    string inode = this_ ()->FSCache->get_original_inode (OWNER);
+
     int IO_BLOCK_SIZE = this_ ()->FSConfig->IO_BLOCK_SIZE;
 
     // -------------------------------------------------------------
-
-    std::string OWNER (path);
 
     if (fi != NULL && fi->direct_io) {
 
@@ -362,9 +370,9 @@ int LazyFS::lfs_write (const char* path,
 
         // ----------------------------------------------------------------------------------
 
-        bool locked_this = this_ ()->FSCache->lockItemCheckExists (OWNER);
+        bool locked_this = this_ ()->FSCache->lockItemCheckExists (inode);
 
-        bool cache_had_owner   = this_ ()->FSCache->has_content_cached (OWNER);
+        bool cache_had_owner   = this_ ()->FSCache->has_content_cached (inode);
         off_t FILE_SIZE_BEFORE = 0;
 
         if (!locked_this || not cache_had_owner) {
@@ -376,9 +384,9 @@ int LazyFS::lfs_write (const char* path,
 
         } else if (locked_this) {
 
-            FILE_SIZE_BEFORE = this_ ()->FSCache->get_content_metadata (OWNER)->size;
+            FILE_SIZE_BEFORE = this_ ()->FSCache->get_content_metadata (inode)->size;
 
-            this_ ()->FSCache->unlockItem (OWNER);
+            this_ ()->FSCache->unlockItem (inode);
         }
 
         // std::printf ("\twrite: file size before is %d bytes\n", (int)FILE_SIZE_BEFORE);
@@ -447,7 +455,7 @@ int LazyFS::lfs_write (const char* path,
 
             // data_allocated += blk_readable_to - blk_readable_from + 1;
 
-            bool is_block_cached = this_ ()->FSCache->is_block_cached (OWNER, CURR_BLK_IDX);
+            bool is_block_cached = this_ ()->FSCache->is_block_cached (inode, CURR_BLK_IDX);
 
             if (is_block_cached == false) {
 
@@ -537,7 +545,7 @@ int LazyFS::lfs_write (const char* path,
                         data_allocated += blk_readable_to - blk_readable_from + 1;
 
                         auto put_res = this_ ()->FSCache->put_data_blocks (
-                            OWNER,
+                            inode,
                             {{CURR_BLK_IDX, {cache_buf, cache_wr_sz, cache_from, cache_to}}},
                             OP_WRITE);
 
@@ -581,7 +589,7 @@ int LazyFS::lfs_write (const char* path,
                 data_allocated += blk_readable_to - blk_readable_from + 1;
 
                 auto put_res =
-                    this_ ()->FSCache->put_data_blocks (OWNER,
+                    this_ ()->FSCache->put_data_blocks (inode,
                                                         {{CURR_BLK_IDX,
                                                           {buf + data_buffer_iterator,
                                                            blk_readable_to - blk_readable_from + 1,
@@ -614,7 +622,7 @@ int LazyFS::lfs_write (const char* path,
 
         // ----------------------------------------------------------------------------------
 
-        bool locked = this_ ()->FSCache->lockItemCheckExists (OWNER);
+        bool locked = this_ ()->FSCache->lockItemCheckExists (inode);
 
         off_t was_written_until_offset = offset + size;
 
@@ -636,12 +644,12 @@ int LazyFS::lfs_write (const char* path,
             values_to_change.push_back ("ctime");
         }
 
-        this_ ()->FSCache->update_content_metadata (OWNER, meta, values_to_change);
+        this_ ()->FSCache->update_content_metadata (inode, meta, values_to_change);
 
         // std::printf ("\twrite: file size now is %d bytes\n", (int)meta.size);
 
         if (locked)
-            this_ ()->FSCache->unlockItem (OWNER);
+            this_ ()->FSCache->unlockItem (inode);
 
         close (fd_caching);
     }
@@ -672,7 +680,7 @@ int LazyFS::lfs_read (const char* path,
                       struct fuse_file_info* fi) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        _print_with_time ("read::(path=" + string (path) + ", size=" + to_string (size) +
+        _print_with_time ("[fs] read::(path=" + string (path) + ", size=" + to_string (size) +
                           ", offset=" + to_string (offset) + " ...)");
 
     int fd;
@@ -686,6 +694,9 @@ int LazyFS::lfs_read (const char* path,
     if (fd == -1)
         return -errno;
 
+    std::string OWNER (path);
+    string inode = this_ ()->FSCache->get_original_inode (OWNER);
+
     int IO_BLOCK_SIZE = this_ ()->FSConfig->IO_BLOCK_SIZE;
 
     // ----------------------------------------------------------------------------------
@@ -698,17 +709,16 @@ int LazyFS::lfs_read (const char* path,
     int data_allocated = 0;
 
     char read_buffer[IO_BLOCK_SIZE];
-    std::string OWNER (path);
 
     // ----------------------------------------------------------------------------------
 
-    bool cache_had_owner = this_ ()->FSCache->has_content_cached (OWNER);
+    bool cache_had_owner = this_ ()->FSCache->has_content_cached (inode);
 
     Metadata meta;
     if (not cache_had_owner) {
 
-        this_ ()->FSCache->put_data_blocks (OWNER, {}, OP_PASSTHROUGH);
-        bool locked = this_ ()->FSCache->lockItemCheckExists (OWNER);
+        this_ ()->FSCache->put_data_blocks (inode, {}, OP_PASSTHROUGH);
+        bool locked = this_ ()->FSCache->lockItemCheckExists (inode);
 
         struct stat stats;
 
@@ -719,23 +729,23 @@ int LazyFS::lfs_read (const char* path,
         clock_gettime (CLOCK_REALTIME, &access_time);
         meta.atim = access_time;
 
-        this_ ()->FSCache->update_content_metadata (OWNER, meta, {"size", "atime"});
+        this_ ()->FSCache->update_content_metadata (inode, meta, {"size", "atime"});
 
         if (locked)
-            this_ ()->FSCache->unlockItem (OWNER);
+            this_ ()->FSCache->unlockItem (inode);
 
     } else {
 
-        bool locked = this_ ()->FSCache->lockItemCheckExists (OWNER);
+        bool locked = this_ ()->FSCache->lockItemCheckExists (inode);
 
         if (locked) {
 
-            Metadata* old_meta = this_ ()->FSCache->get_content_metadata (OWNER);
+            Metadata* old_meta = this_ ()->FSCache->get_content_metadata (inode);
 
             if (old_meta != nullptr)
                 meta.size = old_meta->size;
 
-            this_ ()->FSCache->unlockItem (OWNER);
+            this_ ()->FSCache->unlockItem (inode);
         }
 
         // std::printf ("\tread: file has %d bytes\n", (int)meta.size);
@@ -768,7 +778,7 @@ int LazyFS::lfs_read (const char* path,
         else if (CURR_BLK_IDX == blk_high)
             blk_readable_to = size - data_allocated - 1;
 
-        if (this_ ()->FSCache->is_block_cached (OWNER, CURR_BLK_IDX)) {
+        if (this_ ()->FSCache->is_block_cached (inode, CURR_BLK_IDX)) {
 
             if (last_pread_chunk_size > 0) {
 
@@ -798,7 +808,7 @@ int LazyFS::lfs_read (const char* path,
             */
 
             auto GET_BLOCKS_RES =
-                this_ ()->FSCache->get_data_blocks (OWNER, {{CURR_BLK_IDX, read_buffer}});
+                this_ ()->FSCache->get_data_blocks (inode, {{CURR_BLK_IDX, read_buffer}});
 
             if ((GET_BLOCKS_RES.find (CURR_BLK_IDX) != GET_BLOCKS_RES.end ()) and
                 GET_BLOCKS_RES.at (CURR_BLK_IDX).first) {
@@ -901,19 +911,22 @@ int LazyFS::lfs_read (const char* path,
 int LazyFS::lfs_fsync (const char* path, int isdatasync, struct fuse_file_info* fi) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        _print_with_time ("fsync::(path=" + string (path) +
+        _print_with_time ("[fs] fsync::(path=" + string (path) +
                           ", isdatasync=" + to_string (isdatasync) + " ...)");
 
     string owner (path);
+    string inode = this_ ()->FSCache->get_original_inode (owner);
 
-    bool is_owner_cached = this_ ()->FSCache->has_content_cached (owner);
+    bool is_owner_cached = this_ ()->FSCache->has_content_cached (inode);
 
     int res;
 
     if (isdatasync)
-        res = is_owner_cached ? this_ ()->FSCache->sync_owner (owner, true) : fdatasync (fi->fh);
+        res = is_owner_cached ? this_ ()->FSCache->sync_owner (inode, true, (char*)path)
+                              : fdatasync (fi->fh);
     else
-        res = is_owner_cached ? this_ ()->FSCache->sync_owner (owner, false) : fsync (fi->fh);
+        res = is_owner_cached ? this_ ()->FSCache->sync_owner (inode, false, (char*)path)
+                              : fsync (fi->fh);
 
     return res;
 }
@@ -1014,7 +1027,7 @@ int LazyFS::lfs_recursive_rename (const char* from, const char* to, unsigned int
 int LazyFS::lfs_rename (const char* from, const char* to, unsigned int flags) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        _print_with_time ("rename::(from=" + string (from) + ", to=" + string (to) + " ...)");
+        _print_with_time ("[fs] rename::(from=" + string (from) + ", to=" + string (to) + " ...)");
 
     int res;
 
@@ -1022,11 +1035,12 @@ int LazyFS::lfs_rename (const char* from, const char* to, unsigned int flags) {
         return -EINVAL;
 
     string last_owner (from);
+    string inode = this_ ()->FSCache->get_original_inode (last_owner);
     string new_owner (to);
 
-    bool exists_last_owner = this_ ()->FSCache->has_content_cached (last_owner);
+    // bool exists_last_owner = this_ ()->FSCache->has_content_cached (inode);
 
-    if (!exists_last_owner) {
+    if (inode.empty ()) {
 
         // from: is a dir, because getattr does not cache dirs
 
@@ -1043,7 +1057,7 @@ int LazyFS::lfs_rename (const char* from, const char* to, unsigned int flags) {
         res = rename (from, to);
 
         if (this_ ()->FSConfig->sync_after_rename)
-            this_ ()->FSCache->sync_owner (new_owner, true);
+            this_ ()->FSCache->sync_owner (new_owner, true, (char*)to);
     }
 
     if (res == -1)
@@ -1055,14 +1069,15 @@ int LazyFS::lfs_rename (const char* from, const char* to, unsigned int flags) {
 int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_file_info* fi) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        _print_with_time ("truncate::(path=" + string (path) +
+        _print_with_time ("[fs] truncate::(path=" + string (path) +
                           ", size=" + to_string (truncate_size) + " ...)");
 
     int res;
 
     string owner (path);
+    string inode = this_ ()->FSCache->get_original_inode (owner);
 
-    Metadata* previous_metadata = this_ ()->FSCache->get_content_metadata (owner);
+    Metadata* previous_metadata = this_ ()->FSCache->get_content_metadata (inode);
     bool has_content_cached     = previous_metadata != nullptr;
     bool behave_as_lfs_write    = false;
 
@@ -1083,7 +1098,7 @@ int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_fil
         // Since truncate size is the same as the file size, there's nothing to change/truncate.
     }
 
-    if (truncate_size > previous_metadata->size) {
+    if (has_content_cached && truncate_size > previous_metadata->size) {
 
         behave_as_lfs_write = true;
     }
@@ -1100,8 +1115,8 @@ int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_fil
         off_t file_size             = previous_metadata->size;
         off_t add_bytes_from_offset = file_size;
         off_t add_bytes_total       = truncate_size - add_bytes_from_offset;
-        int blk_low                 = add_bytes_from_offset / IO_BLOCK_SIZE;
-        int blk_high                = (add_bytes_from_offset + add_bytes_total - 1) / IO_BLOCK_SIZE;
+        off_t blk_low               = add_bytes_from_offset / IO_BLOCK_SIZE;
+        off_t blk_high              = (add_bytes_from_offset + add_bytes_total - 1) / IO_BLOCK_SIZE;
         int blk_readable_from       = 0;
         int blk_readable_to         = 0;
         off_t data_allocated        = 0;
@@ -1129,7 +1144,7 @@ int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_fil
             data_allocated += blk_readable_to - blk_readable_from + 1;
 
             auto put_res = this_ ()->FSCache->put_data_blocks (
-                owner,
+                inode,
                 {{CURR_BLK_IDX,
                   {buf,
                    (size_t) (blk_readable_to - blk_readable_from + 1),
@@ -1178,12 +1193,12 @@ int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_fil
         values_to_change.push_back ("ctime");
     }
 
-    bool locked = this_ ()->FSCache->lockItemCheckExists (owner);
+    bool locked = this_ ()->FSCache->lockItemCheckExists (inode);
 
-    this_ ()->FSCache->update_content_metadata (owner, new_meta, values_to_change);
+    this_ ()->FSCache->update_content_metadata (inode, new_meta, values_to_change);
 
     if (locked)
-        this_ ()->FSCache->unlockItem (owner);
+        this_ ()->FSCache->unlockItem (inode);
 
     if (res == -1)
         return -errno;
@@ -1194,7 +1209,7 @@ int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_fil
 int LazyFS::lfs_symlink (const char* from, const char* to) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        _print_with_time ("symlink::(from=" + string (from) + ", to=" + string (to) + " ...)");
+        _print_with_time ("[fs] symlink::(from=" + string (from) + ", to=" + string (to) + " ...)");
 
     int res;
 
@@ -1208,7 +1223,7 @@ int LazyFS::lfs_symlink (const char* from, const char* to) {
 int LazyFS::lfs_access (const char* path, int mask) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        _print_with_time ("access::(path=" + string (path) + " ...)");
+        _print_with_time ("[fs] access::(path=" + string (path) + " ...)");
 
     int res;
 
@@ -1222,7 +1237,7 @@ int LazyFS::lfs_access (const char* path, int mask) {
 int LazyFS::lfs_mkdir (const char* path, mode_t mode) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        _print_with_time ("mkdir::(path=" + string (path) + " ...)");
+        _print_with_time ("[fs] mkdir::(path=" + string (path) + " ...)");
 
     int res;
 
@@ -1236,11 +1251,16 @@ int LazyFS::lfs_mkdir (const char* path, mode_t mode) {
 int LazyFS::lfs_link (const char* from, const char* to) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        _print_with_time ("link::(from=" + string (from) + ", to=" + string (to) + " ...)");
+        _print_with_time ("[fs] link::(from=" + string (from) + ", to=" + string (to) + " ...)");
 
     int res;
 
     res = link (from, to);
+
+    string inode = this_ ()->FSCache->get_original_inode (from);
+    if (!inode.empty ())
+        this_ ()->FSCache->insert_inode_mapping (to, inode);
+
     if (res == -1)
         return -errno;
 
@@ -1250,7 +1270,7 @@ int LazyFS::lfs_link (const char* from, const char* to) {
 int LazyFS::lfs_readlink (const char* path, char* buf, size_t size) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        _print_with_time ("readlink::(path=" + string (path) + " ...)");
+        _print_with_time ("[fs] readlink::(path=" + string (path) + " ...)");
 
     int res;
 
@@ -1265,7 +1285,7 @@ int LazyFS::lfs_readlink (const char* path, char* buf, size_t size) {
 int LazyFS::lfs_release (const char* path, struct fuse_file_info* fi) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        _print_with_time ("release::(path=" + string (path) + " ...)");
+        _print_with_time ("[fs] release::(path=" + string (path) + " ...)");
 
     (void)path;
 
@@ -1277,7 +1297,7 @@ int LazyFS::lfs_release (const char* path, struct fuse_file_info* fi) {
 int LazyFS::lfs_rmdir (const char* path) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        _print_with_time ("rmdir::(path=" + string (path) + " ...)");
+        _print_with_time ("[fs] rmdir::(path=" + string (path) + " ...)");
 
     int res;
 
@@ -1291,7 +1311,7 @@ int LazyFS::lfs_rmdir (const char* path) {
 int LazyFS::lfs_chmod (const char* path, mode_t mode, struct fuse_file_info* fi) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        _print_with_time ("chmod::(path=" + string (path) + " ...)");
+        _print_with_time ("[fs] chmod::(path=" + string (path) + " ...)");
 
     (void)fi;
     int res;
@@ -1306,7 +1326,7 @@ int LazyFS::lfs_chmod (const char* path, mode_t mode, struct fuse_file_info* fi)
 int LazyFS::lfs_chown (const char* path, uid_t uid, gid_t gid, fuse_file_info* fi) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        _print_with_time ("chown::(path=" + string (path) + " ...)");
+        _print_with_time ("[fs] chown::(path=" + string (path) + " ...)");
 
     (void)fi;
     int res;
@@ -1371,7 +1391,7 @@ int LazyFS::lfs_removexattr (const char* path, const char* name) {
 int LazyFS::lfs_utimens (const char* path, const struct timespec ts[2], struct fuse_file_info* fi) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        _print_with_time ("utimens::(path=" + string (path) + " ...)");
+        _print_with_time ("[fs] utimens::(path=" + string (path) + " ...)");
 
     (void)fi;
     int res;
@@ -1388,7 +1408,8 @@ int LazyFS::lfs_utimens (const char* path, const struct timespec ts[2], struct f
 off_t LazyFS::lfs_lseek (const char* path, off_t off, int whence, struct fuse_file_info* fi) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        _print_with_time ("lseek::(path=" + string (path) + ", off=" + to_string (off) + " ...)");
+        _print_with_time ("[fs] lseek::(path=" + string (path) + ", off=" + to_string (off) +
+                          " ...)");
 
     int fd;
     off_t res;
@@ -1414,12 +1435,13 @@ off_t LazyFS::lfs_lseek (const char* path, off_t off, int whence, struct fuse_fi
 int LazyFS::lfs_unlink (const char* path) {
 
     if (this_ ()->FSConfig->log_all_operations)
-        _print_with_time ("unlink::(path=" + string (path) + " ...)");
+        _print_with_time ("[fs] unlink::(path=" + string (path) + " ...)");
 
     int res;
 
-    string owner (path);
-    this_ ()->FSCache->remove_cached_item (owner);
+    string inode = this_ ()->FSCache->get_original_inode (path);
+    if (!inode.empty ())
+        this_ ()->FSCache->remove_cached_item (inode);
 
     res = unlink (path);
 
