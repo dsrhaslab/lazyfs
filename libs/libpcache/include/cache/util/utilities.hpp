@@ -16,7 +16,7 @@
 
 using namespace std;
 
-namespace lazyfs {
+namespace cache::util {
 
 /**
  * @brief Gets the string that represents the current date and time
@@ -32,6 +32,6 @@ const std::string current_time_string ();
  */
 void _print_with_time (string msg);
 
-} // namespace lazyfs
+} // namespace cache::util
 
 #endif

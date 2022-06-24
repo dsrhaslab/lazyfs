@@ -10,12 +10,14 @@
 #include <assert.h>
 #include <cache/config/config.hpp>
 #include <cache/constants/constants.hpp>
+#include <cache/util/utilities.hpp>
 #include <iostream>
 #include <math.h>
 #include <sys/types.h>
 #include <toml.hpp>
 
 using namespace std;
+using namespace cache::util;
 
 namespace cache::config {
 
@@ -146,24 +148,20 @@ void Config::print_config () {
 
     size_t total_bytes = this->CACHE_NR_PAGES * this->CACHE_PAGE_SIZE;
 
-    std::printf (
-        "\t[config] Using the following (%s) configuration:\n\t\tNo. of pages = %lu\n\t\tPage "
-        "size (bytes) = %lu\n\t\tBlock "
-        "size (bytes) = %lu\n\t\tBlocks per page = %d\n\t\tApply eviction = %s\n\t\tSync after "
-        "rename = %s\n\t\tTotal = "
-        "%0.3f (KiB) or "
-        "%0.3f (MiB) or "
-        "%0.3f (GiB)\n",
-        this->is_default_config ? "default" : "custom",
-        (size_t)this->CACHE_NR_PAGES,
-        (size_t)this->CACHE_PAGE_SIZE,
-        (size_t)this->IO_BLOCK_SIZE,
-        (int)((size_t)this->CACHE_PAGE_SIZE / (size_t)this->IO_BLOCK_SIZE),
-        this->APPLY_LRU_EVICTION ? "true" : "false",
-        this->sync_after_rename ? "true" : "false",
-        (double)total_bytes / 1024,
-        (double)total_bytes / std::pow (1024, 2),
-        (double)total_bytes / std::pow (1024, 3));
+    _print_with_time ("[config] Using the following (" +
+                      string (this->is_default_config ? "default" : "custom") + ") configuration:");
+    _print_with_time ("[config] No. of pages        = " + to_string (this->CACHE_NR_PAGES));
+    _print_with_time ("[config] Page size (bytes)   = " + to_string (this->CACHE_PAGE_SIZE));
+    _print_with_time ("[config] Block size (bytes)  = " + to_string (this->CACHE_PAGE_SIZE));
+    _print_with_time ("[config] Blocks per page     = " +
+                      to_string (this->CACHE_PAGE_SIZE / this->IO_BLOCK_SIZE));
+    _print_with_time ("[config] Apply page eviction = " +
+                      string (this->APPLY_LRU_EVICTION ? "true" : "false"));
+    _print_with_time ("[config] Apply page eviction = " +
+                      string (this->sync_after_rename ? "true" : "false"));
+    _print_with_time ("[config] Total = " + to_string ((double)total_bytes / 1024) + " (Kib) - " +
+                      to_string ((double)total_bytes / std::pow (1024, 2)) + " (Mib) - " +
+                      to_string ((double)total_bytes / std::pow (1024, 3)) + " (Gib)");
 }
 
 } // namespace cache::config

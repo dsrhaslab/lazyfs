@@ -11,6 +11,7 @@
 #include <assert.h>
 #include <cache/constants/constants.hpp>
 #include <cache/engine/backends/custom/custom_cache.hpp>
+#include <cache/util/utilities.hpp>
 #include <chrono>
 #include <fcntl.h>
 #include <iostream>
@@ -23,6 +24,7 @@
 
 using namespace std;
 using namespace cache::config;
+using namespace cache::util;
 
 namespace cache::engine::backends::custom {
 
@@ -30,9 +32,10 @@ CustomCacheEngine::CustomCacheEngine (cache::config::Config* config) {
 
     this->config = config;
 
-    cout << "\t[engine] Pre-allocating "
-         << ((size_t) (this->config->CACHE_NR_PAGES * this->config->CACHE_PAGE_SIZE))
-         << " bytes...\n";
+    _print_with_time (
+        "[engine] Pre-allocating " +
+        to_string (((size_t) (this->config->CACHE_NR_PAGES * this->config->CACHE_PAGE_SIZE))) +
+        " bytes...");
 
     // pre-allocate all cache pages
     int page_index = 0;
@@ -52,7 +55,7 @@ CustomCacheEngine::CustomCacheEngine (cache::config::Config* config) {
     this->owner_pages_mapping.reserve (500);
     this->owner_ordered_pages_mapping.reserve (500);
 
-    cout << "\t[engine] Pre-allocation finished.\n";
+    _print_with_time ("[engine] Pre-allocation finished");
 }
 
 CustomCacheEngine::~CustomCacheEngine () {

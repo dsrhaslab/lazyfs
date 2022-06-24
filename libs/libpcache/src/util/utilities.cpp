@@ -7,11 +7,11 @@
  *
  */
 
-#include <lazyfs/utilities.hpp>
+#include <cache/util/utilities.hpp>
 
 using namespace std;
 
-namespace lazyfs {
+namespace cache::util {
 
 const std::string current_time_string () {
 
@@ -31,4 +31,4 @@ void _print_with_time (string msg) {
     fflush (stdout);
 }
 
-} // namespace lazyfs
+} // namespace cache::util

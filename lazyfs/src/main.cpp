@@ -8,14 +8,15 @@
  */
 
 #include <cache/config/config.hpp>
+#include <cache/util/utilities.hpp>
 #include <errno.h>
 #include <lazyfs/lazyfs.hpp>
-#include <lazyfs/utilities.hpp>
 #include <string>
 #include <thread>
 #include <unistd.h>
 
 using namespace lazyfs;
+using namespace cache::util;
 
 #define MAX_READ_CHUNK 100
 

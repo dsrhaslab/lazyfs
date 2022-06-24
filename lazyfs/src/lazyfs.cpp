@@ -27,12 +27,13 @@
 #include <cache/config/config.hpp>
 #include <cache/constants/constants.hpp>
 #include <cache/engine/backends/custom/custom_cache.hpp>
+#include <cache/util/utilities.hpp>
 #include <lazyfs/fusepp/Fuse-impl.h>
-#include <lazyfs/utilities.hpp>
 
 using namespace std;
 using namespace cache;
 using namespace cache::engine::backends::custom;
+using namespace cache::util;
 
 namespace lazyfs {
 
