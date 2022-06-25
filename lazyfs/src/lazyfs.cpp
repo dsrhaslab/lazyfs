@@ -108,14 +108,17 @@ int LazyFS::lfs_getattr (const char* path, struct stat* stbuf, struct fuse_file_
         return 0;
 
     string inode = this_ ()->FSCache->get_original_inode (content_owner);
-    bool locked  = this_ ()->FSCache->lockItemCheckExists (inode);
+
+    bool locked = this_ ()->FSCache->lockItemCheckExists (inode);
 
     if (!locked && inode.empty ()) {
 
         inode = to_string (stbuf->st_ino);
 
         this_ ()->FSCache->put_data_blocks (inode, {}, OP_PASSTHROUGH);
+
         this_ ()->FSCache->insert_inode_mapping (content_owner, inode);
+
         bool locked = this_ ()->FSCache->lockItemCheckExists (inode);
 
         if (locked) {
@@ -214,6 +217,9 @@ int LazyFS::lfs_open (const char* path, struct fuse_file_info* fi) {
     int res;
 
     res = open (path, fi->flags);
+
+    struct stat st;
+    lfs_getattr (path, &st, fi);
 
     string owner (path);
     string inode = this_ ()->FSCache->get_original_inode (owner);
@@ -353,6 +359,7 @@ int LazyFS::lfs_write (const char* path,
     std::string OWNER (path);
 
     struct stat stats;
+
     lfs_getattr (path, &stats, fi);
 
     string inode = this_ ()->FSCache->get_original_inode (OWNER);
@@ -376,12 +383,11 @@ int LazyFS::lfs_write (const char* path,
         bool cache_had_owner   = this_ ()->FSCache->has_content_cached (inode);
         off_t FILE_SIZE_BEFORE = 0;
 
-        if (!locked_this || not cache_had_owner) {
+        if (!locked_this) {
 
-            lfs_getattr (path, &stats, fi);
             FILE_SIZE_BEFORE = stats.st_size;
 
-        } else if (locked_this) {
+        } else {
 
             FILE_SIZE_BEFORE = this_ ()->FSCache->get_content_metadata (inode)->size;
 

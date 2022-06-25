@@ -299,7 +299,6 @@ bool Cache::_delete_item (string cid) {
         delete item;
         if (!this->item_locks.empty () &&
             (this->item_locks.find (cid) != this->item_locks.end ())) {
-            unlockItem (cid);
             this->item_locks.erase (cid);
         }
         this->contents.erase (cid);
@@ -414,8 +413,6 @@ bool Cache::remove_cached_item (string owner, const char* path) {
         lock.unlock ();
         return false;
     }
-
-    lockItem (owner);
 
     this->file_inode_mapping.erase (string (path));
 
