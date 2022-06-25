@@ -223,7 +223,7 @@ class Cache {
      * @return true item was removed
      * @return false item does not exist
      */
-    bool remove_cached_item (string owner);
+    bool remove_cached_item (string owner, const char* path);
 
     /**
      * @brief Syncs a contents data and/or metadata.

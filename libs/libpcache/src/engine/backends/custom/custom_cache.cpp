@@ -474,8 +474,6 @@ bool CustomCacheEngine::sync_pages (string owner, off_t size, char* orig_path) {
 
     std::unique_lock<std::shared_mutex> lock (lock_cache_mtx);
 
-    char const* path;
-    path   = owner.c_str ();
     int fd = open (orig_path, O_WRONLY);
 
     // std::printf ("\tengine: (fsync) %s opened descriptor %d\n", owner.c_str (), fd);

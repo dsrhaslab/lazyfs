@@ -157,7 +157,7 @@ void Config::print_config () {
                       to_string (this->CACHE_PAGE_SIZE / this->IO_BLOCK_SIZE));
     _print_with_time ("[config] Apply page eviction = " +
                       string (this->APPLY_LRU_EVICTION ? "true" : "false"));
-    _print_with_time ("[config] Apply page eviction = " +
+    _print_with_time ("[config] Sync after rename = " +
                       string (this->sync_after_rename ? "true" : "false"));
     _print_with_time ("[config] Total = " + to_string ((double)total_bytes / 1024) + " (Kib) - " +
                       to_string ((double)total_bytes / std::pow (1024, 2)) + " (Mib) - " +

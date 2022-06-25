@@ -11,6 +11,7 @@
 #include <cache/cache.hpp>
 #include <cache/constants/constants.hpp>
 #include <cache/item/item.hpp>
+#include <cache/util/utilities.hpp>
 #include <chrono>
 #include <list>
 #include <map>
@@ -57,9 +58,19 @@ void Cache::print_cache () {
 
     cout << "---------------------------- CACHE ----------------------------" << endl;
 
+    cout << "=> contents:" << endl;
+
     for (auto const& it : this->contents) {
         cout << "<" << it.first << ">:\n";
         it.second->print_item ();
+    }
+
+    cout << "=> inode-mapping:" << endl;
+
+    cout << "---------------------------------------------------------------" << endl;
+
+    for (auto const& it : this->file_inode_mapping) {
+        cout << "(file) " << it.first << " => (inode) " << it.second << endl;
     }
 
     cout << "---------------------------------------------------------------" << endl;
@@ -394,7 +405,7 @@ bool Cache::rename_item (string old_cid, string new_cid) {
     return false;
 }
 
-bool Cache::remove_cached_item (string owner) {
+bool Cache::remove_cached_item (string owner, const char* path) {
 
     std::unique_lock<shared_mutex> lock (lock_cache_mtx, std::defer_lock);
     lock.lock ();
@@ -404,13 +415,17 @@ bool Cache::remove_cached_item (string owner) {
         return false;
     }
 
+    lockItem (owner);
+
+    this->file_inode_mapping.erase (string (path));
+
+    // TODO: case clear cache vs. unlink path
+    // !IMPORTANT check later
     Item* item = _get_content_ptr (owner);
     if (item->get_metadata ()->nlinks > 1) {
         lock.unlock ();
         return false;
     }
-
-    lockItem (owner);
 
     this->engine->remove_cached_blocks (owner);
     this->_delete_item (owner);
@@ -422,15 +437,16 @@ bool Cache::remove_cached_item (string owner) {
 
 void Cache::clear_all_cache () {
 
-    std::list<string> items;
-    std::for_each (
-        this->contents.begin (),
-        this->contents.end (),
-        [&] (const std::pair<const string, Item*>& ref) { items.push_back (ref.first); });
+    std::list<pair<string, string>> items;
+    std::for_each (this->file_inode_mapping.begin (),
+                   this->file_inode_mapping.end (),
+                   [&] (const std::pair<const string, string>& ref) {
+                       items.push_back (make_pair (ref.first, ref.second));
+                   });
 
     for (auto const& it : items) {
 
-        remove_cached_item (it);
+        remove_cached_item (it.second, (char*)it.first.c_str ());
     }
 }
 
