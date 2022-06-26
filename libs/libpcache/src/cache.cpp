@@ -416,8 +416,6 @@ bool Cache::remove_cached_item (string owner, const char* path) {
 
     this->file_inode_mapping.erase (string (path));
 
-    // TODO: case clear cache vs. unlink path
-    // !IMPORTANT check later
     Item* item = _get_content_ptr (owner);
     if (item->get_metadata ()->nlinks > 1) {
         lock.unlock ();

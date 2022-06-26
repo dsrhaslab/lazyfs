@@ -133,6 +133,8 @@ class PageCacheEngine {
      * reasons.
      *
      * @param owner the content id
+     * @param size final file size
+     * @param orig_path original file name to sync data
      * @return true the pages were synced
      * @return false the content was not found
      */

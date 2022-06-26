@@ -35,11 +35,18 @@ namespace cache {
 
 class Cache {
 
+    /**
+     * @brief Global lock for the cache.
+     *        Lock order is similar to two-phase locking.
+     *
+     */
     std::shared_mutex lock_cache_mtx;
 
   private:
     /**
-     * @brief Maps filenames to the corresponding inodes
+     * @brief Maps filenames to the corresponding inodes.
+     *        If a hard link is created for a file, a new entry
+     *        on this map is also created, for the same inode.
      *
      */
     unordered_map<string, string> file_inode_mapping;
@@ -220,6 +227,7 @@ class Cache {
      * @brief Removes a cached item from cache and the data from the engine
      *
      * @param owner the content id
+     * @param path original path name to remove
      * @return true item was removed
      * @return false item does not exist
      */
@@ -230,6 +238,7 @@ class Cache {
      *
      * @param owner the content id
      * @param only_sync_data only sync data from content
+     * @param orig_path original path to write data
      * @return int true if item was removed
      */
     int sync_owner (string owner, bool only_sync_data, char* orig_path);
@@ -266,7 +275,20 @@ class Cache {
      */
     void full_checkpoint ();
 
+    /**
+     * @brief Get the original inode for a file name
+     *
+     * @param path file name
+     * @return string inode
+     */
     string get_original_inode (string path);
+
+    /**
+     * @brief Inserts a new file name entry mapped to an inode.
+     *
+     * @param path file name
+     * @param inode corresponding inode
+     */
     void insert_inode_mapping (string path, string inode);
 };
 
