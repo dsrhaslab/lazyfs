@@ -16,8 +16,6 @@ A FUSE Filesystem with its own configurable page cache which can be used to simu
 
 Our filesystem implements several system calls that query our custom page cache layer. Currently, **LazyFS** supports the most important filesystem operations, e.g. **read**/**write**/**truncate**/**fsync**, but it is <u>**not yet fully tested and optimized**</u>.
 
-> **Notice**: Symbolic and Hard links are not yet fully working in LazyFS, it is currently a work in progress.
-
 ## Installation
 
 LazyFS was tested with **ext4** (default mount options) as the underlying filesystem in both Debian 11 (bullseye) and Ubuntu 20.04 (focal) environment. It is C++17 compliant and requires the following packages to be installed:
@@ -136,29 +134,19 @@ Finally, one can control LazyFS by echoing the following commands to the faults 
 
 ## Development
 
-This section displays the next tasks and some documentation resources:
+This section displays a table with the current work planned:
 
-### TODO
-
--   [x] Add **truncate** operation to the page cache
--   [x] Add benchmarking tests (w/ Filebench)
--   [x] Code documentation
--   [ ] Performance optimizations **(current)**
--   [ ] Add integrity tests **(current)**
--   [ ] Test with more DBs **(current)**
--   [ ] Add support for file links (hard and symbolic) **(current)**
--   [ ] Make **rename** operations atomic
--   [ ] Configure cache to grow until a certain size (dynamically)
--   [ ] Add logging to an external file
-
-### Resources
-
--   Access/Modify/Change times: https://stackoverflow.com/questions/3385203/what-is-the-access-time-in-unix
--   FUSE Cheatsheet: https://www.cs.hmc.edu/~geoff/classes/hmc.cs137.201801/homework/fuse/fuse_doc.html
--   FUSE Unclear Functions: https://www.cs.nmsu.edu/~pfeiffer/fuse-tutorial/html/unclear.html
+| **Tasks**                                    	| **Status**  	|
+|----------------------------------------------	|-------------	|
+| Performance optimizations (e.g. using perf)  	| In progress 	|
+| Develop Filesystem unit tests                	| In progress 	|
+| Test with more applications / databases      	| In progress 	|
+| Ensure rename atomicity                      	|      -      	|
+| Configure the page cache to grow dynamically 	|      -      	|
+| Improve logging (log formats and logfile)    	|      -      	|
 
 ## Contact
 
-For more information please contact:
+For additional information regarding issues, possible improvements and collaborations please contact:
 
-* João Azevedo - [joao.azevedo@inesctec.pt](mailto:joao.azevedo@inesctec.pt)
+- **João Azevedo** - [joao.azevedo@inesctec.pt](mailto:joao.azevedo@inesctec.pt)
