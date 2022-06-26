@@ -110,14 +110,19 @@ teardown_testbed() {
 run_tests() {
 
     cd $CURRENT_DIR/../build
+        log_with_time
     for test in test*; do
-        log_with_time "running $test..."
+        log_with_time "running \e[33m'$test' ⏳\e[0m"
+        log_with_time
         if ./$test $MOUNT_DIR; then
-            log_with_time "\e[32mtest $test passed...\e[0m"
+            log_with_time
+            log_with_time "test \e[32m'$test' passed ✓\e[0m"
         else
             ANY_TEST_FAILED=1
-            log_with_time "\e[31mtest $test failed!\e[0m"
+            log_with_time
+            log_with_time "test \e[31m'$test' failed ✗\e[0m"
         fi
+        log_with_time
     done
 }
 
