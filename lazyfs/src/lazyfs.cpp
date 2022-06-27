@@ -218,6 +218,11 @@ int LazyFS::lfs_open (const char* path, struct fuse_file_info* fi) {
 
     res = open (path, fi->flags);
 
+    if (res == -1)
+        return -errno;
+
+    fi->fh = res;
+
     struct stat st;
     lfs_getattr (path, &st, fi);
 
@@ -267,13 +272,6 @@ int LazyFS::lfs_open (const char* path, struct fuse_file_info* fi) {
     if (locked)
         this_ ()->FSCache->unlockItem (inode);
 
-    // --------------------------------------------------------------------------
-
-    if (res == -1)
-        return -errno;
-
-    fi->fh = res;
-
     return 0;
 }
 
@@ -282,6 +280,11 @@ int LazyFS::lfs_create (const char* path, mode_t mode, struct fuse_file_info* fi
     int res;
 
     res = open (path, fi->flags, mode);
+
+    if (res == -1)
+        return -errno;
+
+    fi->fh = res;
 
     struct stat stbuf;
     lfs_getattr (path, &stbuf, fi);
@@ -327,10 +330,6 @@ int LazyFS::lfs_create (const char* path, mode_t mode, struct fuse_file_info* fi
     if (locked)
         this_ ()->FSCache->unlockItem (inode);
 
-    if (res == -1)
-        return -errno;
-
-    fi->fh = res;
     return 0;
 }
 
@@ -1258,12 +1257,12 @@ int LazyFS::lfs_link (const char* from, const char* to) {
 
     res = link (from, to);
 
+    if (res == -1)
+        return -errno;
+
     string inode = this_ ()->FSCache->get_original_inode (from);
     if (!inode.empty ())
         this_ ()->FSCache->insert_inode_mapping (to, inode);
-
-    if (res == -1)
-        return -errno;
 
     return 0;
 }
