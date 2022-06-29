@@ -132,7 +132,7 @@ Finally, one can control LazyFS by echoing the following commands to the faults 
     echo "lazyfs::display-cache-usage" > /my/path/faults-example.fifo
     ```
 
-> **Notice**: LazyFS expects that every buffer written to the faults fifo file terminates with a new line character (**echo** does this by default). Otherwise, you will probably get log: "[command]: unknown <lazyfs::clear-cach>".
+> **Notice**: LazyFS expects that every buffer written to the faults fifo file terminates with a new line character (**echo** does this by default). Otherwise, you will probably get a log like this: "[command]: unknown <lazyfs::clear-cach>".
 
 ## Development
 
