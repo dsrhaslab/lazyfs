@@ -1,5 +1,9 @@
 name: build
-on: push
+on: 
+  push:
+    paths:
+      - 'lazyfs/**'
+      - 'libs/**'
 jobs:
     build-lazyfs:
         runs-on: ubuntu-latest
