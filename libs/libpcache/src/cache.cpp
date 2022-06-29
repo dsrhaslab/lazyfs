@@ -92,7 +92,8 @@ void Cache::insert_inode_mapping (string path, string inode) {
     this->file_inode_mapping[path] = inode;
     Metadata* oldmeta              = get_content_metadata (inode);
     Metadata newmeta;
-    newmeta.nlinks = oldmeta->nlinks + 1;
+    if (oldmeta != nullptr)
+        newmeta.nlinks = oldmeta->nlinks + 1;
     this->update_content_metadata (inode, newmeta, {"nlinks"});
 }
 

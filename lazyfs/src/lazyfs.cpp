@@ -1071,11 +1071,27 @@ int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_fil
     bool locked_initial = this_ ()->FSCache->lockItemCheckExists (inode);
 
     Metadata* previous_metadata;
+    
     if (locked_initial) {
 
         previous_metadata = this_ ()->FSCache->get_content_metadata (inode);
 
         this_ ()->FSCache->unlockItem (inode);
+    
+    } else {
+
+        if (fi != NULL)
+                res = ftruncate (fi->fh, 0);
+            else
+                res = truncate (path, 0);
+
+        lfs_getattr(path, &stats, fi);
+        string newino = to_string(stats.st_ino);
+        if (this_ ()->FSCache->lockItemCheckExists (newino)) {
+            previous_metadata = this_ ()->FSCache->get_content_metadata (newino);
+            this_ ()->FSCache->unlockItem (newino);
+            inode = newino;
+        } else return -1;
     }
 
     bool has_content_cached  = previous_metadata != nullptr;
@@ -1112,7 +1128,7 @@ int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_fil
         */
 
         size_t IO_BLOCK_SIZE        = this_ ()->FSConfig->IO_BLOCK_SIZE;
-        off_t file_size             = previous_metadata->size;
+        off_t file_size             = has_content_cached ? previous_metadata->size : 0;
         off_t add_bytes_from_offset = file_size;
         off_t add_bytes_total       = truncate_size - add_bytes_from_offset;
         off_t blk_low               = add_bytes_from_offset / IO_BLOCK_SIZE;
@@ -1177,28 +1193,32 @@ int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_fil
 
     // todo: update file size
 
-    Metadata new_meta;
-    new_meta.size = truncate_size;
+    if (previous_metadata != nullptr) {
 
-    vector<string> values_to_change;
-    values_to_change.push_back ("size");
+        Metadata new_meta;
+        new_meta.size = truncate_size;
 
-    struct timespec modify_time;
-    clock_gettime (CLOCK_REALTIME, &modify_time);
-    new_meta.mtim = modify_time;
-    values_to_change.push_back ("mtime");
+        vector<string> values_to_change;
+        values_to_change.push_back ("size");
 
-    if (new_meta.size > previous_metadata->size) {
-        new_meta.ctim = modify_time;
-        values_to_change.push_back ("ctime");
+        struct timespec modify_time;
+        clock_gettime (CLOCK_REALTIME, &modify_time);
+        new_meta.mtim = modify_time;
+        values_to_change.push_back ("mtime");
+
+        if (new_meta.size > previous_metadata->size) {
+            new_meta.ctim = modify_time;
+            values_to_change.push_back ("ctime");
+        }
+
+        bool locked = this_ ()->FSCache->lockItemCheckExists (inode);
+
+        this_ ()->FSCache->update_content_metadata (inode, new_meta, values_to_change);
+
+        if (locked)
+            this_ ()->FSCache->unlockItem (inode);
+
     }
-
-    bool locked = this_ ()->FSCache->lockItemCheckExists (inode);
-
-    this_ ()->FSCache->update_content_metadata (inode, new_meta, values_to_change);
-
-    if (locked)
-        this_ ()->FSCache->unlockItem (inode);
 
     if (res == -1)
         return -errno;
