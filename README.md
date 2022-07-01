@@ -14,7 +14,7 @@ A FUSE Filesystem with its own configurable page cache which can be used to simu
 
 ## Supported operations
 
-Our filesystem implements several system calls that query our custom page cache layer. Currently, **LazyFS** supports the most important filesystem operations, e.g. **read**/**write**/**truncate**/**fsync**, but it is <u>**not yet fully tested and optimized**</u>.
+This filesystem implements several system calls that query a custom page cache layer. Currently, **LazyFS** supports the most important filesystem operations, e.g. **read**/**write**/**truncate**/**fsync**, but it is <u>**not yet fully tested and optimized**</u>.
 
 ## Installation
 
@@ -32,7 +32,7 @@ sudo apt install g++ cmake
 sudo apt install libfuse3-dev libfuse3-3 fuse3
 ```
 
-The filesystem requires the option **'allow_other'** as a startup argument so that other users can read and write files, besides the user owning the filesystem. For that, you must uncomment/add the following line on the configuration file **/etc/fuse.conf**:
+It requires the option **'allow_other'** as a startup argument so that other users can read and write files, besides the user owning the filesystem. For that, you must uncomment/add the following line on the configuration file **/etc/fuse.conf**:
 
 ```bash
 user_allow_other

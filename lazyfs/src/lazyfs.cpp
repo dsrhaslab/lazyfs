@@ -1071,27 +1071,28 @@ int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_fil
     bool locked_initial = this_ ()->FSCache->lockItemCheckExists (inode);
 
     Metadata* previous_metadata;
-    
+
     if (locked_initial) {
 
         previous_metadata = this_ ()->FSCache->get_content_metadata (inode);
 
         this_ ()->FSCache->unlockItem (inode);
-    
+
     } else {
 
         if (fi != NULL)
-                res = ftruncate (fi->fh, 0);
-            else
-                res = truncate (path, 0);
+            res = ftruncate (fi->fh, 0);
+        else
+            res = truncate (path, 0);
 
-        lfs_getattr(path, &stats, fi);
-        string newino = to_string(stats.st_ino);
+        lfs_getattr (path, &stats, fi);
+        string newino = to_string (stats.st_ino);
         if (this_ ()->FSCache->lockItemCheckExists (newino)) {
             previous_metadata = this_ ()->FSCache->get_content_metadata (newino);
             this_ ()->FSCache->unlockItem (newino);
             inode = newino;
-        } else return -1;
+        } else
+            return -1;
     }
 
     bool has_content_cached  = previous_metadata != nullptr;
@@ -1217,7 +1218,6 @@ int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_fil
 
         if (locked)
             this_ ()->FSCache->unlockItem (inode);
-
     }
 
     if (res == -1)
