@@ -11,7 +11,6 @@ include_directories(include)
 
 link_directories(../libs/libpcache/build)
 include_directories(../libs/libpcache/include)
-set(CMAKE_BUILD_TYPE Release)
 
 find_package(Threads REQUIRED)
 
