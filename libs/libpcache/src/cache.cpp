@@ -298,10 +298,7 @@ bool Cache::_delete_item (string cid) {
     Item* item = _get_content_ptr (cid);
     if (item != nullptr) {
         delete item;
-        if (!this->item_locks.empty () &&
-            (this->item_locks.find (cid) != this->item_locks.end ())) {
-            this->item_locks.erase (cid);
-        }
+
         this->contents.erase (cid);
     }
 
@@ -415,16 +412,25 @@ bool Cache::remove_cached_item (string owner, const char* path) {
         return false;
     }
 
+    lockItem (owner);
+
     this->file_inode_mapping.erase (string (path));
 
     Item* item = _get_content_ptr (owner);
     if (item->get_metadata ()->nlinks > 1) {
+        unlockItem (owner);
         lock.unlock ();
         return false;
     }
 
     this->engine->remove_cached_blocks (owner);
     this->_delete_item (owner);
+
+    unlockItem (owner);
+
+    if (!this->item_locks.empty () && (this->item_locks.find (owner) != this->item_locks.end ())) {
+        this->item_locks.erase (owner);
+    }
 
     lock.unlock ();
 
