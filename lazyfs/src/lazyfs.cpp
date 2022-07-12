@@ -243,35 +243,6 @@ int LazyFS::lfs_open (const char* path, struct fuse_file_info* fi) {
     if (fi->flags & O_TRUNC)
         lfs_truncate (path, 0, fi);
 
-    struct timespec time_register;
-    clock_gettime (CLOCK_REALTIME, &time_register);
-    Metadata meta;
-    vector<string> update_meta_values;
-
-    if (!this_ ()->FSCache->has_content_cached (inode)) {
-        // just to cache the metadata
-        this_ ()->FSCache->put_data_blocks (inode, {}, OP_PASSTHROUGH);
-        update_meta_values.push_back ("atime");
-        meta.atim = time_register;
-    }
-
-    if ((access_mode == O_RDONLY) || (access_mode == O_RDWR) || (access_mode == O_CREAT)) {
-
-        meta.atim = time_register;
-        update_meta_values.push_back ("atime");
-    }
-
-    if ((access_mode == O_WRONLY) || (access_mode == O_RDWR)) {
-
-        meta.mtim = time_register;
-        update_meta_values.push_back ("mtime");
-    }
-
-    bool locked = this_ ()->FSCache->lockItemCheckExists (inode);
-    this_ ()->FSCache->update_content_metadata (inode, meta, update_meta_values);
-    if (locked)
-        this_ ()->FSCache->unlockItem (inode);
-
     return 0;
 }
 
