@@ -226,9 +226,6 @@ int LazyFS::lfs_open (const char* path, struct fuse_file_info* fi) {
     struct stat st;
     lfs_getattr (path, &st, fi);
 
-    string owner (path);
-    string inode = this_ ()->FSCache->get_original_inode (owner);
-
     // --------------------------------------------------------------------------
 
     int access_mode = fi->flags & O_ACCMODE;
