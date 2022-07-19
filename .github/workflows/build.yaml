@@ -4,6 +4,7 @@ on:
     paths:
       - 'lazyfs/**'
       - 'libs/**'
+      - 'tests/lfscheck/**'
 jobs:
     build-lazyfs:
         runs-on: ubuntu-latest
