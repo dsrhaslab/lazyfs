@@ -37,8 +37,12 @@ args = parser.parse_args()
 
 # Logging configuration
 
-logging.basicConfig(stream=sys.stdout, format="%(levelname)s %(asctime)s - %(message)s", level=logging.INFO)
-logger = logging.getLogger()
+logger    = logging.getLogger(getattr(args, 'test.file').replace('\\',''))
+ch        = logging.StreamHandler()
+formatter = logging.Formatter("%(levelname)s %(asctime)s - %(name)s - %(message)s")
+ch.setFormatter(formatter)
+logger.addHandler(ch)
+logger.setLevel(logging.INFO)
 
 # LazyFS's mount point
 LAZYFS_MOUNT       = getattr(args, 'lazyfs.mount')
@@ -80,16 +84,15 @@ FILE_TRACK_SIZE=0
 
 # Checks if two buffers are equal via md5 hashing of bytearrays
 def check_bytes_equality(bytearr1, bytearr2):
-    return hashlib.md5(bytearr1).digest() != hashlib.md5(bytearr2).digest()
+    return hashlib.md5(bytearr1).digest() == hashlib.md5(bytearr2).digest()
 
 logger.info("starting consistency checking test")
 
-filename = TEST_FILENAME
-fd = os.open(filename, os.O_CREAT|os.O_RDWR|os.O_TRUNC)
-logger.info("create: filename={}".format(filename))
+fd = os.open(TEST_FILENAME, os.O_CREAT|os.O_RDWR|os.O_TRUNC)
+logger.info("create: filename={}".format(TEST_FILENAME))
 
 if fd < 0:
-    logger.error("create: filename={} FAILED".format(filename))
+    logger.error("create: filename={} FAILED".format(TEST_FILENAME))
     sys.exit(-1)
 
 logger.info("")
@@ -183,12 +186,7 @@ try:
         logger.info("")
 
 except AssertionError:
-    errors = True
-    _, _, tb = sys.exc_info()
-    traceback.print_tb(tb) # Fixed format
-    tb_info = traceback.extract_tb(tb)
-    filename, line, func, text = tb_info[-1]
-    logger.error("errors during checking!")
+    logger.error("errors during checking!", exc_info=True)
     
 logger.info("")
 
@@ -198,8 +196,8 @@ logger.info("total test time: {}".format(str(timedelta(seconds=elapsed_time))))
 
 # Remove test file
 
-logger.info("remove: filename={}".format(filename))
-os.unlink(filename)
+logger.info("remove: filename={}".format(TEST_FILENAME))
+os.unlink(TEST_FILENAME)
 
 if not errors:
     logger.info("test finished, everything seems OK")
