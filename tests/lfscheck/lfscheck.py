@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 #####################################################################################
-# lfscheck : Checks the consistency of LazyFS' after clear cache and sync operations                                                                                              
+# lfscheck : Checks the consistency of LazyFS after clear cache and sync operations                                                                                              
 # Author   : João Azevedo
 # Email    : joao.azevedo@inesctec.pt
 #
