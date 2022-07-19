@@ -41,7 +41,7 @@ jobs:
               run: |
                 cd lazyfs
                 mkdir -p /tmp/lfs.mnt /tmp/lfs.root
-                sudo rm -rf /tmp/lfs.mnt /tmp/lfs.root
+                sudo rm -rf /tmp/lfs.mnt/* /tmp/lfs.root/*
                 ./scripts/mount-lazyfs.sh -m /tmp/lfs.mnt -r /tmp/lfs.root -c config/default.toml
                 cd -
                 sleep 2s
