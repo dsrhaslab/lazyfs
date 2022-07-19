@@ -23,9 +23,26 @@ jobs:
             - name: Set up FUSE configuration
               run: sudo sed -i "/\\s*user_allow_other/s/^#//g" "/etc/fuse.conf"
 
-            - name: Build repo and run tests
+            - name: Build LazyFS
               run: |
                 sed -i 's/cmake \-DLAZYFS\_BUILD\_TESTS\=OFF \.\./cmake \-DLAZYFS\_\BUILD\_\TESTS\=ON \.\./g' lazyfs/build.sh 
+                cd lazyfs && ./build.sh && cd -
+
+            - name: Run unit tests
+              run: |
                 sudo sed -i "s|fifo_path=.*|fifo_path=\"$(pwd)\/faults-example.fifo\"|" lazyfs/config/default.toml
                 sudo sed -s -i "s|\#define.*FAULTS_PIPE_PATH.*|\#define FAULTS_PIPE_PATH \"$(pwd)\/faults-example.fifo\"|" lazyfs/tests/*_clear_cache.cpp
                 cd lazyfs/scripts && ./run-tests.sh -m /tmp/lazyfs -r /tmp/lazyfs-root/
+
+            - name: Run consistency tests
+              run: |
+                cd lazyfs
+                sudo mkdir -p /tmp/lfs.mnt /tmp/lfs.root
+                sudo rm -rf /tmp/lfs.mnt /tmp/lfs.root
+                ./scripts/mount-lazyfs.sh -m /tmp/lfs.mnt -r /tmp/lfs.root -c config/default.toml
+                cd -
+                sleep 2s
+                cd tests/lfscheck && ./lfscheck.py -m /tmp/lfs.mnt --lazyfs.fifo "$(pwd)/faults-example.fifo" -t 20 -i example
+                cd lazyfs
+                ./scripts/umount-lazyfs.sh -m /tmp/lfs.mnt -r /tmp/lfs.root
+                cd -
