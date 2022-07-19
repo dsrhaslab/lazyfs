@@ -45,8 +45,11 @@ jobs:
                 ./scripts/mount-lazyfs.sh -m /tmp/lfs.mnt -r /tmp/lfs.root -c config/default.toml
                 cd -
                 sleep 2s
+                cd
+                export FIFO_LOCATION="$(pwd)/faults-example.fifo"
+                cd -
                 cd tests/lfscheck
-                ./lfscheck.py -m /tmp/lfs.mnt --lazyfs.fifo "$(pwd)/faults-example.fifo" -t 20 -i example
+                ./lfscheck.py -m /tmp/lfs.mnt --lazyfs.fifo $FIFO_LOCATION -t 20 -i example
                 cd -
                 cd lazyfs
                 ./scripts/umount-lazyfs.sh -m /tmp/lfs.mnt -r /tmp/lfs.root
