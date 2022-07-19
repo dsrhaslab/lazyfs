@@ -27,6 +27,7 @@ jobs:
             - name: Build LazyFS
               run: |
                 sed -i 's/cmake \-DLAZYFS\_BUILD\_TESTS\=OFF \.\./cmake \-DLAZYFS\_\BUILD\_\TESTS\=ON \.\./g' lazyfs/build.sh 
+                cd libs/libpcache && ./build.sh && cd -
                 cd lazyfs && ./build.sh && cd -
 
             - name: Run unit tests
