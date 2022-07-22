@@ -248,11 +248,11 @@ int main (int argc, char** argv) {
         .scan<'i', int> ();
     lfscheck.add_argument ("-b", "--burst")
         .help ("specifies the number of writes between cache clearing")
-        .default_value (1)
+        .default_value (100)
         .scan<'i', int> ();
     lfscheck.add_argument ("-max", "--max.off")
         .help ("specifies the max write offset")
-        .default_value (1)
+        .default_value (4096)
         .scan<'i', int> ();
 
     lfscheck.add_argument ("-f", "--lfs.fifo").help ("lazyfs faults fifo path").required ();
