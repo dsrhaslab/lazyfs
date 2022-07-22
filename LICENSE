@@ -12,6 +12,9 @@ This program makes use and is distributed with the following libraries:
 1. fusepp (https://github.com/jachappell/Fusepp)
 2. toml11 (https://github.com/ToruNiina/toml11)
 3. libfuse (https://github.com/libfuse/libfuse)
+4. spdlog (https://github.com/gabime/spdlog)
+5. gtest (https://github.com/google/googletest)
+6. argparse (https://github.com/p-ranav/argparse)
 
 You can reach INESC TEC Technology Licensing Office (TLO) at info.sal@inesctec.pt, or
 Campus da Faculdade de Engenharia da Universidade do Porto
