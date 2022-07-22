@@ -47,8 +47,7 @@ jobs:
                 sudo rm -rf $MOUNT_DIR/* $ROOT_DIR/*
                 sudo sed -i "s|fifo_path=.*|fifo_path=\"\/tmp\/lfs.fifo\"|" lazyfs/config/default.toml
                 sudo sed -i "s|custom_size=.*|custom_size=\"1gb\"|" lazyfs/config/default.toml
-                cat lazyfs/config/default.toml
                 cd lazyfs && ./scripts/mount-lazyfs.sh -m $MOUNT_DIR -r $ROOT_DIR -c config/default.toml && cd -
                 sleep 2s
                 cd tests/lfscheck && ./build.sh && cd -
-                ./tests/lfscheck/build/lfscheck -m $MOUNT_DIR -f $FIFO_PATH -t 10 -n 1 -b 1 -max 10 && fusermount -uz $MOUNT_DIR
+                ./tests/lfscheck/build/lfscheck -m $MOUNT_DIR -f $FIFO_PATH -t 20 -n 5 -b 1000 -max 4096 && fusermount -uz $MOUNT_DIR
