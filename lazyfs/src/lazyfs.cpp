@@ -969,8 +969,6 @@ int LazyFS::lfs_recursive_rename (const char* from, const char* to, unsigned int
 
         for (auto const& it : from_dir_filepaths) {
 
-            lfs_unlink (to);
-
             this_ ()->FSCache->rename_item (it, string (to + it.substr (string (from).size ())))
                 ? 0
                 : -1;
@@ -994,8 +992,6 @@ int LazyFS::lfs_rename (const char* from, const char* to, unsigned int flags) {
     string inode = this_ ()->FSCache->get_original_inode (last_owner);
     string new_owner (to);
 
-    // bool exists_last_owner = this_ ()->FSCache->has_content_cached (inode);
-
     if (inode.empty ()) {
 
         // from: is a dir, because getattr does not cache dirs
@@ -1005,8 +1001,6 @@ int LazyFS::lfs_rename (const char* from, const char* to, unsigned int flags) {
         res = rename (from, to);
 
     } else {
-
-        lfs_unlink (to);
 
         res = this_ ()->FSCache->rename_item (last_owner, new_owner) ? 0 : -1;
 
