@@ -20,7 +20,7 @@ jobs:
                   key: build-lazyfs
 
             - name: Install dependencies
-              run: sudo apt install g++ cmake libfuse3-dev libfuse3-3 fuse3
+              run: sudo apt install g++ cmake libfuse3-dev libfuse3-3 fuse3 tree
 
             - name: Set up FUSE configuration
               run: sudo sed -i "/\\s*user_allow_other/s/^#//g" "/etc/fuse.conf"
@@ -33,16 +33,22 @@ jobs:
 
             - name: Run unit tests
               run: |
-                sudo sed -i "s|fifo_path=.*|fifo_path=\"$(pwd)\/faults-example.fifo\"|" lazyfs/config/default.toml
-                sudo sed -s -i "s|\#define.*FAULTS_PIPE_PATH.*|\#define FAULTS_PIPE_PATH \"$(pwd)\/faults-example.fifo\"|" lazyfs/tests/*_clear_cache.cpp
+                sudo sed -i "s|fifo_path=.*|fifo_path=\"$(pwd)\/unit.fifo\"|" lazyfs/config/default.toml
+                sudo sed -i "s|custom_size=.*|custom_size=\"1mb\"|" lazyfs/config/default.toml
+                sudo sed -s -i "s|\#define.*FAULTS_PIPE_PATH.*|\#define FAULTS_PIPE_PATH \"$(pwd)\/unit.fifo\"|" lazyfs/tests/*_clear_cache.cpp
                 cd lazyfs/scripts && ./run-tests.sh -m /tmp/lazyfs -r /tmp/lazyfs-root/ && cd -
 
             - name: Run consistency tests
-              run: |
-                mkdir -p /tmp/lfs.mnt /tmp/lfs.root
-                sudo rm -rf /tmp/lfs.mnt/* /tmp/lfs.root/*
-                cd lazyfs && ./scripts/mount-lazyfs.sh -m /tmp/lfs.mnt -r /tmp/lfs.root -c config/default.toml && cd - && sleep 2s
+              run: |  
+                export MOUNT_DIR=/tmp/lfs.mnt
+                export ROOT_DIR=/tmp/lfs.root
+                export FIFO_PATH=/tmp/lfs.fifo
+                mkdir -p $MOUNT_DIR $ROOT_DIR
+                sudo rm -rf $MOUNT_DIR/* $ROOT_DIR/*
+                sudo sed -i "s|fifo_path=.*|fifo_path=\"\/tmp\/lfs.fifo\"|" lazyfs/config/default.toml
+                sudo sed -i "s|custom_size=.*|custom_size=\"1gb\"|" lazyfs/config/default.toml
+                cat lazyfs/config/default.toml
+                cd lazyfs && ./scripts/mount-lazyfs.sh -m $MOUNT_DIR -r $ROOT_DIR -c config/default.toml && cd -
+                sleep 2s
                 cd tests/lfscheck && ./build.sh && cd -
-                ./tests/lfscheck/build/lfscheck -m /tmp/lfs.mnt -f "$(pwd)/faults-example.fifo" -t 20 -n 2 -b 100
-                fusermount -uz /tmp/lfs.mnt
-      
+                ./tests/lfscheck/build/lfscheck -m $MOUNT_DIR -f $FIFO_PATH -t 10 -n 1 -b 1 -max 10 && fusermount -uz $MOUNT_DIR

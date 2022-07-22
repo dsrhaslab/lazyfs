@@ -19,7 +19,7 @@ using namespace std;
 
 #define BURST_OPS_MAX 10000
 #define MAX_THREADS 100
-#define MAX_WRITE_OFF 12288
+#define MAX_WRITE_OFF 131072
 
 // Test specification
 
@@ -64,9 +64,9 @@ void do_consistency_work (int tid) {
     memset (unsynced_buf, 0, upper_bound_write);
 
     int file_size             = 0;
-    int last_off_check_bottom = 0, last_off_check_up = 0;
+    int last_off_check_bottom = -1, last_off_check_up = -1;
 
-    string worker_path = string (g_lfs_mount + "file_" + to_string (tid));
+    string worker_path = string ("file_" + to_string (tid));
     int fd             = open (worker_path.c_str (), O_CREAT | O_RDWR | O_TRUNC, 0777);
 
     if (fd < 0)
@@ -99,26 +99,29 @@ void do_consistency_work (int tid) {
 
         // gen min and max index to write
 
-        int bt = get_random_number (lower_bound_write, upper_bound_write);
-        int up = get_random_number (bt, upper_bound_write);
+        int bt = get_random_number (lower_bound_write, upper_bound_write - 1);
+        int up = get_random_number (bt, upper_bound_write - 1);
 
         do {
 
-            bt = get_random_number (lower_bound_write, upper_bound_write);
-            up = get_random_number (bt, upper_bound_write);
+            bt = get_random_number (lower_bound_write, upper_bound_write - 1);
+            up = get_random_number (bt, upper_bound_write - 1);
 
         } while (bt == up);
 
         char ch = get_random_number (65, 90); // ascii upper case letters
         int fs  = get_random_number (0, 1);
-        spdlog::info ("worker {:d}: pwrite({:d}->{:d},char={},fsync={})",
+
+        int write_size = up - bt + 1;
+
+        spdlog::info ("worker {:d}: pwrite({:d}->{:d} ({} bytes),char={},fsync={})",
                       tid,
                       bt,
                       up,
+                      write_size,
                       ch,
                       fs ? "on" : "off");
 
-        int write_size = up - bt;
         char write_buf[write_size];
         memset (write_buf, ch, write_size);
         int pw_res = pwrite (fd, write_buf, write_size, bt);
@@ -134,8 +137,17 @@ void do_consistency_work (int tid) {
         assert (!memcmp (read_buf, write_buf, write_size));
 
         memset (unsynced_buf + bt, ch, write_size);
-        last_off_check_bottom = std::min (last_off_check_bottom, bt);
-        last_off_check_up     = std::max (last_off_check_up, up);
+
+        if (last_off_check_bottom == -1)
+            last_off_check_bottom = bt;
+
+        if (last_off_check_up == -1)
+            last_off_check_up = up;
+
+        if (last_off_check_bottom != -1 && last_off_check_up != -1) {
+            last_off_check_bottom = std::min (last_off_check_bottom, bt);
+            last_off_check_up     = std::max (last_off_check_up, up);
+        }
 
         if (fs) {
 
@@ -144,14 +156,13 @@ void do_consistency_work (int tid) {
             int fr = fsync (fd);
             assert (fr >= 0);
 
-            for (int uns = last_off_check_bottom; uns < last_off_check_up; uns++)
+            for (int uns = last_off_check_bottom; uns <= last_off_check_up; uns++)
                 file_buffer[uns] = unsynced_buf[uns];
 
-            if (file_size < last_off_check_up)
-                file_size = last_off_check_up;
+            file_size = std::max (file_size, last_off_check_up + 1);
 
-            last_off_check_bottom = 0;
-            last_off_check_up     = 0;
+            last_off_check_bottom = -1;
+            last_off_check_up     = -1;
         }
     }
 
@@ -198,6 +209,7 @@ void do_monitoring () {
         if (pipefd > 0) {
 
             int r = write (pipefd, "lazyfs::clear-cache\n", 20);
+            assert (r == 20);
             close (pipefd);
 
             // wait clear cache to finish
@@ -309,6 +321,12 @@ int main (int argc, char** argv) {
 
         if (not path_fifo_exists || not path_mount_exists)
             std::exit (1);
+
+        if (chdir (g_lfs_mount.c_str ()) < 0) {
+
+            std::cerr << "could not change process dir to mount point" << endl;
+            std::exit (1);
+        }
 
         spdlog::info ("threads ({}), burst ({} write ops), max off ({}), total minimum time ({})",
                       g_nr_threads,
