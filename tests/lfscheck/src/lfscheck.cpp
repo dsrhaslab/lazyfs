@@ -38,7 +38,8 @@ int max_burst_operations = BURST_OPS_MAX;
 
 // Global loop control variables
 
-bool stop_workers = false;
+bool stop_workers   = false;
+bool last_iteration = false;
 std::shared_mutex loop_mtx;
 std::condition_variable_any loop_condition;
 bool can_do_work        = false;
@@ -67,7 +68,10 @@ void do_consistency_work (int tid) {
     int last_off_check_bottom = -1, last_off_check_up = -1;
 
     string worker_path = string ("file_" + to_string (tid));
-    int fd             = open (worker_path.c_str (), O_CREAT | O_RDWR | O_TRUNC, 0777);
+
+    spdlog::info ("worker {0:d}: creating file {1:s}", tid, worker_path);
+
+    int fd = open (worker_path.c_str (), O_CREAT | O_RDWR | O_TRUNC, 0777);
 
     if (fd < 0)
         spdlog::critical ("worker {0:d}: cloud not open {1:s}", tid, worker_path);
@@ -90,12 +94,18 @@ void do_consistency_work (int tid) {
 
             int pr_res = pread (fd, read_buf, upper_bound_write, 0);
 
-            spdlog::info ("worker {:d}: pread {} file_size {}...", tid, pr_res, file_size);
+            spdlog::info ("worker {:d}: pread returned {} bytes, tracked file_size is {}...",
+                          tid,
+                          pr_res,
+                          file_size);
             assert (pr_res == file_size);
             assert (!memcmp (read_buf, file_buffer, pr_res));
 
             thread_check_file[tid] = false;
         }
+
+        if (last_iteration)
+            break;
 
         // gen min and max index to write
 
@@ -170,6 +180,8 @@ void do_consistency_work (int tid) {
 
     int res_unlink = unlink (worker_path.c_str ());
 
+    spdlog::info ("worker {0:d}: removing file {1:s}", tid, worker_path);
+
     if (res_unlink < 0)
         spdlog::critical ("worker {0:d}: could not unlink {1:s}", tid, worker_path);
 
@@ -218,6 +230,12 @@ void do_monitoring () {
         } else {
 
             spdlog::warn ("monitor: could not open FIFO");
+
+            can_do_work    = true;
+            stop_workers   = true;
+            last_iteration = true;
+            loop_condition.notify_all ();
+            break;
         }
 
         // work finished
@@ -230,9 +248,9 @@ void do_monitoring () {
         }
 
         if (std::chrono::steady_clock::now () - start > std::chrono::seconds (g_total_runtime)) {
-            can_do_work  = true;
-            stop_workers = true;
-
+            can_do_work    = true;
+            stop_workers   = true;
+            last_iteration = true;
             loop_condition.notify_all ();
             break;
         }
