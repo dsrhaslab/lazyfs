@@ -1,81 +1,110 @@
 #!/bin/bash
 
-# --------------------------------------------
+# --------------------------------------------------#
+# Test variables
 
-# declare -a workloads_to_run=("filemicro_rread.f" "filemicro_seqread.f" "filemicro_rwrite.f" "filemicro_seqwrite.f" "fileserver.f" "varmail.f" "webserver.f" "filemicro_createfiles.f")
-declare -a workloads_to_run=("filemicro_createfiles.f")
-workloads_tmp_dir="benchmark-direct-io-0-clear-caches"
-workloads_source="workloads/direct-io-0-os-clear-cache"
-# fs="lazyfs"
-fs="passthrough"
-mount_folder="/mnt/test-fs/$fs"
-root_folder="/mnt/test-fs/$fs-root"
-page_size=""
+# LazyFS
+LAZYFS_MOUNT_DIR=/tmp/lazyfs.mnt
+LAZYFS_ROOT_DIR=/tmp/lazyfs.root
+LAZYFS_FOLDER=/home/gsd/lazyfs-jepsen/lazyfs
 
-# --------------------------------------------
+# FUSE passthrough.c example
+PASST_MOUNT_DIR=/tmp/passt.mnt
+PASST_ROOT_DIR=/tmp/passt.root
+PASST_BIN=/home/gsd/libfuse/example/passthrough.c
 
-echo -e "process starting...\n"
+TEST_VAR_LAZYFS_PAGE_SIZE=(4096 32768) # block/page size specified in bytes
 
-mkdir -p $workloads_tmp_dir
-cd $workloads_tmp_dir
+# --------------------------------------------------#
+# Other less important variables
 
-for wload in "${workloads_to_run[@]}"
-do
-    # ---------------------------------------------------
-    echo -e "[$fs:$page_size:workload:$wload] setting up results folder...\n"
-    if [ ! -d $wload ]
-    then
-        echo -e "[$fs:$page_size:workload:$wload] results folder does not exist, creating...\n"
-        cd .. > /dev/null
-        ./results.sh -w $wload -o $workloads_tmp_dir
-        cd - > /dev/null
+# Bash colors
+RED_COLOR='\e[31m'
+GREEN_COLOR='\e[32m'
+NO_COLOR='\e[0m'
+
+# --------------------------------------------------#
+# Utilities
+
+log_time () {
+	
+    # $1 = context
+	# $2 = message
+	
+    echo -e $(date "+%Y-%m-%d %H:%M:%S")": #$1 - $2"
+}
+
+mount_lazyfs () {
+	
+    # $1 = context
+	# $2 = lazyfs page size in bytes
+    
+    log_time $1 "Mounting LazyFS (mnt=$LAZYFS_MOUNT_DIR,root=$LAZYFS_ROOT_DIR)..."
+
+	mkdir -p $LAZYFS_MOUNT_DIR $LAZYFS_ROOT_DIR
+	sudo rm -rf $LAZYFS_MOUNT_DIR/* $LAZYFS_ROOT_DIR/*
+
+    OUTPUT_LAZYFS_CONFIG_FILE="/tmp/lfs.fb.$1.$2.config.toml"
+    OUTPUT_LAZYFS_FIFO="/tmp/lfs.fb.$1.$2.fifo"
+    CONFIG_NUMBER_PAGES=0
+
+    # Specifying a total of 5gb cache
+    # Everything fits in cache
+
+    if test $2 -eq 4096; then
+        CONFIG_NUMBER_PAGES=1310719
+    elif test $2 -eq 32768; then
+        CONFIG_NUMBER_PAGES=163839
     fi
-    # ---------------------------------------------------
-    for run_id in $(seq 1 3)
-    do
-        sudo rm -rf $mount_folder/* $root_folder/*
-        echo -e "[$fs:$page_size:workload:$wload:#$run_id] preparing run $run_id...\n"
-        # ---------------------------------------------------
-        echo -e "[$fs:$page_size:workload:$wload:#$run_id] mounting filesystem...\n"
-        if [ "$fs" = "passthrough" ]
-        then
-            cd /home/gsd/lazyfs-project/tests/util/fuse
-            ./run-passthrough.sh
-            cd - > /dev/null
-        else
-            cd /home/gsd/lazyfs-project/lazyfs
-            ./scripts/mount-lazyfs.sh -c config/default.toml -m $mount_folder -r $root_folder
-            sleep 5
-            echo "LazyFS mounted..."
-            echo "[$fs:$page_size:workload:$wload:#$run_id] running LazyFS..."
-            cd -
-        fi
-        # ---------------------------------------------------
-        echo -e "[$fs:$page_size:workload:$wload:#$run_id] creating workload folders...\n"
-        cd .. > /dev/null
-        ./setup-testbed.sh -d $mount_folder/fb-workload -f $workloads_source/$wload 
-        cd - > /dev/null
-        # ---------------------------------------------------
-        echo -e "\n[$fs:$page_size:workload:$wload:#$run_id] running...\n"
-        if [ "$fs" = "passthrough" ]
-        then
-            echo -e "\n# $fs run number $run_id\n" >> $wload/$fs*
-            sudo filebench -f ../$workloads_source/$wload >> $wload/$fs*
-        else
-            echo -e "\n# $fs run number $run_id\n" >> $wload/$fs*$page_size**
-            sudo filebench -f ../$workloads_source/$wload >> $wload/$fs*$page_size**
-        fi
-        # ---------------------------------------------------
-        echo -e "[$fs:$page_size:workload:$wload:#$run_id] umounting filesystem...\n"
-        fusermount -uz $mount_folder
-        echo -e "[$fs:$page_size:workload:$wload:#$run_id] waiting 15s for next round...\n"
-        sleep 20
-        # ---------------------------------------------------
-    done
-    echo -e "[$fs:$page_size:workload:$wload] sleeping 20s for next workload...\n"
-    sleep 30
-done
 
-echo -e "process finished...\n"
+cat > $OUTPUT_LAZYFS_CONFIG_FILE <<- EOM
+[faults]
+fifo_path="$OUTPUT_LAZYFS_FIFO"
+[cache.manual]
+io_block_size=$2
+page_size=$2
+no_pages=$CONFIG_NUMBER_PAGES
+EOM
 
-# --------------------------------------------
+	cd $LAZYFS_FOLDER > /dev/null
+	{
+		./scripts/mount-lazyfs.sh -c $OUTPUT_LAZYFS_CONFIG_FILE -m $LAZYFS_MOUNT_DIR -r $LAZYFS_ROOT_DIR
+	} &> /dev/null
+	cd - > /dev/null
+	(set -x; sleep 10s)
+    check_filesystem
+    return $?
+}
+
+umount_lazyfs () {
+	
+	log_time $1 "Umounting LazyFS (mnt=$LAZYFS_MOUNT_DIR)..."
+
+	cd $LAZYFS_FOLDER > /dev/null
+	{
+		./scripts/umount-lazyfs.sh -m $LAZYFS_MOUNT_DIR
+	} &> /dev/null
+	(set -x; sleep 5s)
+	check_filesystem
+	cd - > /dev/null
+
+    rm -rf /tmp/lfs.fb*config.toml
+    rm -rf /tmp/lfs.fb*fifo
+}
+
+check_filesystem () {
+
+	fs_res=$(findmnt -T $LAZYFS_MOUNT_DIR -o FSTYPE -n)
+	log_time "filesystem" "${GREEN_COLOR}$fs_res${NO_COLOR}"
+    if [ $fs_res != "fuse.lazyfs" ]; then
+        return 1
+    fi
+    return 0
+}
+
+mount_lazyfs "test" 4096
+sleep 2
+umount_lazyfs "test"
+
+# --------------------------------------------------#
+# Test loop
