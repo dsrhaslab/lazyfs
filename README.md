@@ -4,6 +4,9 @@
     <img src=".media/LazyFS.png" width="60%">
     <br>
     <img src="https://img.shields.io/badge/C++-17-yellow.svg?style=flat&logo=c%2B%2B" />
+    <a href="https://github.com/dsrhaslab/lazyfs/actions/workflows/build.yaml">
+        <img src="https://github.com/dsrhaslab/lazyfs/actions/workflows/build.yaml/badge.svg" />
+    </a>
     <img src="https://img.shields.io/badge/status-research%20prototype-green.svg" />
     <a href="https://opensource.org/licenses/BSD-3-Clause">
         <img src="https://img.shields.io/badge/License-MIT-blue.svg" />
