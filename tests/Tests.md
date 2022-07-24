@@ -5,11 +5,11 @@ LazyFS is currently being tested in different ways to ensure it is doing what is
 
 For now, these are the **test suites and scripts** you can use to check LazyFS's correctness:
 
-1. **Unit**
+1. **Unit** testing (*in pipeline*)
 
     Covers the basic functionality of LazyFS with deterministic testing. Allows keeping track of edge cases that caused bugs in the past.
 
-2. **lfscheck**
+2. **lfscheck** (*in pipeline*)
 
     This tool was built to ensure that after clearing the cache, LazyFS shows only the synced data since the last *fsync* call. The test is composed of N worker threads and one monitor thread:
 
