@@ -1,5 +1,5 @@
 [faults]
-fifo_path="/home/gsd/faults-example.fifo"
+fifo_path="/tmp/faults.fifo"
 [cache]
 apply_eviction=false
 [cache.simple]
