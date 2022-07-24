@@ -59,7 +59,7 @@ jobs:
                 mkdir -p ${LAZYFS_TEST_MOUNT_DIR} ${LAZYFS_TEST_ROOT_DIR}
                 sudo rm -rf ${LAZYFS_TEST_MOUNT_DIR}* ${LAZYFS_TEST_ROOT_DIR}*
                 sudo sed -i "s|fifo_path=.*|fifo_path=\"${CONSISTENCY_TESTS_FIFO_PATH}\"|" lazyfs/config/default.toml
-                sudo sed -i "s|custom_size=.*|custom_size=\"${CONSISTENCY_TESTS_FIFO_PATH}\"|" lazyfs/config/default.toml
+                sudo sed -i "s|custom_size=.*|custom_size=\"${CONSISTENCY_TESTS_CACHE_SIZE}\"|" lazyfs/config/default.toml
                 cd lazyfs && ./scripts/mount-lazyfs.sh -m ${LAZYFS_TEST_MOUNT_DIR} -r ${LAZYFS_TEST_ROOT_DIR} -c config/default.toml && cd -
                 sleep 2s
                 ./tests/lfscheck/build/lfscheck -m ${LAZYFS_TEST_MOUNT_DIR} -f ${CONSISTENCY_TESTS_FIFO_PATH} -t ${CONSISTENCY_TESTS_TEST_TIME} -n ${CONSISTENCY_TESTS_TEST_NR_THREADS} -b ${CONSISTENCY_TESTS_TEST_BURST} -max ${CONSISTENCY_TESTS_TEST_MAX_WRITE}
