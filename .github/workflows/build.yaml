@@ -44,7 +44,7 @@ jobs:
               run: |
                 sudo sed -i "s|fifo_path=.*|fifo_path=\"${UNIT_TESTS_FIFO_PATH}\"|" lazyfs/config/default.toml
                 sudo sed -i "s|custom_size=.*|custom_size=\"${UNIT_TESTS_CACHE_SIZE}\"|" lazyfs/config/default.toml
-                sudo sed -s -i "s|\#define.*FAULTS_PIPE_PATH.*|\#define FAULTS_PIPE_PATH \"$(pwd)\/unit.fifo\"|" lazyfs/unit/*_clear_cache.cpp
+                sudo sed -s -i "s|\#define.*FAULTS_PIPE_PATH.*|\#define FAULTS_PIPE_PATH \"${UNIT_TESTS_FIFO_PATH}\"|" lazyfs/unit/*_clear_cache.cpp
                 cd lazyfs/scripts && ./run-tests.sh -m ${LAZYFS_TEST_MOUNT_DIR} -r ${LAZYFS_TEST_ROOT_DIR} && cd -
 
             - name: Run consistency tests
