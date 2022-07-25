@@ -3,9 +3,10 @@
 # ------------------------------------------------------#
 # These variables are changed dynamically
 
-set $WORKLOAD_PATH="DEFAULT_VALUE"
-set $WORKLOAD_TIME=300
+set $WORKLOAD_PATH="/tmp/lfs.mnt"
+set $WORKLOAD_TIME=30
 set $NR_THREADS=1
+set $LAZYFS_FIFO="/tmp/faults.fifo"
 
 set $NR_FILES=1000
 set $MEAN_DIR_WIDTH=20
@@ -19,7 +20,7 @@ define fileset name=logfiles,path=$WORKLOAD_PATH,size=$FILE_SIZE,entries=1,dirwi
 
 define process name=filereader,instances=1
 {
-  thread name=filereaderthread,memsize=10m,instances=$nthreads
+  thread name=filereaderthread,memsize=10m,instances=$NR_THREADS
   {
     flowop openfile name=openfile1,filesetname=bigfileset,fd=1
     flowop readwholefile name=readfile1,fd=1,iosize=$IO_SIZE
@@ -57,17 +58,26 @@ define process name=filereader,instances=1
 
 # ------------------------------------------------------#
 
-system "sync"
+create files
+
+system "echo LazyFS: performing a cache checkpoint..."
+system "sudo -u gsd sh -c 'echo lazyfs::cache-checkpoint > $LAZYFS_FIFO'"
+sleep 20
+
+system "echo LazyFS: clearing the cache..."
+system "sudo -u gsd sh -c 'echo lazyfs::clear-cache > $LAZYFS_FIFO'"
+sleep 20
+
+system "echo OS: syncing workload folder..."
+system "sync $WORKLOAD_PATH"
+system "echo OS: clearing caches..."
 system "echo 3 > /proc/sys/vm/drop_caches"
 
-echo "time sync"
+system "echo time: sync..."
 system "date '+time sync %s.%N'"
-echo "time sync"
-
-#-----------------------------------------#
-# REPLACE_LAZYFS_CACHE_CONFIGURATION_HERE #
-#-----------------------------------------#
+system "echo time: sync..."
 
 # ------------------------------------------------------#
 
+system "echo workload: running..."
 run $WORKLOAD_TIME
