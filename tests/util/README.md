@@ -11,4 +11,5 @@ make
 ./read <size> <offset> <path>
 ./write <size> <offset> <char> <path>
 ./truncate <size> <path>
+./fsync <mode=all,data> <path>
 ```
