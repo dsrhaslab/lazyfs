@@ -1,6 +1,8 @@
 
 # LazyFS Tests
 
+## Filesystem correctness
+
 LazyFS is currently being tested in different ways to ensure it is doing what is expected, although we are constantly looking for new bugs. The storage community today tends to focus more on benchmarking performance over correctness and we lack a well known tool to do our tests.
 
 For now, these are the **test suites and scripts** you can use to check LazyFS's correctness:
@@ -58,3 +60,15 @@ For now, these are the **test suites and scripts** you can use to check LazyFS's
     > You may need to install some dependencies (e.g. `leiningen` and LazyFS's dependencies).
 
 I am always looking for new ways of testing this system, please feel free to send me suggestions!
+
+## Filesystem performance
+
+Although less important for our use case, tests for performance are also being developed using a well-known filesystem and storage benchmark ([Filebench](https://github.com/filebench/filebench)). Tests include micro and macro workloads that exercise the filesystem in many different ways.
+
+Important files related to these tests:
+
+1. `filebench/workloads`: All workloads performed
+2. `filebench/run-workloads.sh`: A script that runs all workloads, one must specify the required variables in the script header. Generates Filebench results to a custom output folder.
+3. `filebench/results.py`: After generating the results to the output folder, one can run `./results.py output_folder_name` to get a pretty table with the results.
+
+Note that the focus of LazyFS is to find bugs and help developers with the data loss use case. Having the fastest filesystem is **not the main goal for now**.
