@@ -107,6 +107,7 @@ void do_consistency_work (int tid) {
                           tid,
                           pr_res,
                           file_size);
+
             assert (pr_res == file_size);
             assert (!memcmp (read_buf, file_buffer, pr_res));
 
@@ -178,8 +179,9 @@ void do_consistency_work (int tid) {
             int fr = fsync (fd);
             assert (fr >= 0);
 
-            for (int uns = last_off_check_bottom; uns <= last_off_check_up; uns++)
-                file_buffer[uns] = unsynced_buf[uns];
+            memcpy (file_buffer + last_off_check_bottom,
+                    unsynced_buf + last_off_check_bottom,
+                    last_off_check_up - last_off_check_bottom + 1);
 
             file_size = std::max (file_size, last_off_check_up + 1);
 
