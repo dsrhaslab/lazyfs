@@ -55,31 +55,44 @@ for test_output_file in os.listdir(results_folder):
     io_summaries = list(filter(lambda line: "IO Summary" in line, result_lines))
 
     count_summary = 0
-    sum_nr_ops = 0
-    sum_ops_s = 0
-    sum_rd_wr_1 = 0
-    sum_rd_wr_2 = 0
-    sum_mb_s = 0
-    sum_ms_op = 0
+    list_nr_ops = []
+    list_ops_s = []
+    list_rd_wr_1 = []
+    list_rd_wr_2 = []
+    list_mb_s = []
+    list_ms_op = []
     for summary in io_summaries:
         sum_parts = summary.split()
-        sum_nr_ops = sum_nr_ops + float(sum_parts[3])
-        sum_ops_s = sum_ops_s + float(sum_parts[5])
-        sum_rd_wr_1 = sum_rd_wr_1 + float(sum_parts[7].split('/')[0])
-        sum_rd_wr_2 = sum_rd_wr_2 + float(sum_parts[7].split('/')[1])
-        sum_mb_s = sum_mb_s + float(sum_parts[9].replace("mb/s", ""))
-        sum_ms_op = sum_ms_op + float(sum_parts[10].replace("ms/op", ""))
+        list_nr_ops.append(float(sum_parts[3]))
+        list_ops_s.append(float(sum_parts[5]))
+        list_rd_wr_1.append(float(sum_parts[7].split('/')[0]))
+        list_rd_wr_2.append(float(sum_parts[3].split('/')[0]))
+        list_mb_s.append(float(sum_parts[9].replace("mb/s", "")))
+        list_ms_op.append(float(sum_parts[10].replace("ms/op", "")))
         count_summary = count_summary + 1
 
     if count_summary > 0:
 
+        avg_ops = round(statistics.mean(list_nr_ops),3)
+        stdev_ops = round(statistics.stdev(list_nr_ops), 3)
+        avg_ops_s = round(statistics.mean(list_ops_s),3)
+        stdev_ops_s = round(statistics.stdev(list_ops_s), 3)
+        avg_rd = round(statistics.mean(list_rd_wr_1),3)
+        stdev_rd = round(statistics.stdev(list_rd_wr_1), 3)
+        avg_wr = round(statistics.mean(list_rd_wr_2),3)
+        stdev_wr = round(statistics.stdev(list_rd_wr_2), 3)
+        avg_mb_s = round(statistics.mean(list_mb_s),3)
+        stdev_mb_s = round(statistics.stdev(list_mb_s), 3)
+        avg_ms_ops = round(statistics.mean(list_ms_op),3)
+        stdev_ms_ops = round(statistics.stdev(list_ms_op), 3)
+
         results_table.add_row([workload, 
                             filesystem, 
-                            round(float(sum_nr_ops/count_summary),3), 
-                            round(float(sum_ops_s/count_summary),3), 
-                            str(round(float(sum_rd_wr_1/count_summary),3))+"/"+str(round(float(sum_rd_wr_2/count_summary),3)), 
-                            round(float(sum_mb_s/count_summary),3),
-                            round(float(sum_ms_op/count_summary),3)])
+                            "{} (+-{})".format(avg_ops, stdev_ops),
+                            "{} (+-{})".format(avg_ops_s, stdev_ops_s), 
+                            "{}/{} (+-{}/+-{})".format(avg_rd, avg_wr, stdev_rd, stdev_wr),
+                            "{} (+-{})".format(avg_mb_s, stdev_mb_s),
+                            "{} (+-{})".format(avg_ms_ops, stdev_ms_ops)])
 
 results_table.sortby = "workload"
 print(results_table)
