@@ -4,6 +4,8 @@
 #include <condition_variable>
 #include <fcntl.h>
 #include <filesystem>
+#include <iostream>
+#include <random>
 #include <shared_mutex>
 #include <spdlog/spdlog.h>
 #include <string>
@@ -19,7 +21,7 @@ using namespace std;
 
 #define BURST_OPS_MAX 10000
 #define MAX_THREADS 100
-#define MAX_WRITE_OFF 131072
+#define MAX_WRITE_OFF 32768
 
 // Test specification
 
@@ -45,10 +47,17 @@ std::condition_variable_any loop_condition;
 bool can_do_work        = false;
 int* thread_op_count    = new int[MAX_THREADS];
 bool* thread_check_file = new bool[MAX_THREADS];
+std::random_device dev;
 
 // ---------------------------------------
 
-int get_random_number (int min, int max) { return rand () % (max - min + 1) + min; }
+int get_random_number (int min, int max) {
+
+    std::mt19937 rng (dev ());
+    std::uniform_int_distribution<std::mt19937::result_type> dist_rnd (min, max);
+
+    return dist_rnd (rng);
+}
 
 void do_consistency_work (int tid) {
 
@@ -102,6 +111,9 @@ void do_consistency_work (int tid) {
             assert (!memcmp (read_buf, file_buffer, pr_res));
 
             thread_check_file[tid] = false;
+
+            last_off_check_bottom = -1;
+            last_off_check_up     = -1;
         }
 
         if (last_iteration)
