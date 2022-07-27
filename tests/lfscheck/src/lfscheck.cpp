@@ -79,8 +79,8 @@ void do_consistency_work (int tid) {
     char* read_buf     = (char*)malloc (upper_bound_write);
     char* unsynced_buf = (char*)malloc (upper_bound_write);
 
-    memset (file_buffer, 0, upper_bound_write);
-    memset (unsynced_buf, 0, upper_bound_write);
+    std::memset (file_buffer, 0, upper_bound_write);
+    std::memset (unsynced_buf, 0, upper_bound_write);
 
     int file_size             = 0;
     int last_off_check_bottom = -1, last_off_check_up = -1;
@@ -157,6 +157,8 @@ void do_consistency_work (int tid) {
 
             last_off_check_bottom = -1;
             last_off_check_up     = -1;
+
+            std::memset (unsynced_buf, 0, upper_bound_write);
         }
 
         if (last_iteration)
@@ -221,14 +223,16 @@ void do_consistency_work (int tid) {
             int fr = fsync (fd_operations);
             assert (fr >= 0);
 
-            memcpy (file_buffer + last_off_check_bottom,
-                    unsynced_buf + last_off_check_bottom,
-                    last_off_check_up - last_off_check_bottom + 1);
+            for (int buf_index = last_off_check_bottom; buf_index <= last_off_check_up; buf_index++)
+                if (unsynced_buf[buf_index] != 0)
+                    file_buffer[buf_index] = unsynced_buf[buf_index];
 
             file_size = std::max (file_size, last_off_check_up + 1);
 
             last_off_check_bottom = -1;
             last_off_check_up     = -1;
+
+            std::memset (unsynced_buf, 0, upper_bound_write);
         }
     }
 
@@ -255,6 +259,8 @@ void do_monitoring () {
     spdlog::warn ("monitor started...");
 
     while (true) {
+
+        std::this_thread::sleep_for (std::chrono::seconds (g_clear_cache_each_n_seconds));
 
         std::unique_lock<std::shared_mutex> lk (loop_mtx);
 
@@ -441,7 +447,7 @@ int main (int argc, char** argv) {
     std::chrono::steady_clock::time_point end_test = std::chrono::steady_clock::now ();
 
     spdlog::info (
-        "test took {0:d} seconds",
+        "Everything looks good! Test took {0:d} seconds...",
         std::chrono::duration_cast<std::chrono::seconds> (end_test - begin_test).count ());
 
     return 0;

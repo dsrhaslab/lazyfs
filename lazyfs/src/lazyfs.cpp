@@ -35,6 +35,8 @@ using namespace cache;
 using namespace cache::engine::backends::custom;
 using namespace cache::util;
 
+std::shared_mutex cache_command_lock;
+
 namespace lazyfs {
 
 LazyFS::LazyFS () {}
@@ -54,6 +56,8 @@ LazyFS::~LazyFS () {}
 
 void LazyFS::command_fault_clear_cache () {
 
+    std::unique_lock<std::shared_mutex> lock (cache_command_lock);
+
     _print_with_time ("[cache]: clearing cached contents...");
     FSCache->clear_all_cache ();
     _print_with_time ("[cache]: cache is now empty.");
@@ -61,11 +65,15 @@ void LazyFS::command_fault_clear_cache () {
 
 void LazyFS::command_display_cache_usage () {
 
+    std::unique_lock<std::shared_mutex> lock (cache_command_lock);
+
     _print_with_time (
         "[cache] current pages usage: " + std::to_string (FSCache->get_cache_usage ()) + "%");
 }
 
 void LazyFS::command_checkpoint () {
+
+    std::unique_lock<std::shared_mutex> lock (cache_command_lock);
 
     _print_with_time ("[cache]: performing checkpoint...");
     FSCache->full_checkpoint ();
@@ -90,6 +98,8 @@ void* LazyFS::lfs_init (struct fuse_conn_info* conn, struct fuse_config* cfg) {
 void LazyFS::lfs_destroy (void*) {}
 
 int LazyFS::lfs_getattr (const char* path, struct stat* stbuf, struct fuse_file_info* fi) {
+
+    std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
     if (this_ ()->FSConfig->log_all_operations)
         _print_with_time ("[fs] getattr::(path=" + string (path) + ", ...)");
@@ -183,6 +193,8 @@ int LazyFS::lfs_readdir (const char* path,
                          struct fuse_file_info* fi,
                          enum fuse_readdir_flags flags) {
 
+    std::shared_lock<std::shared_mutex> lock (cache_command_lock);
+
     if (this_ ()->FSConfig->log_all_operations)
         _print_with_time ("[fs] readdir::(path=" + string (path) +
                           ", offset=" + to_string (offset) + " ...)");
@@ -214,6 +226,8 @@ int LazyFS::lfs_readdir (const char* path,
 
 int LazyFS::lfs_open (const char* path, struct fuse_file_info* fi) {
 
+    std::shared_lock<std::shared_mutex> lock (cache_command_lock);
+
     int res;
 
     res = open (path, fi->flags);
@@ -244,6 +258,8 @@ int LazyFS::lfs_open (const char* path, struct fuse_file_info* fi) {
 }
 
 int LazyFS::lfs_create (const char* path, mode_t mode, struct fuse_file_info* fi) {
+
+    std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
     int res;
 
@@ -306,6 +322,8 @@ int LazyFS::lfs_write (const char* path,
                        size_t size,
                        off_t offset,
                        struct fuse_file_info* fi) {
+
+    std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
     if (this_ ()->FSConfig->log_all_operations)
         _print_with_time ("[fs] write::(path=" + string (path) + ", size=" + to_string (size) +
@@ -631,6 +649,8 @@ int LazyFS::lfs_read (const char* path,
                       off_t offset,
                       struct fuse_file_info* fi) {
 
+    std::shared_lock<std::shared_mutex> lock (cache_command_lock);
+
     if (this_ ()->FSConfig->log_all_operations)
         _print_with_time ("[fs] read::(path=" + string (path) + ", size=" + to_string (size) +
                           ", offset=" + to_string (offset) + " ...)");
@@ -863,6 +883,8 @@ int LazyFS::lfs_read (const char* path,
 
 int LazyFS::lfs_fsync (const char* path, int isdatasync, struct fuse_file_info* fi) {
 
+    std::shared_lock<std::shared_mutex> lock (cache_command_lock);
+
     struct stat stats;
     lfs_getattr (path, &stats, fi);
 
@@ -980,6 +1002,8 @@ int LazyFS::lfs_recursive_rename (const char* from, const char* to, unsigned int
 
 int LazyFS::lfs_rename (const char* from, const char* to, unsigned int flags) {
 
+    std::shared_lock<std::shared_mutex> lock (cache_command_lock);
+
     if (this_ ()->FSConfig->log_all_operations)
         _print_with_time ("[fs] rename::(from=" + string (from) + ", to=" + string (to) + " ...)");
 
@@ -1017,6 +1041,8 @@ int LazyFS::lfs_rename (const char* from, const char* to, unsigned int flags) {
 }
 
 int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_file_info* fi) {
+
+    std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
     struct stat stats;
     lfs_getattr (path, &stats, fi);
@@ -1190,6 +1216,8 @@ int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_fil
 
 int LazyFS::lfs_symlink (const char* from, const char* to) {
 
+    std::shared_lock<std::shared_mutex> lock (cache_command_lock);
+
     if (this_ ()->FSConfig->log_all_operations)
         _print_with_time ("[fs] symlink::(from=" + string (from) + ", to=" + string (to) + " ...)");
 
@@ -1203,6 +1231,8 @@ int LazyFS::lfs_symlink (const char* from, const char* to) {
 }
 
 int LazyFS::lfs_access (const char* path, int mask) {
+
+    std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
     if (this_ ()->FSConfig->log_all_operations)
         _print_with_time ("[fs] access::(path=" + string (path) + " ...)");
@@ -1218,6 +1248,8 @@ int LazyFS::lfs_access (const char* path, int mask) {
 
 int LazyFS::lfs_mkdir (const char* path, mode_t mode) {
 
+    std::shared_lock<std::shared_mutex> lock (cache_command_lock);
+
     if (this_ ()->FSConfig->log_all_operations)
         _print_with_time ("[fs] mkdir::(path=" + string (path) + " ...)");
 
@@ -1231,6 +1263,8 @@ int LazyFS::lfs_mkdir (const char* path, mode_t mode) {
 }
 
 int LazyFS::lfs_link (const char* from, const char* to) {
+
+    std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
     if (this_ ()->FSConfig->log_all_operations)
         _print_with_time ("[fs] link::(from=" + string (from) + ", to=" + string (to) + " ...)");
@@ -1251,6 +1285,8 @@ int LazyFS::lfs_link (const char* from, const char* to) {
 
 int LazyFS::lfs_readlink (const char* path, char* buf, size_t size) {
 
+    std::shared_lock<std::shared_mutex> lock (cache_command_lock);
+
     if (this_ ()->FSConfig->log_all_operations)
         _print_with_time ("[fs] readlink::(path=" + string (path) + " ...)");
 
@@ -1266,6 +1302,8 @@ int LazyFS::lfs_readlink (const char* path, char* buf, size_t size) {
 
 int LazyFS::lfs_release (const char* path, struct fuse_file_info* fi) {
 
+    std::shared_lock<std::shared_mutex> lock (cache_command_lock);
+
     if (this_ ()->FSConfig->log_all_operations)
         _print_with_time ("[fs] release::(path=" + string (path) + " ...)");
 
@@ -1277,6 +1315,8 @@ int LazyFS::lfs_release (const char* path, struct fuse_file_info* fi) {
 }
 
 int LazyFS::lfs_rmdir (const char* path) {
+
+    std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
     if (this_ ()->FSConfig->log_all_operations)
         _print_with_time ("[fs] rmdir::(path=" + string (path) + " ...)");
@@ -1292,6 +1332,8 @@ int LazyFS::lfs_rmdir (const char* path) {
 
 int LazyFS::lfs_chmod (const char* path, mode_t mode, struct fuse_file_info* fi) {
 
+    std::shared_lock<std::shared_mutex> lock (cache_command_lock);
+
     if (this_ ()->FSConfig->log_all_operations)
         _print_with_time ("[fs] chmod::(path=" + string (path) + " ...)");
 
@@ -1306,6 +1348,8 @@ int LazyFS::lfs_chmod (const char* path, mode_t mode, struct fuse_file_info* fi)
 }
 
 int LazyFS::lfs_chown (const char* path, uid_t uid, gid_t gid, fuse_file_info* fi) {
+
+    std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
     if (this_ ()->FSConfig->log_all_operations)
         _print_with_time ("[fs] chown::(path=" + string (path) + " ...)");
@@ -1372,6 +1416,8 @@ int LazyFS::lfs_removexattr (const char* path, const char* name) {
 // #ifdef HAVE_UTIMENSAT
 int LazyFS::lfs_utimens (const char* path, const struct timespec ts[2], struct fuse_file_info* fi) {
 
+    std::shared_lock<std::shared_mutex> lock (cache_command_lock);
+
     if (this_ ()->FSConfig->log_all_operations)
         _print_with_time ("[fs] utimens::(path=" + string (path) + " ...)");
 
@@ -1388,6 +1434,8 @@ int LazyFS::lfs_utimens (const char* path, const struct timespec ts[2], struct f
 // #endif
 
 off_t LazyFS::lfs_lseek (const char* path, off_t off, int whence, struct fuse_file_info* fi) {
+
+    std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
     if (this_ ()->FSConfig->log_all_operations)
         _print_with_time ("[fs] lseek::(path=" + string (path) + ", off=" + to_string (off) +
@@ -1415,6 +1463,8 @@ off_t LazyFS::lfs_lseek (const char* path, off_t off, int whence, struct fuse_fi
 }
 
 int LazyFS::lfs_unlink (const char* path) {
+
+    std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
     if (this_ ()->FSConfig->log_all_operations)
         _print_with_time ("[fs] unlink::(path=" + string (path) + " ...)");
