@@ -33,7 +33,7 @@ string g_lfs_fifo                = ""; // path for lazyfs fifo
 
 // Test limits
 
-int clear_cache_wait_for = 2; // seconds to wait after clearing cache
+int clear_cache_wait_for = 6; // seconds to wait after clearing cache
 int lower_bound_write    = 0;
 int upper_bound_write    = MAX_WRITE_OFF;
 int max_burst_operations = BURST_OPS_MAX;
@@ -57,6 +57,15 @@ int get_random_number (int min, int max) {
     std::uniform_int_distribution<std::mt19937::result_type> dist_rnd (min, max);
 
     return dist_rnd (rng);
+}
+
+string get_buffer_string (char* buf, int size) {
+
+    string res = "";
+    for (int idx = 0; idx < size; idx++)
+        res += (buf[idx] ? buf[idx] : '0');
+
+    return res;
 }
 
 void do_consistency_work (int tid) {
@@ -83,7 +92,16 @@ void do_consistency_work (int tid) {
     int fd = open (worker_path.c_str (), O_CREAT | O_RDWR | O_TRUNC, 0777);
 
     if (fd < 0)
-        spdlog::critical ("worker {0:d}: cloud not open {1:s}", tid, worker_path);
+        spdlog::critical ("worker {0:d}: could not open {1:s} for O_CREAT|O_RDWR|O_TRUNC",
+                          tid,
+                          worker_path);
+
+    close (fd);
+
+    int fd_operations = open (worker_path.c_str (), O_RDWR);
+
+    if (fd_operations < 0)
+        spdlog::critical ("worker {0:d}: could not open for {1:s} O_RDWR", tid, worker_path);
 
     while (not stop_workers) {
 
@@ -99,9 +117,18 @@ void do_consistency_work (int tid) {
 
         if (thread_check_file[tid]) {
 
+            close (fd_operations);
+
             spdlog::info ("worker {:d}: verifying contents of file with in memory buffer...", tid);
 
-            int pr_res = pread (fd, read_buf, upper_bound_write, 0);
+            fd_operations = open (worker_path.c_str (), O_RDWR);
+
+            if (fd_operations < 0)
+                spdlog::critical ("worker {0:d}: could not open for {1:s} O_RDWR",
+                                  tid,
+                                  worker_path);
+
+            int pr_res = pread (fd_operations, read_buf, upper_bound_write, 0);
 
             spdlog::info ("worker {:d}: pread returned {} bytes, tracked file_size is {}...",
                           tid,
@@ -109,7 +136,22 @@ void do_consistency_work (int tid) {
                           file_size);
 
             assert (pr_res == file_size);
-            assert (!memcmp (read_buf, file_buffer, pr_res));
+
+            if (memcmp (read_buf, file_buffer, pr_res) != 0) {
+
+                spdlog::critical ("worker {:d}: check failed, buffers differ!", tid);
+                spdlog::critical ("worker {:d}: in-memory buffer = ({} bytes) [{}]",
+                                  tid,
+                                  file_size,
+                                  get_buffer_string (file_buffer, file_size));
+                spdlog::critical ("worker {:d}: pread result     = ({} bytes) [{}]",
+                                  tid,
+                                  pr_res,
+                                  get_buffer_string (read_buf, pr_res));
+
+                // Stop execution if a possible error was found
+                assert (0);
+            }
 
             thread_check_file[tid] = false;
 
@@ -146,20 +188,20 @@ void do_consistency_work (int tid) {
                       fs ? "on" : "off");
 
         char write_buf[write_size];
-        memset (write_buf, ch, write_size);
-        int pw_res = pwrite (fd, write_buf, write_size, bt);
+        std::memset (write_buf, ch, write_size);
+        int pw_res = pwrite (fd_operations, write_buf, write_size, bt);
 
         assert (pw_res == write_size);
 
         // read that write and check if matches
 
         char read_buf[write_size];
-        int pr_res = pread (fd, read_buf, write_size, bt);
+        int pr_res = pread (fd_operations, read_buf, write_size, bt);
 
         assert (pr_res == write_size);
         assert (!memcmp (read_buf, write_buf, write_size));
 
-        memset (unsynced_buf + bt, ch, write_size);
+        std::memset (unsynced_buf + bt, ch, write_size);
 
         if (last_off_check_bottom == -1)
             last_off_check_bottom = bt;
@@ -176,7 +218,7 @@ void do_consistency_work (int tid) {
 
             spdlog::info ("worker {:d}: fsync...", tid);
 
-            int fr = fsync (fd);
+            int fr = fsync (fd_operations);
             assert (fr >= 0);
 
             memcpy (file_buffer + last_off_check_bottom,
@@ -190,7 +232,7 @@ void do_consistency_work (int tid) {
         }
     }
 
-    close (fd);
+    close (fd_operations);
 
     int res_unlink = unlink (worker_path.c_str ());
 
@@ -199,9 +241,9 @@ void do_consistency_work (int tid) {
     if (res_unlink < 0)
         spdlog::critical ("worker {0:d}: could not unlink {1:s}", tid, worker_path);
 
-    free (file_buffer);
-    free (unsynced_buf);
-    free (read_buf);
+    std::free (file_buffer);
+    std::free (unsynced_buf);
+    std::free (read_buf);
 }
 
 void do_monitoring () {
@@ -219,20 +261,17 @@ void do_monitoring () {
         std::chrono::time_point<std::chrono::system_clock> timenow =
             std::chrono::system_clock::now ();
 
-        loop_condition.wait_until (lk,
-                                   timenow + std::chrono::duration<double, std::ratio<1, 1000>> (
-                                                 g_clear_cache_each_n_seconds * 1000));
-
         can_do_work = false;
 
         spdlog::warn ("[LOCK] monitor has now control");
 
         // do cache clearing work
 
-        spdlog::warn ("monitor: clearing cache...");
-
         int pipefd = open (g_lfs_fifo.c_str (), O_WRONLY);
         if (pipefd > 0) {
+
+            spdlog::warn ("monitor: sending clear cache command (+waiting {} seconds)...",
+                          clear_cache_wait_for);
 
             int r = write (pipefd, "lazyfs::clear-cache\n", 20);
             assert (r == 20);
