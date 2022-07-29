@@ -218,7 +218,7 @@ void do_consistency_work (int tid) {
 
         if (fs) {
 
-            spdlog::info ("worker {:d}: fsync...", tid);
+            spdlog::info ("worker {:d}: fsync()", tid);
 
             int fr = fsync (fd_operations);
             assert (fr >= 0);
@@ -401,19 +401,18 @@ int main (int argc, char** argv) {
 
         if (chdir (g_lfs_mount.c_str ()) < 0) {
 
-            std::cerr << "could not change process dir to mount point" << endl;
+            std::cerr << "chdir: could not change process dir to mount point" << endl;
             std::exit (1);
         }
 
-        spdlog::info ("threads ({}), burst ({} write ops), max off ({}), total minimum time ({})",
+        spdlog::info ("test configuration: threads ({}), burst ({} write ops), max off ({}), total "
+                      "minimum time ({})",
                       g_nr_threads,
                       max_burst_operations,
                       upper_bound_write,
                       g_total_runtime);
 
     } catch (const std::runtime_error& err) {
-
-        spdlog::error ("error parsing command line args");
 
         std::cerr << err.what () << std::endl;
         std::cerr << lfscheck;
