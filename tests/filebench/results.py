@@ -5,6 +5,25 @@ import sys
 import os
 import prettytable
 import statistics
+import re
+import pandas as pd
+import math
+
+def is_float(element):
+    try:
+        float(element)
+        return True
+    except ValueError:
+        return False
+
+def convert_size(size_bytes):
+   if size_bytes == 0:
+       return "0B"
+   size_name = ("B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
+   i = int(math.floor(math.log(size_bytes, 1024)))
+   p = math.pow(1024, i)
+   s = round(size_bytes / p, 2)
+   return "%s %s" % (s, size_name[i])
 
 if len(sys.argv) != 2:
     print("./results.py output_folder")
@@ -20,11 +39,16 @@ micro_read = ["randread", "seqread"]
 micro_write = ["randwrite", "seqwrite"]
 macro = ["fileserver", "varmail", "webserver"]
 
-results_table = prettytable.PrettyTable()
+filebench_table = prettytable.PrettyTable()
 
-results_table.field_names = ["workload", "filesystem", "ops", "ops/s", "rd/wr", "mb/s", "ms/op"]
+filebench_table.field_names = ["workload", "filesystem", "ops", "ops/s", "rd/wr", "mb/s", "ms/op"]
+
+print ("> generating filebench table...")
 
 for test_output_file in os.listdir(results_folder):
+    
+    if re.search("\.table$", test_output_file) or re.search("\.dstat\.csv$", test_output_file):
+        continue
     
     # run-WL-FS-fb.output
     parts = test_output_file.split("-")
@@ -86,7 +110,7 @@ for test_output_file in os.listdir(results_folder):
         avg_ms_ops = round(statistics.mean(list_ms_op),3)
         stdev_ms_ops = round(statistics.stdev(list_ms_op), 3)
 
-        results_table.add_row([workload, 
+        filebench_table.add_row([workload, 
                             filesystem, 
                             "{} (+-{})".format(avg_ops, stdev_ops),
                             "{} (+-{})".format(avg_ops_s, stdev_ops_s), 
@@ -94,5 +118,80 @@ for test_output_file in os.listdir(results_folder):
                             "{} (+-{})".format(avg_mb_s, stdev_mb_s),
                             "{} (+-{})".format(avg_ms_ops, stdev_ms_ops)])
 
-results_table.sortby = "workload"
-print(results_table)
+filebench_table.sortby = "workload"
+print(filebench_table)
+
+print ("> generating metrics table...")
+
+metrics_table = prettytable.PrettyTable()
+
+metrics_table.field_names = ["workload", "filesystem", "cpu", "ram"]
+
+line_counter = 0
+for test_dstat_file in os.listdir(results_folder):
+    
+    line_counter = 0
+
+    if not re.search("\.csv$", test_dstat_file):
+        continue
+
+    # run-WL-FS-fb.output
+    partswl = test_dstat_file.split("-")
+    workload = partswl[1]
+    filesystem = ""
+    add_idx = 0
+    if workload == "seq" or workload == "rand":
+        workload = partswl[1] + partswl[2]
+        filesystem = partswl[3]
+        add_idx = 1
+    else:
+        filesystem = partswl[2]
+
+    if workload in micro_meta:
+        workload = "micro_meta/"+workload
+    elif workload in micro_read:
+        workload = "micro_read/"+workload
+    elif workload in micro_write:
+        workload = "micro_write/"+workload
+    elif workload in macro:
+        workload = "macro/"+workload
+
+    if filesystem == "fuse.lazyfs":        
+        filesystem = filesystem + " (" + str(int(partswl[3+add_idx])/1024) + " KiB)"
+
+    results_file_fd = open(results_folder+"/"+test_dstat_file, "r")
+    result_lines = results_file_fd.readlines()
+
+    table_list = []
+    table_header = []
+    
+    for line in result_lines:
+        line_counter = line_counter + 1
+        if line_counter < 6:
+            continue
+        parts = line.split(",")
+        if len(parts) < 10:
+            continue
+        if line_counter == 6:
+            table_header=parts[1:]
+        else:
+            parsed_list = parts[:-1]
+            parsed_list = parts[1:]
+            new_list = [float(item) for subitem in parsed_list for item in subitem.split() if is_float(item)]
+            table_list.append(new_list)
+
+    df = pd.DataFrame(table_list, columns = table_header)
+
+    avg_cpu = df['"usr"'].mean()
+    std_cpu = df['"usr"'].std()
+    avg_ram = convert_size(df['"used"'].mean())
+    std_ram = convert_size(df['"used"'].std())
+
+    metrics_table.add_row([workload, 
+                            filesystem,
+                            "{} (+-{})".format(avg_cpu, std_cpu, df['"used"'].mean()),
+                            "{} (+-{}) -> {} bytes".format(avg_ram, std_ram, df['"used"'].std())
+                            ])
+
+metrics_table.sortby = "workload"
+print(metrics_table)

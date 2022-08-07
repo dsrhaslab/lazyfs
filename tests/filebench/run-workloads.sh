@@ -6,9 +6,11 @@
 TEST_VAR_WORKLOADS_FOLDER=workloads/clear-caches
 TEST_VAR_OUTPUT_RESULTS_FOLDER=outputs
 
-TEST_VAR_TOTAL_RUNTIME_EACH_WORKLOAD=200 # seconds
+TEST_VAR_TOTAL_RUNTIME_EACH_WORKLOAD=30 # seconds
 TEST_VAR_REPEAT_WORKLOADS=2 # number of times to re-run workloads
-TEST_VAR_FOR_FILESYSTEMS=("fuse.lazyfs-4096" "fuse.passthrough" "fuse.lazyfs-32768") # options: 'fuse.passthrough' and 'fuse.lazyfs-pagesize'
+TEST_VAR_FOR_FILESYSTEMS=("fuse.lazyfs-4096" "fuse.passthrough" "fuse.lazyfs-32768")
+# TEST_VAR_FOR_FILESYSTEMS=("fuse.lazyfs-4096") # options: 'fuse.passthrough' and 'fuse.lazyfs-pagesize'
+# TEST_VAR_FOR_FILESYSTEMS=("fuse.lazyfs-4096" "fuse.passthrough" "fuse.lazyfs-32768")
 
 #--------------------------------------------------#
 # Test variables
@@ -16,12 +18,12 @@ TEST_VAR_FOR_FILESYSTEMS=("fuse.lazyfs-4096" "fuse.passthrough" "fuse.lazyfs-327
 # LazyFS
 LAZYFS_MOUNT_DIR=/tmp/lazyfs.fb.mnt
 LAZYFS_ROOT_DIR=/tmp/lazyfs.fb.root
-LAZYFS_FOLDER=/home/gsd/lazyfs-jepsen/lazyfs
+LAZYFS_FOLDER=/home/gsd/lfs.repos/lfs.jepsen/lazyfs
 
 # FUSE passthrough.c example
 PASST_MOUNT_DIR=/tmp/passt.fb.mnt
 PASST_ROOT_DIR=/tmp/passt.fb.root
-PASST_BIN=/home/gsd/libfuse/example/passthrough
+PASST_BIN=/home/gsd/other/libfuse/example/passthrough
 
 TEST_VAR_SLEEP_AFTER_RUN=15 # seconds
 TEST_VAR_SLEEP_AFTER_CHANGE_FS=15 # seconds
@@ -49,6 +51,34 @@ log_time () {
 horizontal_line () {
 
 	printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -
+}
+
+spawn_dstat_process () {
+
+    # $1 = log id
+    # $2 = dstat process id
+    # $3 = results direcotry
+    # $4 = workload name
+    # $5 = filesystem
+
+    touch $3/run-$4-$5-fb.dstat.csv
+
+    log_time $1 "spawning dstat process..."
+
+    screen -S $2 -d -m dstat -tcdmg --noheaders --output $3/run-$4-$5-fb.dstat.csv
+}
+
+join_dstat_process () {
+
+    # $1 = log id
+    # $2 = dstat process id
+
+    log_time $1 "joining dstat process..."
+
+    {
+        screen -S dstat1 -X stuff '^C'
+        screen -wipe
+    } &> /dev/null
 }
 
 mount_lazyfs () {
@@ -213,9 +243,14 @@ for workload_fullpath_file in $(find $TEST_VAR_WORKLOADS_FOLDER -maxdepth 4 -typ
                 
                 if [ "$?" -eq "2" ]; then
                 
+                    spawn_dstat_process "FS:$filesystem,WL:$workload_file" dstat1 $REAL_OUTPUT_PATH $workload_name $filesystem
+
                     log_time "FS:$filesystem,WL:$workload_file" "running filebench..."
                     sudo filebench -f $workload_fullpath_file &>> $output_results_file
                     log_time "FS:$filesystem,WL:$workload_file" "filebench test finished..."
+
+                    join_dstat_process "FS:$filesystem,WL:$workload_file" dstat1
+
                     umount_passthrough "FS:$filesystem,WL:$workload_file"
 
                     TEST_OK_COUNT=$((TEST_OK_COUNT+1))
@@ -240,10 +275,18 @@ for workload_fullpath_file in $(find $TEST_VAR_WORKLOADS_FOLDER -maxdepth 4 -typ
 
                 if [ "$?" -eq "1" ]; then
 
+                    spawn_dstat_process "FS:$filesystem,WL:$workload_file" dstat1 $REAL_OUTPUT_PATH $workload_name $filesystem
+
                     log_time "FS:$filesystem,WL:$workload_file" "running filebench..."
                     sudo filebench -f $workload_fullpath_file &>> $output_results_file
                     log_time "FS:$filesystem,WL:$workload_file" "filebench test finished..."
+
+                    join_dstat_process "FS:$filesystem,WL:$workload_file" dstat1
+
                     umount_lazyfs $workload_name
+
+                    TEST_OK_COUNT=$((TEST_OK_COUNT+1))
+
                 else
                 
                     log_time "FS:$filesystem,WL:$workload_file" "${RED_COLOR}mounting failed!${NO_COLOR}"

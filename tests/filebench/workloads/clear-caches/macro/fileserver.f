@@ -8,7 +8,7 @@ set $WORKLOAD_TIME=30
 set $NR_THREADS=1
 set $LAZYFS_FIFO="DEFAULT_VALUE"
 
-set $NR_FILES=10000
+set $NR_FILES=5000
 set $MEAN_DIR_WIDTH=20
 set $IO_SIZE=4k
 set $FILE_SIZE=cvar(type=cvar-gamma,parameters=mean:131072;gamma:1.5)
