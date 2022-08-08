@@ -49,7 +49,7 @@ for test_output_file in os.listdir(results_folder):
     
     if re.search("\.table$", test_output_file) or re.search("\.dstat\.csv$", test_output_file):
         continue
-    
+
     # run-WL-FS-fb.output
     parts = test_output_file.split("-")
     workload = parts[1]
@@ -95,7 +95,8 @@ for test_output_file in os.listdir(results_folder):
         list_ms_op.append(float(sum_parts[10].replace("ms/op", "")))
         count_summary = count_summary + 1
 
-    if count_summary > 0:
+    # Prevents calculating stdev with less than 2 values
+    if count_summary > 1:
 
         avg_ops = round(statistics.mean(list_nr_ops),3)
         stdev_ops = round(statistics.stdev(list_nr_ops), 3)

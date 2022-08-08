@@ -49,4 +49,10 @@ build/
 # Vscode files
 .vscode/**
 
+# LazyFS or other log files
+
 *.log
+
+# tests/filebench: output files
+
+outputs*

@@ -3,14 +3,15 @@
 #--------------------------------------------------#
 # Main required variables
 
-TEST_VAR_WORKLOADS_FOLDER=workloads/clear-caches
+TEST_VAR_WORKLOADS_FOLDER=workloads/test
 TEST_VAR_OUTPUT_RESULTS_FOLDER=outputs
 
-TEST_VAR_TOTAL_RUNTIME_EACH_WORKLOAD=30 # seconds
-TEST_VAR_REPEAT_WORKLOADS=2 # number of times to re-run workloads
+# Setup to run for 15 min each test, 3 runs each
+#
+TEST_VAR_WORKLOADS_FOLDER=workloads/clear-caches
+TEST_VAR_TOTAL_RUNTIME_EACH_WORKLOAD=900 # seconds
+TEST_VAR_REPEAT_WORKLOADS=3 # number of times to re-run workloads
 TEST_VAR_FOR_FILESYSTEMS=("fuse.lazyfs-4096" "fuse.passthrough" "fuse.lazyfs-32768")
-# TEST_VAR_FOR_FILESYSTEMS=("fuse.lazyfs-4096") # options: 'fuse.passthrough' and 'fuse.lazyfs-pagesize'
-# TEST_VAR_FOR_FILESYSTEMS=("fuse.lazyfs-4096" "fuse.passthrough" "fuse.lazyfs-32768")
 
 #--------------------------------------------------#
 # Test variables
@@ -85,6 +86,7 @@ mount_lazyfs () {
 	
     # $1 = context
 	# $2 = lazyfs page size in bytes
+	# $3 = run iteration
     
     log_time $1 "Mounting LazyFS (mnt=$LAZYFS_MOUNT_DIR,root=$LAZYFS_ROOT_DIR)..."
 
@@ -92,7 +94,7 @@ mount_lazyfs () {
 	sudo rm -rf $LAZYFS_MOUNT_DIR/* $LAZYFS_ROOT_DIR/*
 
     OUTPUT_LAZYFS_CONFIG_FILE="/tmp/lfs.fb.$1.$2.config.toml"
-    OUTPUT_LAZYFS_FIFO="/tmp/lfs.fb.$1.$2.fifo"
+    OUTPUT_LAZYFS_FIFO="/tmp/lfs.fb$3.$1.$2.fifo"
     CONFIG_NUMBER_PAGES=0
 
     # Specifying a total of 5gb cache
@@ -268,10 +270,10 @@ for workload_fullpath_file in $(find $TEST_VAR_WORKLOADS_FOLDER -maxdepth 4 -typ
                 sed -i "/set \$WORKLOAD_PATH.*/c\set \$WORKLOAD_PATH=\"$LAZYFS_MOUNT_DIR\"" $workload_fullpath_file
                 OUTPUT_LAZYFS_FIFO="/tmp/lfs.fb$current_iteration.$workload_name.$page_size.fifo"
                 sed -i "/set \$LAZYFS_FIFO.*/c\set \$LAZYFS_FIFO=\"$OUTPUT_LAZYFS_FIFO\"" $workload_fullpath_file
-                
+          
                 # mount, run, umount fuse.lazyfs
 
-                mount_lazyfs $workload_name $page_size                
+                mount_lazyfs $workload_name $page_size $current_iteration             
 
                 if [ "$?" -eq "1" ]; then
 

@@ -12,7 +12,7 @@ set $NR_FILES=1
 set $MEAN_DIR_WIDTH=1
 set $IO_SIZE=4k
 set $FILE_SIZE=1g
-set $NR_ITERATIONS=67108864
+set $NR_ITERATIONS=20000000
 
 # ------------------------------------------------------#
 
