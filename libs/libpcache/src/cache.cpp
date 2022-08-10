@@ -11,7 +11,6 @@
 #include <cache/cache.hpp>
 #include <cache/constants/constants.hpp>
 #include <cache/item/item.hpp>
-#include <cache/util/utilities.hpp>
 #include <chrono>
 #include <list>
 #include <map>
@@ -39,17 +38,9 @@ Cache::Cache (cache::config::Config* cache_config, PageCacheEngine* choosenEngin
 
 Cache::~Cache () {
 
-    // delete this->engine;
-
     for (auto const& it : this->contents) {
         delete it.second;
     }
-
-    // for (auto const& it : this->item_locks) {
-    //     delete it.second;
-    // }
-
-    // delete this->cache_config;
 }
 
 double Cache::get_cache_usage () { return this->engine->get_engine_usage (); }

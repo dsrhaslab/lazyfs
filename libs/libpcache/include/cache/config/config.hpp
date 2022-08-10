@@ -50,11 +50,6 @@ class Config {
      */
     bool log_all_operations = false;
     /**
-     * @brief Wheter to sync dirty data after a rename operation
-     *
-     */
-    bool sync_after_rename = false;
-    /**
      * @brief Specifies if this configuration was specified by the configuration file or not.
      *
      */
@@ -85,6 +80,11 @@ class Config {
      *
      */
     string FIFO_PATH = "faults.fifo";
+    /**
+     * @brief The path for the LazyFS logfile.
+     *
+     */
+    string LOG_FILE = "";
 
     /**
      * @brief Default constructor for Config.

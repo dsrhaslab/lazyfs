@@ -11,6 +11,8 @@ include_directories(include)
 
 link_directories(../libs/libpcache/build)
 include_directories(../libs/libpcache/include)
+link_directories(../libs/libpcache/build/_deps/spdlog-build/)
+include_directories(../libs/libpcache/build/_deps/spdlog-src/include)
 
 find_package(Threads REQUIRED)
 

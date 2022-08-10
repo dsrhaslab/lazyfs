@@ -61,7 +61,7 @@ cd lazyfs && ./build.sh && cd -
 # lazyfs/config/default.toml
 
 [faults]
-fifo_path="/my/path/faults-example.fifo"
+fifo_path="/my/path/faults.fifo"
 
 [cache]
 apply_eviction=false
@@ -75,8 +75,8 @@ blocks_per_page=1
 # no_pages=10
 
 [filesystem]
-sync_after_rename=false # default option
 log_all_operations=false # default option
+logfile="/tmp/lazyfs.log" # remove or set to an empty string to disable
 ```
 
 The section **[cache]** **requires** that you specify the following:
@@ -88,9 +88,8 @@ The section **[cache]** **requires** that you specify the following:
 Other available parameters:
 
 - faults.**fifo_path**: The absolute path where the faults pipe should be created;
-- filesystem.**sync_after_rename**: Whether to implicitly perform a sync after a rename operation;
-- filesystem.**log_all_operations**: Just experimental for quick debugging in stdout. The LazyFS roadmap will include better logging in the future.
-
+- filesystem.**log_all_operations**: Whether to log all filesystem operations that LazyFS receives.
+- filesystem.**logfile**: The output logfile for LazyFS's logs. Leave an empty string or remove this key to disable the logfile.
 
 To **run the filesystem**, one could use the **mount-lazyfs.sh** script, which calls FUSE with the correct parameters:
 
@@ -143,12 +142,10 @@ This section displays a table with the current work planned:
 
 | **Tasks**                                    	| **Status**  	|
 |----------------------------------------------	|-------------	|
-| Performance optimizations (e.g. using perf)  	| In progress 	|
+| Performance optimizations                 	| In progress 	|
 | Develop Filesystem unit tests                	| In progress 	|
 | Test with more applications / databases      	| In progress 	|
-| Ensure rename atomicity                      	|      -      	|
 | Configure the page cache to grow dynamically 	|      -      	|
-| Improve logging (log formats and logfile)    	|      -      	|
 
 ## Contact
 

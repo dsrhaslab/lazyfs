@@ -10,14 +10,13 @@
 #include <assert.h>
 #include <cache/config/config.hpp>
 #include <cache/constants/constants.hpp>
-#include <cache/util/utilities.hpp>
 #include <iostream>
 #include <math.h>
+#include <spdlog/spdlog.h>
 #include <sys/types.h>
 #include <toml.hpp>
 
 using namespace std;
-using namespace cache::util;
 
 namespace cache::config {
 
@@ -130,14 +129,14 @@ void Config::load_config (string filename) {
 
         const auto& filesystem_settings = toml::find (data, "filesystem");
 
-        if (filesystem_settings.contains ("sync_after_rename")) {
-            bool rename_flag = toml::find (filesystem_settings, "sync_after_rename").as_boolean ();
-            this->sync_after_rename = rename_flag;
-        }
-
         if (filesystem_settings.contains ("log_all_operations")) {
             bool log_all_ops = toml::find (filesystem_settings, "log_all_operations").as_boolean ();
             this->log_all_operations = log_all_ops;
+        }
+
+        if (filesystem_settings.contains ("logfile")) {
+            string logfile = toml::find (filesystem_settings, "logfile").as_string ();
+            this->LOG_FILE = logfile;
         }
     }
 }
@@ -148,20 +147,19 @@ void Config::print_config () {
 
     size_t total_bytes = this->CACHE_NR_PAGES * this->CACHE_PAGE_SIZE;
 
-    _print_with_time ("[config] Using the following (" +
-                      string (this->is_default_config ? "default" : "custom") + ") configuration:");
-    _print_with_time ("[config] No. of pages        = " + to_string (this->CACHE_NR_PAGES));
-    _print_with_time ("[config] Page size (bytes)   = " + to_string (this->CACHE_PAGE_SIZE));
-    _print_with_time ("[config] Block size (bytes)  = " + to_string (this->CACHE_PAGE_SIZE));
-    _print_with_time ("[config] Blocks per page     = " +
-                      to_string (this->CACHE_PAGE_SIZE / this->IO_BLOCK_SIZE));
-    _print_with_time ("[config] Apply page eviction = " +
-                      string (this->APPLY_LRU_EVICTION ? "true" : "false"));
-    _print_with_time ("[config] Sync after rename = " +
-                      string (this->sync_after_rename ? "true" : "false"));
-    _print_with_time ("[config] Total = " + to_string ((double)total_bytes / 1024) + " (Kib) - " +
-                      to_string ((double)total_bytes / std::pow (1024, 2)) + " (Mib) - " +
-                      to_string ((double)total_bytes / std::pow (1024, 3)) + " (Gib)");
+    spdlog::info ("[config] using a {} config", this->is_default_config ? "default" : "custom");
+    spdlog::info ("[config] log all operations = {}, logfile = '{}'",
+                  this->log_all_operations ? "true" : "false",
+                  this->LOG_FILE == "" ? "false" : this->LOG_FILE);
+    spdlog::info ("[config] no. of pages   = {}", this->CACHE_NR_PAGES);
+    spdlog::info ("[config] page size      = {}", this->CACHE_PAGE_SIZE);
+    spdlog::info ("[config] block size     = {}", this->IO_BLOCK_SIZE);
+    spdlog::info ("[config] blocks / page  = {}", this->CACHE_PAGE_SIZE / this->IO_BLOCK_SIZE);
+    spdlog::info ("[config] apply eviction = {}", this->APPLY_LRU_EVICTION ? "true" : "false");
+    spdlog::info ("[config] total          = {} KiB, {} MiB, {} GiB",
+                  (double)total_bytes / 1024,
+                  (double)total_bytes / std::pow (1024, 2),
+                  (double)total_bytes / std::pow (1024, 3));
 }
 
 } // namespace cache::config

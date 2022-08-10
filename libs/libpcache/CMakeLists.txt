@@ -12,6 +12,16 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(toml)
 
+FetchContent_Declare(spdlog
+    URL             https://github.com/gabime/spdlog/archive/v1.10.0.tar.gz
+    UPDATE_COMMAND  ""
+    INSTALL_COMMAND ""
+)
+
+FetchContent_MakeAvailable(spdlog)
+
+set_target_properties(spdlog PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 set(warn_opts -Wall -Wextra)
 
 add_library (
@@ -37,7 +47,6 @@ target_include_directories(
 target_sources(
     pcache
     PUBLIC
-    ${PROJECT_SOURCE_DIR}/include/cache/util/utilities.hpp
     ${PROJECT_SOURCE_DIR}/include/cache/engine/backends/custom/custom_cache.hpp
     ${PROJECT_SOURCE_DIR}/include/cache/engine/page_cache.hpp
     ${PROJECT_SOURCE_DIR}/include/cache/engine/page/page.hpp
@@ -54,7 +63,6 @@ target_sources(
 target_sources(
     pcache
     PRIVATE
-    src/util/utilities.cpp
     src/engine/backends/custom/custom_cache.cpp
     src/engine/page/block_offsets.cpp
     src/engine/page/page.cpp
@@ -66,7 +74,7 @@ target_sources(
     src/config/config.cpp
 )
 
-target_link_libraries(pcache toml11::toml11)
+target_link_libraries(pcache toml11::toml11 spdlog)
 
 include(GNUInstallDirs)
 

@@ -11,12 +11,12 @@
 #include <assert.h>
 #include <cache/constants/constants.hpp>
 #include <cache/engine/backends/custom/custom_cache.hpp>
-#include <cache/util/utilities.hpp>
 #include <chrono>
 #include <fcntl.h>
 #include <iostream>
 #include <iterator>
 #include <map>
+#include <spdlog/spdlog.h>
 #include <sys/uio.h>
 #include <tuple>
 #include <unistd.h>
@@ -24,7 +24,6 @@
 
 using namespace std;
 using namespace cache::config;
-using namespace cache::util;
 
 namespace cache::engine::backends::custom {
 
@@ -32,10 +31,8 @@ CustomCacheEngine::CustomCacheEngine (cache::config::Config* config) {
 
     this->config = config;
 
-    _print_with_time (
-        "[engine] Pre-allocating " +
-        to_string (((size_t) (this->config->CACHE_NR_PAGES * this->config->CACHE_PAGE_SIZE))) +
-        " bytes...");
+    spdlog::warn ("[lazyfs.engine] pre-allocating {} bytes...",
+                  ((size_t) (this->config->CACHE_NR_PAGES * this->config->CACHE_PAGE_SIZE)));
 
     // pre-allocate all cache pages
     int page_index = 0;
@@ -55,7 +52,7 @@ CustomCacheEngine::CustomCacheEngine (cache::config::Config* config) {
     this->owner_pages_mapping.reserve (500);
     this->owner_ordered_pages_mapping.reserve (500);
 
-    _print_with_time ("[engine] Pre-allocation finished");
+    spdlog::warn ("[engine] Pre-allocation finished");
 }
 
 CustomCacheEngine::~CustomCacheEngine () {
@@ -542,7 +539,9 @@ bool CustomCacheEngine::sync_pages (string owner, off_t size, char* orig_path) {
         }
     }
 
-    ftruncate (fd, size);
+    if (ftruncate (fd, size) < 0) {
+        spdlog::info ("ftruncate: failed");
+    }
 
     close (fd);
 
