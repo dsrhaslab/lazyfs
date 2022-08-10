@@ -191,7 +191,7 @@ for test_dstat_file in os.listdir(results_folder):
     metrics_table.add_row([workload, 
                             filesystem,
                             "{} (+-{})".format(avg_cpu, std_cpu, df['"used"'].mean()),
-                            "{} (+-{}) -> {} bytes".format(avg_ram, std_ram, df['"used"'].std())
+                            "{} (+-{}) -> {} bytes".format(avg_ram, std_ram, df['"used"'].mean())
                             ])
 
 metrics_table.sortby = "workload"
