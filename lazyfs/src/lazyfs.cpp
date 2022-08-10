@@ -345,7 +345,7 @@ int LazyFS::lfs_write (const char* path,
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
     if (this_ ()->FSConfig->log_all_operations) {
-        spdlog::info ("[lazyfs.ops]: {}(path={},off={})", __FUNCTION__, path, size, offset);
+        spdlog::info ("[lazyfs.ops]: {}(path={},size={},off={})", __FUNCTION__, path, size, offset);
     }
 
     int fd;
@@ -671,7 +671,7 @@ int LazyFS::lfs_read (const char* path,
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
     if (this_ ()->FSConfig->log_all_operations) {
-        spdlog::info ("[lazyfs.ops]: {}(path={},off={})", __FUNCTION__, path, size, offset);
+        spdlog::info ("[lazyfs.ops]: {}(path={},size={},off={})", __FUNCTION__, path, size, offset);
     }
 
     int fd;
@@ -1307,7 +1307,7 @@ int LazyFS::lfs_readlink (const char* path, char* buf, size_t size) {
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
     if (this_ ()->FSConfig->log_all_operations) {
-        spdlog::info ("[lazyfs.ops]: {}(path={})", __FUNCTION__, path);
+        spdlog::info ("[lazyfs.ops]: {}(path={},size={})", __FUNCTION__, path, size);
     }
 
     int res;
