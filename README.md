@@ -119,22 +119,22 @@ Finally, one can control LazyFS by echoing the following commands to the faults 
 -   **Clear cache,** this command clears any un-fsynced data:
 
     ```bash
-    echo "lazyfs::clear-cache" > /my/path/faults-example.fifo
+    echo "lazyfs::clear-cache" > /my/path/faults.fifo
     ```
 
 -   **Checkpoint,** which checkpoints any un-fsynced data by calling write to the underlying filesystem:
 
     ```bash
-    echo "lazyfs::cache-checkpoint" > /my/path/faults-example.fifo
+    echo "lazyfs::cache-checkpoint" > /my/path/faults.fifo
     ```
 
 -   **Show usage,** which displays the current cache usage:
 
     ```bash
-    echo "lazyfs::display-cache-usage" > /my/path/faults-example.fifo
+    echo "lazyfs::display-cache-usage" > /my/path/faults.fifo
     ```
 
-> **Notice**: LazyFS expects that every buffer written to the faults fifo file terminates with a new line character (**echo** does this by default). Otherwise, you will probably get a log like this: "[command]: unknown <lazyfs::clear-cach>".
+> **Notice**: LazyFS expects that every buffer written to the faults fifo file terminates with a new line character (**echo** does this by default).
 
 ## Development
 
