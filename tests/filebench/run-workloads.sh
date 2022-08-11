@@ -3,7 +3,6 @@
 #--------------------------------------------------#
 # Main required variables
 
-TEST_VAR_WORKLOADS_FOLDER=workloads/test
 TEST_VAR_OUTPUT_RESULTS_FOLDER=outputs
 
 # Setup to run for 15 min each test, 3 runs each
