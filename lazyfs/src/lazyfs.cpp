@@ -233,7 +233,11 @@ int LazyFS::lfs_open (const char* path, struct fuse_file_info* fi) {
 
     int res;
 
-    res = open (path, fi->flags);
+    int access_tmp = fi->flags;
+    if (fi->flags & O_TRUNC)
+        access_tmp = O_WRONLY;
+
+    res = open (path, access_tmp);
 
     if (res == -1)
         return -errno;
@@ -1135,52 +1139,13 @@ int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_fil
         off_t file_size             = has_content_cached ? previous_metadata->size : 0;
         off_t add_bytes_from_offset = file_size;
         off_t add_bytes_total       = truncate_size - add_bytes_from_offset;
-        off_t blk_low               = add_bytes_from_offset / IO_BLOCK_SIZE;
-        off_t blk_high              = (add_bytes_from_offset + add_bytes_total - 1) / IO_BLOCK_SIZE;
-        int blk_readable_from       = 0;
-        int blk_readable_to         = 0;
-        off_t data_allocated        = 0;
-        bool caching_blocks_failed  = false;
 
-        char buf[IO_BLOCK_SIZE];
-        memset (buf, 0, IO_BLOCK_SIZE);
+        char* buf = (char*)malloc (add_bytes_total);
+        memset (buf, 0, add_bytes_total);
 
-        for (int CURR_BLK_IDX = blk_low; CURR_BLK_IDX <= blk_high; CURR_BLK_IDX++) {
+        int r = lfs_write (path, buf, add_bytes_total, add_bytes_from_offset, fi);
 
-            blk_readable_from =
-                (CURR_BLK_IDX == blk_low) ? (add_bytes_from_offset % IO_BLOCK_SIZE) : 0;
-
-            if (CURR_BLK_IDX == blk_high)
-                blk_readable_to = ((add_bytes_from_offset + add_bytes_total - 1) % IO_BLOCK_SIZE);
-            else if ((CURR_BLK_IDX == blk_low) &&
-                     ((add_bytes_from_offset + add_bytes_total - 1) < IO_BLOCK_SIZE))
-                blk_readable_to = add_bytes_from_offset + add_bytes_total - 1;
-            else if (CURR_BLK_IDX < blk_high)
-                blk_readable_to = IO_BLOCK_SIZE - 1;
-            else if (CURR_BLK_IDX == blk_high)
-                blk_readable_to = add_bytes_total - data_allocated - 1;
-
-            // Increase the ammount of bytes already written from the argument 'size'
-            data_allocated += blk_readable_to - blk_readable_from + 1;
-
-            auto put_res = this_ ()->FSCache->put_data_blocks (
-                inode,
-                {{CURR_BLK_IDX,
-                  {buf,
-                   (size_t) (blk_readable_to - blk_readable_from + 1),
-                   blk_readable_from,
-                   blk_readable_to}}},
-                OP_WRITE);
-            bool curr_block_put_exists = put_res.find (CURR_BLK_IDX) != put_res.end ();
-
-            if (!curr_block_put_exists || put_res.at (CURR_BLK_IDX) == false) {
-
-                caching_blocks_failed = true;
-                break;
-            }
-        }
-
-        if (caching_blocks_failed) {
+        if (r != add_bytes_total) {
 
             int res;
 
@@ -1189,6 +1154,8 @@ int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_fil
             else
                 res = truncate (path, truncate_size);
         }
+
+        free (buf);
 
     } else if (truncate_size < previous_metadata->size) {
 
