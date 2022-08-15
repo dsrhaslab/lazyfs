@@ -137,16 +137,20 @@ int LazyFS::lfs_getattr (const char* path, struct stat* stbuf, struct fuse_file_
         if (locked) {
 
             Metadata meta;
-            meta.size   = stbuf->st_size;
-            meta.atim   = stbuf->st_atim;
-            meta.ctim   = stbuf->st_ctim;
-            meta.mtim   = stbuf->st_mtim;
-            meta.nlinks = stbuf->st_nlink;
 
-            this_ ()->FSCache->update_content_metadata (
-                inode,
-                meta,
-                {"size", "atime", "ctime", "mtime", "nlinks"});
+            if (stbuf->st_nlink == 1) {
+
+                meta.size   = stbuf->st_size;
+                meta.atim   = stbuf->st_atim;
+                meta.ctim   = stbuf->st_ctim;
+                meta.mtim   = stbuf->st_mtim;
+                meta.nlinks = stbuf->st_nlink;
+
+                this_ ()->FSCache->update_content_metadata (
+                    inode,
+                    meta,
+                    {"size", "atime", "ctime", "mtime", "nlinks"});
+            }
 
             this_ ()->FSCache->unlockItem (inode);
         }
