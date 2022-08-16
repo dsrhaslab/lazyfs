@@ -382,16 +382,55 @@ int Cache::sync_owner (string owner, bool only_sync_data, char* orig_path) {
 
 bool Cache::rename_item (string old_cid, string new_cid) {
 
+    bool return_val = true;
+
     std::lock_guard<shared_mutex> lock (lock_cache_mtx);
 
     if (this->file_inode_mapping.find (old_cid) != this->file_inode_mapping.end ()) {
         string inode = this->file_inode_mapping.at (old_cid);
+
+        string to_remove_inode = "";
+
+        if (this->file_inode_mapping.find (new_cid) != this->file_inode_mapping.end ()) {
+            to_remove_inode = this->file_inode_mapping.at (new_cid);
+        }
+
         this->file_inode_mapping.erase (old_cid);
         this->file_inode_mapping[new_cid] = inode;
-        return true;
+
+        if (has_content_cached (to_remove_inode)) {
+
+            lockItem (to_remove_inode);
+            Item* item = _get_content_ptr (to_remove_inode);
+
+            if (item != nullptr) {
+
+                nlink_t before_nlinks = item->get_metadata ()->nlinks;
+
+                Metadata new_meta_after_removal;
+                new_meta_after_removal.nlinks = before_nlinks - 1;
+                item->update_metadata (new_meta_after_removal, {"nlinks"});
+
+                if (new_meta_after_removal.nlinks > 1) {
+
+                    unlockItem (to_remove_inode);
+                    return return_val;
+                }
+
+                this->engine->remove_cached_blocks (to_remove_inode);
+                this->_delete_item (to_remove_inode);
+
+                unlockItem (to_remove_inode);
+
+                if (!this->item_locks.empty () &&
+                    (this->item_locks.find (to_remove_inode) != this->item_locks.end ())) {
+                    this->item_locks.erase (to_remove_inode);
+                }
+            }
+        }
     }
 
-    return false;
+    return return_val;
 }
 
 bool Cache::remove_cached_item (string owner, const char* path) {
@@ -413,11 +452,11 @@ bool Cache::remove_cached_item (string owner, const char* path) {
 
     nlink_t before_nlinks = item->get_metadata ()->nlinks;
 
-    // Metadata new_meta_after_removal;
-    // new_meta_after_removal.nlinks = before_nlinks - 1;
-    // item->update_metadata (new_meta_after_removal, {"nlinks"});
+    Metadata new_meta_after_removal;
+    new_meta_after_removal.nlinks = before_nlinks - 1;
+    item->update_metadata (new_meta_after_removal, {"nlinks"});
 
-    if (before_nlinks > 1) {
+    if (new_meta_after_removal.nlinks > 1) {
 
         unlockItem (owner);
         lock.unlock ();
