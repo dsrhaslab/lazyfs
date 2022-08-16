@@ -490,6 +490,36 @@ void Cache::clear_all_cache () {
 
         remove_cached_item (it.second, (char*)it.first.c_str (), true);
     }
+
+    {
+        std::unique_lock<shared_mutex> lock (lock_cache_mtx, std::defer_lock);
+        lock.lock ();
+
+        std::list<string> item_buckets;
+        std::for_each (this->contents.begin (),
+                       this->contents.end (),
+                       [&] (const std::pair<const string, Item*>& ref) {
+                           item_buckets.push_back (ref.first);
+                       });
+
+        for (auto const& it : item_buckets) {
+
+            lockItem (it);
+
+            this->engine->remove_cached_blocks (it);
+
+            this->_delete_item (it);
+
+            unlockItem (it);
+
+            if (!this->item_locks.empty () &&
+                (this->item_locks.find (it) != this->item_locks.end ())) {
+                this->item_locks.erase (it);
+            }
+        }
+
+        lock.unlock ();
+    }
 }
 
 bool Cache::lockItemCheckExists (string cid) {
