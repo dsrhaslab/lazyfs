@@ -456,7 +456,7 @@ bool Cache::remove_cached_item (string owner, const char* path) {
     new_meta_after_removal.nlinks = before_nlinks - 1;
     item->update_metadata (new_meta_after_removal, {"nlinks"});
 
-    if (new_meta_after_removal.nlinks > 1) {
+    if (new_meta_after_removal.nlinks >= 1) {
 
         unlockItem (owner);
         lock.unlock ();
