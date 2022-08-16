@@ -122,35 +122,34 @@ int LazyFS::lfs_getattr (const char* path, struct stat* stbuf, struct fuse_file_
 
     string inode = this_ ()->FSCache->get_original_inode (content_owner);
 
-    bool locked = this_ ()->FSCache->lockItemCheckExists (inode);
-
-    if (!locked && inode.empty ()) {
+    if (inode.empty ()) {
 
         inode = to_string (stbuf->st_ino);
+        this_ ()->FSCache->insert_inode_mapping (content_owner, inode);
+    }
+
+    bool locked = this_ ()->FSCache->lockItemCheckExists (inode);
+
+    if (!locked) {
 
         this_ ()->FSCache->put_data_blocks (inode, {}, OP_PASSTHROUGH);
 
-        this_ ()->FSCache->insert_inode_mapping (content_owner, inode);
+        bool locked_now = this_ ()->FSCache->lockItemCheckExists (inode);
 
-        bool locked = this_ ()->FSCache->lockItemCheckExists (inode);
-
-        if (locked) {
+        if (locked_now) {
 
             Metadata meta;
 
-            if (stbuf->st_nlink == 1) {
+            meta.size   = stbuf->st_size;
+            meta.atim   = stbuf->st_atim;
+            meta.ctim   = stbuf->st_ctim;
+            meta.mtim   = stbuf->st_mtim;
+            meta.nlinks = stbuf->st_nlink;
 
-                meta.size   = stbuf->st_size;
-                meta.atim   = stbuf->st_atim;
-                meta.ctim   = stbuf->st_ctim;
-                meta.mtim   = stbuf->st_mtim;
-                meta.nlinks = stbuf->st_nlink;
-
-                this_ ()->FSCache->update_content_metadata (
-                    inode,
-                    meta,
-                    {"size", "atime", "ctime", "mtime", "nlinks"});
-            }
+            this_ ()->FSCache->update_content_metadata (
+                inode,
+                meta,
+                {"size", "atime", "ctime", "mtime", "nlinks"});
 
             this_ ()->FSCache->unlockItem (inode);
         }
