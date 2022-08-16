@@ -15,6 +15,7 @@
 #include <list>
 #include <map>
 #include <mutex>
+#include <spdlog/spdlog.h>
 #include <sys/syscall.h>
 #include <sys/time.h>
 #include <sys/xattr.h>
@@ -399,6 +400,7 @@ bool Cache::remove_cached_item (string owner, const char* path) {
     lock.lock ();
 
     if (not has_content_cached (owner)) {
+
         lock.unlock ();
         return false;
     }
@@ -408,7 +410,15 @@ bool Cache::remove_cached_item (string owner, const char* path) {
     this->file_inode_mapping.erase (string (path));
 
     Item* item = _get_content_ptr (owner);
-    if (item->get_metadata ()->nlinks > 1) {
+
+    nlink_t before_nlinks = item->get_metadata ()->nlinks;
+
+    if (before_nlinks > 1) {
+
+        Metadata new_meta_after_removal;
+        new_meta_after_removal.nlinks = before_nlinks - 1;
+        item->update_metadata (new_meta_after_removal, {"nlinks"});
+
         unlockItem (owner);
         lock.unlock ();
         return false;
