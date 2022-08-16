@@ -1469,7 +1469,7 @@ int LazyFS::lfs_unlink (const char* path) {
 
     string inode = this_ ()->FSCache->get_original_inode (path);
     if (!inode.empty ())
-        this_ ()->FSCache->remove_cached_item (inode, path);
+        this_ ()->FSCache->remove_cached_item (inode, path, false);
 
     res = unlink (path);
 

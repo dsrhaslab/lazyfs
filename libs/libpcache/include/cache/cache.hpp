@@ -228,10 +228,11 @@ class Cache {
      *
      * @param owner the content id
      * @param path original path name to remove
+     * @param is_from_cache remove comes from a clear cache command
      * @return true item was removed
      * @return false item does not exist
      */
-    bool remove_cached_item (string owner, const char* path);
+    bool remove_cached_item (string owner, const char* path, bool is_from_cache);
 
     /**
      * @brief Syncs a contents data and/or metadata.

@@ -433,7 +433,7 @@ bool Cache::rename_item (string old_cid, string new_cid) {
     return return_val;
 }
 
-bool Cache::remove_cached_item (string owner, const char* path) {
+bool Cache::remove_cached_item (string owner, const char* path, bool is_from_cache) {
 
     std::unique_lock<shared_mutex> lock (lock_cache_mtx, std::defer_lock);
     lock.lock ();
@@ -456,7 +456,7 @@ bool Cache::remove_cached_item (string owner, const char* path) {
     new_meta_after_removal.nlinks = before_nlinks - 1;
     item->update_metadata (new_meta_after_removal, {"nlinks"});
 
-    if (new_meta_after_removal.nlinks >= 1) {
+    if (!is_from_cache && new_meta_after_removal.nlinks >= 1) {
 
         unlockItem (owner);
         lock.unlock ();
@@ -488,7 +488,7 @@ void Cache::clear_all_cache () {
 
     for (auto const& it : items) {
 
-        remove_cached_item (it.second, (char*)it.first.c_str ());
+        remove_cached_item (it.second, (char*)it.first.c_str (), true);
     }
 }
 
