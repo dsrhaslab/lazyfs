@@ -54,7 +54,7 @@ TEST (FileLinkTests, HardLinks) {
 
 TEST (FileLinkTests, HardLinksRead) {
 
-    string test_file_name = "1_HardLinks";
+    string test_file_name = "1_HardLinksRead";
 
     int fd = open (test_file_name.c_str (), O_CREAT, 0640);
     ASSERT_TRUE (fd >= 0);
@@ -86,40 +86,70 @@ TEST (FileLinkTests, HardLinksRead) {
 
 TEST (FileLinkTests, HardLinksSyncClear) {
 
-    string test_file_name = "1_HardLinks";
+    string MAIN = "1_HardLinksSyncClear";
 
-    int fd = open (test_file_name.c_str (), O_CREAT, 0640);
-    ASSERT_TRUE (fd >= 0);
-    ASSERT_TRUE (close (fd) >= 0);
+    // create a file
+    int fd_create = open (MAIN.c_str (), O_CREAT, 0640);
+    ASSERT_TRUE (fd_create >= 0);
+    ASSERT_TRUE (close (fd_create) >= 0);
 
-    string link1_test_file = string (test_file_name).replace (0, 1, "2");
+    // name of the link: 2_...
+    string LINK = string (MAIN).replace (0, 1, "2");
 
-    ASSERT_TRUE (link (test_file_name.c_str (), link1_test_file.c_str ()) >= 0);
+    // create a hard link
+    ASSERT_TRUE (link (MAIN.c_str (), LINK.c_str ()) >= 0);
 
-    int fd_main = open (test_file_name.c_str (), O_RDWR, 0640);
-    int fd_link = open (test_file_name.c_str (), O_RDWR, 0640);
+    // fill buf with 'X' 0-IO_BLOCK_SIZE
     char buf[IO_BLOCK_SIZE];
     memset (buf, 'X', IO_BLOCK_SIZE);
-    ASSERT_EQ (pwrite (fd_main, buf, IO_BLOCK_SIZE, 0), IO_BLOCK_SIZE);
-    memset (buf, 'Y', IO_BLOCK_SIZE);
-    ASSERT_EQ (pwrite (fd_link, buf, IO_BLOCK_SIZE, IO_BLOCK_SIZE), IO_BLOCK_SIZE);
 
+    // write content that will be cleared, via MAIN, 0-IO_BLOCK_SIZE
+    int fd_main = open (MAIN.c_str (), O_WRONLY, 0640);
+    ASSERT_EQ (pwrite (fd_main, buf, IO_BLOCK_SIZE, 0), IO_BLOCK_SIZE);
+    ASSERT_TRUE (close (fd_main) >= 0);
+
+    // fill buf with 'Y' 0-IO_BLOCK_SIZE
+    memset (buf, 'Y', IO_BLOCK_SIZE);
+
+    // write content that will be cleared, via LINK, IO_BLOCK_SIZE-IO_BLOCK_SIZE*2
+    int fd_link = open (LINK.c_str (), O_WRONLY, 0640);
+    ASSERT_EQ (pwrite (fd_link, buf, IO_BLOCK_SIZE, IO_BLOCK_SIZE), IO_BLOCK_SIZE);
+    ASSERT_TRUE (close (fd_link) >= 0);
+
+    // clear cache, the buf should be empty
     ASSERT_EQ (clear_cache_command (), 0);
 
+    // fill buf with 'A' 0-IO_BLOCK_SIZE
     memset (buf, 'A', IO_BLOCK_SIZE);
-    ASSERT_EQ (pwrite (fd_main, buf, IO_BLOCK_SIZE, 0), IO_BLOCK_SIZE);
-    memset (buf, 'B', IO_BLOCK_SIZE);
-    ASSERT_EQ (pwrite (fd_link, buf, IO_BLOCK_SIZE, IO_BLOCK_SIZE), IO_BLOCK_SIZE);
 
+    // write content that will be synced, via MAIN, 0-IO_BLOCK_SIZE
+    fd_main = open (MAIN.c_str (), O_WRONLY, 0640);
+    ASSERT_EQ (pwrite (fd_main, buf, IO_BLOCK_SIZE, 0), IO_BLOCK_SIZE);
+    ASSERT_TRUE (close (fd_main) >= 0);
+
+    // fill buf with 'B' 0-IO_BLOCK_SIZE
+    memset (buf, 'B', IO_BLOCK_SIZE);
+
+    // write content that will be synced, via LINK, IO_BLOCK_SIZE-IO_BLOCK_SIZE*2
+    fd_link = open (LINK.c_str (), O_WRONLY, 0640);
+    ASSERT_EQ (pwrite (fd_link, buf, IO_BLOCK_SIZE, IO_BLOCK_SIZE), IO_BLOCK_SIZE);
+    ASSERT_TRUE (close (fd_link) >= 0);
+
+    // sync and clear the cache
+    fd_main = open (MAIN.c_str (), O_WRONLY, 0640);
     ASSERT_EQ (fsync (fd_main), 0);
+    ASSERT_TRUE (close (fd_main) >= 0);
+
     ASSERT_EQ (clear_cache_command (), 0);
 
     char expected[IO_BLOCK_SIZE * 2];
     memset (expected, 'A', IO_BLOCK_SIZE);
     memset (expected + IO_BLOCK_SIZE, 'B', IO_BLOCK_SIZE);
+
+    fd_link = open (LINK.c_str (), O_RDWR, 0640);
+
     char read_buf[IO_BLOCK_SIZE * 2];
     ASSERT_EQ (pread (fd_link, read_buf, IO_BLOCK_SIZE * 2, 0), IO_BLOCK_SIZE * 2);
-
     ASSERT_TRUE (!memcmp (expected, read_buf, IO_BLOCK_SIZE * 2));
 
     memset (buf, 'Z', IO_BLOCK_SIZE);
@@ -130,11 +160,12 @@ TEST (FileLinkTests, HardLinksSyncClear) {
     ASSERT_EQ (clear_cache_command (), 0);
 
     ASSERT_EQ (pread (fd_link, read_buf, IO_BLOCK_SIZE * 2, 0), IO_BLOCK_SIZE * 2);
-
     ASSERT_TRUE (!memcmp (expected, read_buf, IO_BLOCK_SIZE * 2));
 
-    ASSERT_TRUE (unlink (test_file_name.c_str ()) >= 0);
-    ASSERT_TRUE (unlink (link1_test_file.c_str ()) >= 0);
+    ASSERT_TRUE (close (fd_link) >= 0);
+
+    ASSERT_TRUE (unlink (MAIN.c_str ()) >= 0);
+    ASSERT_TRUE (unlink (LINK.c_str ()) >= 0);
 }
 
 } // namespace lazyfs::tests
