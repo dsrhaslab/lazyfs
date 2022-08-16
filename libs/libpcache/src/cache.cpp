@@ -411,7 +411,7 @@ bool Cache::rename_item (string old_cid, string new_cid) {
                 new_meta_after_removal.nlinks = before_nlinks - 1;
                 item->update_metadata (new_meta_after_removal, {"nlinks"});
 
-                if (new_meta_after_removal.nlinks > 1) {
+                if (new_meta_after_removal.nlinks >= 1) {
 
                     unlockItem (to_remove_inode);
                     return return_val;
