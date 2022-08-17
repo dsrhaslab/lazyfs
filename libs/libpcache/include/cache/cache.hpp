@@ -289,8 +289,9 @@ class Cache {
      *
      * @param path file name
      * @param inode corresponding inode
+     * @param increase to increase link counter
      */
-    void insert_inode_mapping (string path, string inode);
+    void insert_inode_mapping (string path, string inode, bool increase);
 };
 
 } // namespace cache

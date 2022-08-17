@@ -125,7 +125,7 @@ int LazyFS::lfs_getattr (const char* path, struct stat* stbuf, struct fuse_file_
     if (inode.empty ()) {
 
         inode = to_string (stbuf->st_ino);
-        this_ ()->FSCache->insert_inode_mapping (content_owner, inode);
+        this_ ()->FSCache->insert_inode_mapping (content_owner, inode, false);
     }
 
     bool locked = this_ ()->FSCache->lockItemCheckExists (inode);
@@ -1267,7 +1267,7 @@ int LazyFS::lfs_link (const char* from, const char* to) {
 
     string inode = this_ ()->FSCache->get_original_inode (from);
     if (!inode.empty ())
-        this_ ()->FSCache->insert_inode_mapping (to, inode);
+        this_ ()->FSCache->insert_inode_mapping (to, inode, true);
 
     return 0;
 }
@@ -1472,6 +1472,10 @@ int LazyFS::lfs_unlink (const char* path) {
         this_ ()->FSCache->remove_cached_item (inode, path, false);
 
     res = unlink (path);
+
+    if (res == 0 && inode.empty ()) {
+        this_ ()->FSCache->remove_cached_item (inode, path, false);
+    }
 
     if (res == -1)
         return -errno;

@@ -78,15 +78,19 @@ string Cache::get_original_inode (string path) {
     return "";
 }
 
-void Cache::insert_inode_mapping (string path, string inode) {
+void Cache::insert_inode_mapping (string path, string inode, bool increase) {
 
     lock_guard<std::shared_mutex> lock (lock_cache_mtx);
     this->file_inode_mapping[path] = inode;
-    Metadata* oldmeta              = get_content_metadata (inode);
-    Metadata newmeta;
-    if (oldmeta != nullptr)
-        newmeta.nlinks = oldmeta->nlinks + 1;
-    this->update_content_metadata (inode, newmeta, {"nlinks"});
+
+    if (increase) {
+        Metadata* oldmeta = get_content_metadata (inode);
+        Metadata newmeta;
+        if (oldmeta != nullptr) {
+            newmeta.nlinks = oldmeta->nlinks + 1;
+            this->update_content_metadata (inode, newmeta, {"nlinks"});
+        }
+    }
 }
 
 bool Cache::has_content_cached (string cid) {
@@ -400,18 +404,19 @@ bool Cache::rename_item (string old_cid, string new_cid) {
 
         if (has_content_cached (to_remove_inode)) {
 
-            lockItem (to_remove_inode);
             Item* item = _get_content_ptr (to_remove_inode);
 
             if (item != nullptr) {
 
+                lockItem (to_remove_inode);
+
                 nlink_t before_nlinks = item->get_metadata ()->nlinks;
 
                 Metadata new_meta_after_removal;
-                new_meta_after_removal.nlinks = before_nlinks - 1;
+                new_meta_after_removal.nlinks = std::max ((int)before_nlinks - 1, 1);
                 item->update_metadata (new_meta_after_removal, {"nlinks"});
 
-                if (new_meta_after_removal.nlinks >= 1) {
+                if (before_nlinks > 1) {
 
                     unlockItem (to_remove_inode);
                     return return_val;
@@ -453,10 +458,10 @@ bool Cache::remove_cached_item (string owner, const char* path, bool is_from_cac
     nlink_t before_nlinks = item->get_metadata ()->nlinks;
 
     Metadata new_meta_after_removal;
-    new_meta_after_removal.nlinks = before_nlinks - 1;
+    new_meta_after_removal.nlinks = std::max ((int)before_nlinks - 1, 1);
     item->update_metadata (new_meta_after_removal, {"nlinks"});
 
-    if (!is_from_cache && new_meta_after_removal.nlinks >= 1) {
+    if (!is_from_cache && before_nlinks > 1) {
 
         unlockItem (owner);
         lock.unlock ();
