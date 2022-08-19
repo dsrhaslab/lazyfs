@@ -3,7 +3,7 @@
 
 - Check if the following tools are installed:
 
-    ```console
+    ```bash
     sudo apt install screen dstat
     ```
 
@@ -13,7 +13,7 @@
 
     - Check if the following tools are installed:
 
-        ```console
+        ```bash
         bison
         flex
         libtoolize
@@ -25,7 +25,7 @@
 
     - Compile and install:
 
-        ```console
+        ```bash
         cd filebench-1.5-alpha3
         ./configure
         make
@@ -34,14 +34,14 @@
 
     - Disable ASLR (Address Space Layout Randomization):
 
-        ```console
+        ```bash
         sudo -s
         root> echo 0 > /proc/sys/kernel/randomize_va_space
         ```
 
     - Change the workload main variables in `workloads/run-workloads.sh`:
 
-        ```console
+        ```bash
         # Main required variables
 
         TEST_VAR_WORKLOADS_FOLDER=workloads/test
@@ -59,15 +59,23 @@
 
 1. Install dependencies:
 
-    ```console
+    ```bash
     sudo apt install python3 python3-pip
-    pip3 install prettytable pandas
+    pip3 install prettytable pandas pip3 install matplotlib
     ```
 
-2. Generate results:
+2. Generate the results table:
 
-    ```console
-    ./results.py OUTPUT_FOLDER_PATH
+    ```bash
+    ./utils/gentable.py <OUTPUT_FOLDER_PATH>
+    # Example: ./utils/dstatgraph.py outputs
+    ```
+
+3. Generate the results dstat graphs:
+
+    ```bash
+    ./utils/dstatgraph.py <OUTPUT_FOLDER_PATH> <WORKLOAD_NAME>
+    # Example: ./utils/dstatgraph.py outputs varmail
     ```
 
 ## Notes
@@ -75,7 +83,7 @@
 
 - If `dstat` reports the following error:
 
-    ```
+    ```bash
     Traceback (most recent call last):
       File "/usr/bin/dstat", line 2847, in <module>
         main()
