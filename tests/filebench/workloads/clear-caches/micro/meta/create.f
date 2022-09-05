@@ -27,7 +27,7 @@ define fileset name="fileset-1", path=$WORKLOAD_PATH, entries=$NR_FILES, dirwidt
 
 define process name="process-1", instances=$NR_THREADS
 {
-    thread name="thread-1", memsize=$IO_SIZE, instances=1
+    thread name="thread-1", memsize=10m, instances=1
     {
         flowop createwriteclose name="createwriteclose-1", iters=$NR_FILES
 

@@ -56,3 +56,8 @@ build/
 # tests/filebench: output files
 
 outputs*
+
+# additional workload files
+
+workloads**
+!workloads/clear-caches

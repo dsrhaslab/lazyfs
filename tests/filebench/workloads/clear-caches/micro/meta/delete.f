@@ -18,7 +18,7 @@ define fileset name="fileset1", path=$WORKLOAD_PATH, entries=$NR_FILES, dirwidth
 
 define process name="process1", instances=1
 {
-    thread name="thread1", memsize=$IO_SIZE, instances=$NR_THREADS
+    thread name="thread1", memsize=10m, instances=$NR_THREADS
     {
         flowop deletefile name="delete1", filesetname="fileset1", iters=$NR_FILES
 
