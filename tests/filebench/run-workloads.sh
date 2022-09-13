@@ -3,11 +3,11 @@
 #--------------------------------------------------#
 # Main required variables
 
-TEST_VAR_OUTPUT_RESULTS_FOLDER=outputs
+TEST_VAR_OUTPUT_RESULTS_FOLDER=out
 
 # Setup to run for 15 min each test, 3 runs each
 #
-TEST_VAR_WORKLOADS_FOLDER=workloads/clear-caches
+TEST_VAR_WORKLOADS_FOLDER=workloads/micro-4_th-4k_io
 TEST_VAR_TOTAL_RUNTIME_EACH_WORKLOAD=900 # seconds
 TEST_VAR_REPEAT_WORKLOADS=3 # number of times to re-run workloads
 TEST_VAR_FOR_FILESYSTEMS=("fuse.lazyfs-4096" "fuse.passthrough" "fuse.lazyfs-32768")
@@ -25,9 +25,9 @@ PASST_MOUNT_DIR=/tmp/passt.fb.mnt
 PASST_ROOT_DIR=/tmp/passt.fb.root
 PASST_BIN=/home/gsd/other/libfuse/example/passthrough
 
-TEST_VAR_SLEEP_AFTER_RUN=15 # seconds
-TEST_VAR_SLEEP_AFTER_CHANGE_FS=15 # seconds
-TEST_VAR_SLEEP_AFTER_WORKLOAD_TYPE=15 # seconds
+TEST_VAR_SLEEP_AFTER_RUN=30 # seconds
+TEST_VAR_SLEEP_AFTER_CHANGE_FS=30 # seconds
+TEST_VAR_SLEEP_AFTER_WORKLOAD_TYPE=30 # seconds
 
 #--------------------------------------------------#
 # Other less important variables

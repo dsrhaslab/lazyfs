@@ -1,17 +1,18 @@
 # ------------------------------------------------------#
-# workload: fileserver.f
+# workload: varmail.f
 # ------------------------------------------------------#
 # These variables are changed dynamically
 
-set $WORKLOAD_PATH="DEFAULT_VALUE"
-set $WORKLOAD_TIME=30
-set $NR_THREADS=1
-set $LAZYFS_FIFO="DEFAULT_VALUE"
+set $WORKLOAD_PATH="/tmp/lazyfs.fb.mnt"
+set $WORKLOAD_TIME=900
+set $NR_THREADS=16
+set $LAZYFS_FIFO="/tmp/lfs.fb2.varmail.32768.fifo"
 
-set $NR_FILES=5000
-set $MEAN_DIR_WIDTH=20
-set $IO_SIZE=4k
-set $FILE_SIZE=cvar(type=cvar-gamma,parameters=mean:131072;gamma:1.5)
+set $NR_FILES=1000
+set $MEAN_DIR_WIDTH=1000000
+set $IO_SIZE=1m
+set $meanappendsize=16k
+set $FILE_SIZE=cvar(type=cvar-gamma,parameters=mean:16384;gamma:1.5)
 
 # ------------------------------------------------------#
 
@@ -21,23 +22,23 @@ define process name=filereader,instances=1
 {
   thread name=filereaderthread,memsize=10m,instances=$NR_THREADS
   {
-    flowop createfile name=createfile1,filesetname=bigfileset,fd=1
-    flowop writewholefile name=wrtfile1,srcfd=1,fd=1,iosize=$IO_SIZE
-    flowop closefile name=closefile1,fd=1
-    flowop openfile name=openfile1,filesetname=bigfileset,fd=1
-    flowop appendfilerand name=appendfilerand1,iosize=$IO_SIZE,fd=1
-    flowop closefile name=closefile2,fd=1
-    flowop openfile name=openfile2,filesetname=bigfileset,fd=1
-    flowop readwholefile name=readfile1,fd=1,iosize=$IO_SIZE
-    flowop closefile name=closefile3,fd=1
     flowop deletefile name=deletefile1,filesetname=bigfileset
-    flowop statfile name=statfile1,filesetname=bigfileset
+    flowop createfile name=createfile2,filesetname=bigfileset,fd=1
+    flowop appendfilerand name=appendfilerand2,iosize=$meanappendsize,fd=1
+    flowop fsync name=fsyncfile2,fd=1
+    flowop closefile name=closefile2,fd=1
+    flowop openfile name=openfile3,filesetname=bigfileset,fd=1
+    flowop readwholefile name=readfile3,fd=1,iosize=$IO_SIZE
+    flowop appendfilerand name=appendfilerand3,iosize=$meanappendsize,fd=1
+    flowop fsync name=fsyncfile3,fd=1
+    flowop closefile name=closefile3,fd=1
+    flowop openfile name=openfile4,filesetname=bigfileset,fd=1
+    flowop readwholefile name=readfile4,fd=1,iosize=$IO_SIZE
+    flowop closefile name=closefile4,fd=1
   }
 }
 
 # ------------------------------------------------------#
-
-create files
 
 system "echo LazyFS: performing a cache checkpoint..."
 system "sudo -u gsd sh -c 'echo lazyfs::cache-checkpoint > $LAZYFS_FIFO'"

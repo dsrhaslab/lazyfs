@@ -4,15 +4,15 @@
 # These variables are changed dynamically
 
 set $WORKLOAD_PATH="/tmp/lazyfs.fb.mnt"
-set $WORKLOAD_TIME=200
+set $WORKLOAD_TIME=900
 set $NR_THREADS=1
-set $LAZYFS_FIFO="/tmp/lfs.fb1.seq-write.32768.fifo"
+set $LAZYFS_FIFO="/tmp/lfs.fb2.seq-write.32768.fifo"
 
 set $NR_FILES=1
 set $MEAN_DIR_WIDTH=1
-set $IO_SIZE=4k
-set $FILE_SIZE=1g
-set $NR_ITERATIONS=20000000
+set $IO_SIZE=32k
+set $FILE_SIZE=64g
+set $NR_ITERATIONS=2097152
 
 # ------------------------------------------------------#
 

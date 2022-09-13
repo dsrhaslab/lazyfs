@@ -3,15 +3,16 @@
 # ------------------------------------------------------#
 # These variables are changed dynamically
 
-set $WORKLOAD_PATH="/tmp/lfs.mnt"
-set $WORKLOAD_TIME=30
-set $NR_THREADS=1
-set $LAZYFS_FIFO="/tmp/faults.fifo"
+set $WORKLOAD_PATH="/tmp/lazyfs.fb.mnt"
+set $WORKLOAD_TIME=900
+set $NR_THREADS=100
+set $LAZYFS_FIFO="/tmp/lfs.fb2.webserver.32768.fifo"
 
 set $NR_FILES=1000
 set $MEAN_DIR_WIDTH=20
-set $IO_SIZE=4k
+set $IO_SIZE=1m
 set $FILE_SIZE=cvar(type=cvar-gamma,parameters=mean:16384;gamma:1.5)
+set $meanappendsize=16k
 
 # ------------------------------------------------------#
 
@@ -52,13 +53,11 @@ define process name=filereader,instances=1
     flowop openfile name=openfile10,filesetname=bigfileset,fd=1
     flowop readwholefile name=readfile10,fd=1,iosize=$IO_SIZE
     flowop closefile name=closefile10,fd=1
-    flowop appendfilerand name=appendlog,filesetname=logfiles,iosize=$IO_SIZE,fd=2
+    flowop appendfilerand name=appendlog,filesetname=logfiles,iosize=$meanappendsize,fd=2
   }
 }
 
 # ------------------------------------------------------#
-
-create files
 
 system "echo LazyFS: performing a cache checkpoint..."
 system "sudo -u gsd sh -c 'echo lazyfs::cache-checkpoint > $LAZYFS_FIFO'"

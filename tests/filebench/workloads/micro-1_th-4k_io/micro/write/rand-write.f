@@ -1,28 +1,33 @@
 # ------------------------------------------------------#
-# workload: delete.f
+# workload: rand-write.f
 # ------------------------------------------------------#
 # These variables are changed dynamically
 
-set $WORKLOAD_PATH="/tmp/lazyfs.fb.mnt"
-set $WORKLOAD_TIME=200
+set $WORKLOAD_PATH="/tmp/passt.fb.mnt"
+set $WORKLOAD_TIME=900
 set $NR_THREADS=1
-set $LAZYFS_FIFO="/tmp/lfs.fb1.delete.32768.fifo"
+set $LAZYFS_FIFO="/dev/null"
 
-set $NR_FILES=10000
-set $MEAN_DIR_WIDTH=1000
+set $NR_FILES=1
+set $MEAN_DIR_WIDTH=1
 set $IO_SIZE=4k
+set $FILE_SIZE=64g
+set $NR_ITERATIONS=16777216
 
 # ------------------------------------------------------#
 
-define fileset name="fileset1", path=$WORKLOAD_PATH, entries=$NR_FILES, dirwidth=$MEAN_DIR_WIDTH, dirgamma=0, filesize=$IO_SIZE, prealloc
+define fileset name="fileset-1", path=$WORKLOAD_PATH, entries=$NR_FILES, dirwidth=$MEAN_DIR_WIDTH, dirgamma=0,
+               filesize=$FILE_SIZE, prealloc
 
-define process name="process1", instances=1
+define process name="process-1", instances=1
 {
-    thread name="thread1", memsize=10m, instances=$NR_THREADS
+    thread name="thread-1", memsize=10m, instances=$NR_THREADS
     {
-        flowop deletefile name="delete1", filesetname="fileset1", iters=$NR_FILES
+        flowop openfile name="open-1", filesetname="fileset-1", fd=1, indexed=1
+        flowop write name="write-1", fd=1, iosize=$IO_SIZE, iters=$NR_ITERATIONS, random
+        flowop closefile name="close-1", fd=1
 
-        flowop finishoncount name="finish1", value=1
+        flowop finishoncount name="finish-1", value=1
     }
 }
 

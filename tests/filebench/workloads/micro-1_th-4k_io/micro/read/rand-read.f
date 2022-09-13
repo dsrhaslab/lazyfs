@@ -4,19 +4,17 @@
 # These variables are changed dynamically
 
 set $WORKLOAD_PATH="/tmp/lazyfs.fb.mnt"
-set $WORKLOAD_TIME=200
+set $WORKLOAD_TIME=900
 set $NR_THREADS=1
-set $LAZYFS_FIFO="/tmp/lfs.fb1.rand-read.32768.fifo"
+set $LAZYFS_FIFO="/tmp/lfs.fb2.rand-read.32768.fifo"
 
 set $NR_FILES=1
 set $MEAN_DIR_WIDTH=1
 set $IO_SIZE=4k
-set $FILE_SIZE=1g
-set $NR_ITERATIONS=67108864
+set $FILE_SIZE=64g
+set $NR_ITERATIONS=16777216
 
 # ------------------------------------------------------#
-
-set mode quit firstdone
 
 define fileset name="fileset-1", path=$WORKLOAD_PATH, entries=$NR_FILES, dirwidth=$MEAN_DIR_WIDTH, dirgamma=0,
                filesize=$FILE_SIZE, prealloc
@@ -39,7 +37,7 @@ create files
 
 system "echo LazyFS: performing a cache checkpoint..."
 system "sudo -u gsd sh -c 'echo lazyfs::cache-checkpoint > $LAZYFS_FIFO'"
-sleep 20
+sleep 40
 
 system "echo LazyFS: clearing the cache..."
 system "sudo -u gsd sh -c 'echo lazyfs::clear-cache > $LAZYFS_FIFO'"
