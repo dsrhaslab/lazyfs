@@ -6,9 +6,9 @@
 set $WORKLOAD_PATH="/tmp/lazyfs.fb.mnt"
 set $WORKLOAD_TIME=900
 set $NR_THREADS=1
-set $LAZYFS_FIFO="/tmp/lfs.fb2.delete.32768.fifo"
+set $LAZYFS_FIFO="/tmp/lfs.fb2.delete.131072.fifo"
 
-set $NR_FILES=10000
+set $NR_FILES=1000000
 set $MEAN_DIR_WIDTH=1000
 set $IO_SIZE=4k
 
@@ -20,7 +20,25 @@ define process name="process1", instances=1
 {
     thread name="thread1", memsize=10m, instances=$NR_THREADS
     {
-        flowop deletefile name="delete1", filesetname="fileset1", iters=$NR_FILES
+        flowop deletefile name="delete1", filesetname="fileset1", iters=250000
+
+        flowop finishoncount name="finish1", value=1
+    }
+    thread name="thread2", memsize=10m, instances=$NR_THREADS
+    {
+        flowop deletefile name="delete1", filesetname="fileset1", iters=250000
+
+        flowop finishoncount name="finish1", value=1
+    }
+    thread name="thread3", memsize=10m, instances=$NR_THREADS
+    {
+        flowop deletefile name="delete1", filesetname="fileset1", iters=250000
+
+        flowop finishoncount name="finish1", value=1
+    }
+    thread name="thread4", memsize=10m, instances=$NR_THREADS
+    {
+        flowop deletefile name="delete1", filesetname="fileset1", iters=250000
 
         flowop finishoncount name="finish1", value=1
     }

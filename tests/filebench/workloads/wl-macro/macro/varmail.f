@@ -3,10 +3,10 @@
 # ------------------------------------------------------#
 # These variables are changed dynamically
 
-set $WORKLOAD_PATH="/tmp/lazyfs.fb.mnt"
+set $WORKLOAD_PATH="/tmp/passt.fb.mnt"
 set $WORKLOAD_TIME=900
 set $NR_THREADS=16
-set $LAZYFS_FIFO="/tmp/lfs.fb2.varmail.32768.fifo"
+set $LAZYFS_FIFO="/dev/null"
 
 set $NR_FILES=1000
 set $MEAN_DIR_WIDTH=1000000

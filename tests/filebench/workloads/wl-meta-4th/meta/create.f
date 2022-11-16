@@ -1,14 +1,14 @@
 # ------------------------------------------------------#
-# workload: rread.f
+# workload: create.f
 # ------------------------------------------------------#
 # These variables are changed dynamically
 
 set $WORKLOAD_PATH="/tmp/lazyfs.fb.mnt"
 set $WORKLOAD_TIME=900
 set $NR_THREADS=1
-set $LAZYFS_FIFO="/tmp/lfs.fb2.create.32768.fifo"
+set $LAZYFS_FIFO="/tmp/lfs.fb2.create.131072.fifo"
 
-set $NR_FILES=10000
+set $NR_FILES=1000000
 set $MEAN_DIR_WIDTH=1000
 set $IO_SIZE=4k
 # ------------------------------------------------------#
@@ -20,15 +20,31 @@ define flowop name=createwriteclose
     flowop closefile name="closefile-1", fd=1
 }
 
-define fileset name="fileset-1", path=$WORKLOAD_PATH, entries=$NR_FILES, dirwidth=$MEAN_DIR_WIDTH,
-               dirgamma=0, filesize=$IO_SIZE
+define fileset name="fileset-1", path=$WORKLOAD_PATH, entries=$NR_FILES, dirwidth=$MEAN_DIR_WIDTH, dirgamma=0, filesize=$IO_SIZE
 
-define process name="process-1", instances=$NR_THREADS
+define process name="process1", instances=1
 {
-    thread name="thread-1", memsize=10m, instances=1
+    thread name="thread1", memsize=10m, instances=1
     {
-        flowop createwriteclose name="createwriteclose-1", iters=$NR_FILES
+        flowop createwriteclose name="createwriteclose-1", iters=250000
+        flowop finishoncount name="finishoncount-1", value=1
+    }
 
+    thread name="thread2", memsize=10m, instances=1
+    {
+        flowop createwriteclose name="createwriteclose-1", iters=250000
+        flowop finishoncount name="finishoncount-1", value=1
+    }
+
+    thread name="thread3", memsize=10m, instances=1
+    {
+        flowop createwriteclose name="createwriteclose-1", iters=250000
+        flowop finishoncount name="finishoncount-1", value=1
+    }
+
+    thread name="thread4", memsize=10m, instances=1
+    {
+        flowop createwriteclose name="createwriteclose-1", iters=250000
         flowop finishoncount name="finishoncount-1", value=1
     }
 }
