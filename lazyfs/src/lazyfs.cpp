@@ -336,9 +336,11 @@ int LazyFS::lfs_create (const char* path, mode_t mode, struct fuse_file_info* fi
     }
 
     bool locked = this_ ()->FSCache->lockItemCheckExists (inode);
-    this_ ()->FSCache->update_content_metadata (inode, meta, update_meta_values);
-    if (locked)
+
+    if (locked) {
+        this_ ()->FSCache->update_content_metadata (inode, meta, update_meta_values);
         this_ ()->FSCache->unlockItem (inode);
+    }
 
     return 0;
 }
@@ -400,7 +402,10 @@ int LazyFS::lfs_write (const char* path,
 
         } else {
 
-            FILE_SIZE_BEFORE = this_ ()->FSCache->get_content_metadata (inode)->size;
+            Metadata* meta_now = this_ ()->FSCache->get_content_metadata (inode);
+
+            if (meta_now != nullptr)
+                FILE_SIZE_BEFORE = this_ ()->FSCache->get_content_metadata (inode)->size;
 
             this_ ()->FSCache->unlockItem (inode);
         }
@@ -433,22 +438,25 @@ int LazyFS::lfs_write (const char* path,
 
         // ----------------------------------------------------------------------------------
 
-        int blk_low              = offset / IO_BLOCK_SIZE;
-        int blk_high             = (offset + size - 1) / IO_BLOCK_SIZE;
-        int blk_readable_from    = 0;
-        int blk_readable_to      = 0;
-        int data_allocated       = 0;
-        int data_buffer_iterator = 0;
-        int fd_caching           = open (path, O_RDONLY);
+        off_t blk_low              = offset / IO_BLOCK_SIZE;
+        off_t blk_high             = (offset + size - 1) / IO_BLOCK_SIZE;
+        off_t blk_readable_from    = 0;
+        off_t blk_readable_to      = 0;
+        off_t data_allocated       = 0;
+        off_t data_buffer_iterator = 0;
+        int fd_caching             = open (path, O_RDONLY);
 
         char block_caching_buffer[IO_BLOCK_SIZE];
         map<int, tuple<const char*, size_t, int, int>> put_mapping;
+
+        bool cache_full = (this_ ()->FSCache->get_cache_usage () == 100) &&
+                          !this_ ()->FSConfig->APPLY_LRU_EVICTION;
 
         // ----------------------------------------------------------------------------------
 
         // std::printf ("\t[write] from_block=%d to_block=%d\n", blk_low, blk_high);
 
-        for (int CURR_BLK_IDX = blk_low; CURR_BLK_IDX <= blk_high; CURR_BLK_IDX++) {
+        for (off_t CURR_BLK_IDX = blk_low; CURR_BLK_IDX <= blk_high; CURR_BLK_IDX++) {
 
             /*
                 > Calculate readable block offsets:
@@ -490,6 +498,9 @@ int LazyFS::lfs_write (const char* path,
 
                     int pread_res = 0;
 
+                    if (cache_full)
+                        needs_pread = false;
+
                     if (needs_pread) {
 
                         pread_res = pread (fd_caching,
@@ -510,8 +521,8 @@ int LazyFS::lfs_write (const char* path,
 
                         const char* cache_buf;
                         size_t cache_wr_sz;
-                        int cache_from;
-                        int cache_to;
+                        off_t cache_from;
+                        off_t cache_to;
 
                         if ((not needs_pread) || (pread_res == 0)) {
 
@@ -531,24 +542,34 @@ int LazyFS::lfs_write (const char* path,
                                         0,
                                         blk_readable_from - pread_res);
 
-                            cache_buf   = block_caching_buffer;
-                            cache_wr_sz = std::max (pread_res, blk_readable_to + 1);
-                            cache_from  = 0;
-                            cache_to    = cache_wr_sz - 1;
+                            cache_buf = block_caching_buffer;
+
+                            cache_wr_sz =
+                                pread_res > (blk_readable_to + 1) ? pread_res : blk_readable_to + 1;
+
+                            cache_from = 0;
+                            cache_to   = cache_wr_sz - 1;
                         }
 
                         // Increase the ammount of bytes already written from the argument
                         // 'size'
                         data_allocated += blk_readable_to - blk_readable_from + 1;
 
-                        auto put_res = this_ ()->FSCache->put_data_blocks (
-                            inode,
-                            {{CURR_BLK_IDX, {cache_buf, cache_wr_sz, cache_from, cache_to}}},
-                            OP_WRITE);
+                        bool curr_block_put_exists = false;
+                        std::map<int, bool> put_res;
 
-                        bool curr_block_put_exists = put_res.find (CURR_BLK_IDX) != put_res.end ();
+                        if (!cache_full) {
 
-                        if (!curr_block_put_exists || (put_res.at (CURR_BLK_IDX) == false)) {
+                            put_res = this_ ()->FSCache->put_data_blocks (
+                                inode,
+                                {{CURR_BLK_IDX, {cache_buf, cache_wr_sz, cache_from, cache_to}}},
+                                OP_WRITE);
+                        }
+
+                        curr_block_put_exists = put_res.find (CURR_BLK_IDX) != put_res.end ();
+
+                        if (cache_full ||
+                            (!curr_block_put_exists || (put_res.at (CURR_BLK_IDX) == false))) {
 
                             // Block allocation in cache failed
 
@@ -703,12 +724,12 @@ int LazyFS::lfs_read (const char* path,
 
     // ----------------------------------------------------------------------------------
 
-    int blk_low        = offset / IO_BLOCK_SIZE;
-    int blk_high       = (offset + size - 1) / IO_BLOCK_SIZE;
-    int fd_caching     = fd;
-    int BUF_ITERATOR   = 0;
-    int BYTES_LEFT     = size;
-    int data_allocated = 0;
+    off_t blk_low        = offset / IO_BLOCK_SIZE;
+    off_t blk_high       = (offset + size - 1) / IO_BLOCK_SIZE;
+    int fd_caching       = fd;
+    off_t BUF_ITERATOR   = 0;
+    off_t BYTES_LEFT     = size;
+    off_t data_allocated = 0;
 
     char read_buffer[IO_BLOCK_SIZE];
 
@@ -731,10 +752,11 @@ int LazyFS::lfs_read (const char* path,
         clock_gettime (CLOCK_REALTIME, &access_time);
         meta.atim = access_time;
 
-        this_ ()->FSCache->update_content_metadata (inode, meta, {"size", "atime"});
+        if (locked) {
 
-        if (locked)
+            this_ ()->FSCache->update_content_metadata (inode, meta, {"size", "atime"});
             this_ ()->FSCache->unlockItem (inode);
+        }
 
     } else {
 
@@ -758,13 +780,13 @@ int LazyFS::lfs_read (const char* path,
 
     // ---------------------------------------------------------------------------------
 
-    int last_pread_chunk_size   = 0;
-    int last_pread_chunk_offset = offset;
+    off_t last_pread_chunk_size   = 0;
+    off_t last_pread_chunk_offset = offset;
 
-    int blk_readable_from = 0;
-    int blk_readable_to   = 0;
+    off_t blk_readable_from = 0;
+    off_t blk_readable_to   = 0;
 
-    for (int CURR_BLK_IDX = blk_low; CURR_BLK_IDX <= blk_high; CURR_BLK_IDX++) {
+    for (off_t CURR_BLK_IDX = blk_low; CURR_BLK_IDX <= blk_high; CURR_BLK_IDX++) {
 
         if ((CURR_BLK_IDX * IO_BLOCK_SIZE) > meta.size)
             break;
@@ -817,9 +839,9 @@ int LazyFS::lfs_read (const char* path,
 
                 pair<int, int> readable_offsets = GET_BLOCKS_RES.at (CURR_BLK_IDX).second;
 
-                int max_readable_offset = readable_offsets.second;
+                off_t max_readable_offset = readable_offsets.second;
 
-                int read_to = std::min (max_readable_offset, blk_readable_to);
+                off_t read_to = std::min (max_readable_offset, blk_readable_to);
 
                 memcpy (buf + BUF_ITERATOR,
                         read_buffer + blk_readable_from,
@@ -1187,10 +1209,11 @@ int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_fil
 
         bool locked = this_ ()->FSCache->lockItemCheckExists (inode);
 
-        this_ ()->FSCache->update_content_metadata (inode, new_meta, values_to_change);
+        if (locked) {
 
-        if (locked)
+            this_ ()->FSCache->update_content_metadata (inode, new_meta, values_to_change);
             this_ ()->FSCache->unlockItem (inode);
+        }
     }
 
     if (res == -1)
