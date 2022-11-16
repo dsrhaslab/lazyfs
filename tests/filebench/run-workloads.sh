@@ -3,14 +3,15 @@
 #--------------------------------------------------#
 # Main required variables
 
-TEST_VAR_OUTPUT_RESULTS_FOLDER=out
+TEST_VAR_OUTPUT_RESULTS_FOLDER=outbranco
 
 # Setup to run for 15 min each test, 3 runs each
 #
-TEST_VAR_WORKLOADS_FOLDER=workloads/micro-4_th-4k_io
+TEST_VAR_WORKLOADS_FOLDER=workloads/wl-branco
 TEST_VAR_TOTAL_RUNTIME_EACH_WORKLOAD=900 # seconds
-TEST_VAR_REPEAT_WORKLOADS=3 # number of times to re-run workloads
-TEST_VAR_FOR_FILESYSTEMS=("fuse.lazyfs-4096" "fuse.passthrough" "fuse.lazyfs-32768")
+TEST_VAR_REPEAT_WORKLOADS=1 # number of times to re-run workloads
+TEST_VAR_FOR_FILESYSTEMS=("fuse.passthrough")
+# TEST_VAR_FOR_FILESYSTEMS=("fuse.lazyfs-4096" "fuse.passthrough" "fuse.lazyfs-131072")
 
 #--------------------------------------------------#
 # Test variables
@@ -19,6 +20,7 @@ TEST_VAR_FOR_FILESYSTEMS=("fuse.lazyfs-4096" "fuse.passthrough" "fuse.lazyfs-327
 LAZYFS_MOUNT_DIR=/tmp/lazyfs.fb.mnt
 LAZYFS_ROOT_DIR=/tmp/lazyfs.fb.root
 LAZYFS_FOLDER=/home/gsd/lfs.repos/lfs.jepsen/lazyfs
+# LAZYFS_FOLDER=/home/gsd/lfs.repos/lfs.thesis/lazyfs
 
 # FUSE passthrough.c example
 PASST_MOUNT_DIR=/tmp/passt.fb.mnt
@@ -103,6 +105,8 @@ mount_lazyfs () {
         CONFIG_NUMBER_PAGES=1310719
     elif test $2 -eq 32768; then
         CONFIG_NUMBER_PAGES=163839
+    elif test $2 -eq 131072; then
+        CONFIG_NUMBER_PAGES=40960
     fi
 
 cat > $OUTPUT_LAZYFS_CONFIG_FILE <<- EOM
@@ -120,6 +124,24 @@ EOM
 	} &> /dev/null
 	cd - > /dev/null
 	(set -x; sleep 15s)
+
+    #  if [[ "$1" == *"read"* ]]; then
+
+    #      FAULTS_NR=$(echo "$1" | tr -dc '0-9')
+
+    #      for (( c=1; c<=$FAULTS_NR; c++ ))
+    #      do
+    #          echo "lazyfs::crash::timing=before::op=read::from_rgx=rdfile$c" > $OUTPUT_LAZYFS_FIFO
+    #          (set -x; sleep 2s)
+    #      done
+
+    #     for (( c=1; c<=$FAULTS_NR; c++ ))
+    #     do
+    #         echo "lazyfs::crash::timing=after::op=read::from_rgx=rdfile$c" > $OUTPUT_LAZYFS_FIFO
+    #         (set -x; sleep 2s)
+    #     done
+
+    # fi
 
     check_filesystem $LAZYFS_MOUNT_DIR
     
