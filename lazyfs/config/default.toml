@@ -1,6 +1,6 @@
 [faults]
 fifo_path="/tmp/faults.fifo"
-fifo_path_completed="/tmp/faults_completed.fifo"
+#fifo_path_completed="/tmp/faults_completed.fifo"
 [cache]
 apply_eviction=false
 [cache.simple]
