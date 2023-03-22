@@ -81,7 +81,8 @@ class CustomCacheEngine : public PageCacheEngine {
      * This avoids calling find, at, or similar multiple times by using redundancy.
      *
      */
-    unordered_map<string, map<int, tuple<int, Page*, pair<int, int>>>> owner_ordered_pages_mapping;
+    unordered_map<string, map<int, tuple<int, Page*, pair<int, int>, bool>>>
+        owner_ordered_pages_mapping;
 
     /**
      * @brief Maps owners to their free page ids. A free page contains at least one
@@ -180,6 +181,7 @@ class CustomCacheEngine : public PageCacheEngine {
                                  unordered_map<int, int> blocks_to_remove,
                                  int from_block_id,
                                  off_t index_inside_block);
+    vector<tuple<int, pair<int, int>, int>> get_dirty_blocks_info (string owner);
 };
 
 } // namespace cache::engine::backends::custom

@@ -14,6 +14,7 @@
 #include <errno.h>
 #include <fstream>
 #include <lazyfs/lazyfs.hpp>
+#include <regex>
 #include <spdlog/spdlog.h>
 #include <string>
 #include <thread>
@@ -48,7 +49,118 @@ void fht_worker (LazyFS* filesystem) {
 
             buffer[ret - 1] = '\0';
 
-            if (!strcmp (buffer, "lazyfs::clear-cache")) {
+            std::string command_str = string (buffer);
+            if (command_str.rfind ("lazyfs::crash", 0) == 0) {
+
+                std::regex rgx_global ("::");
+                std::regex rgx_attrib ("=");
+                std::sregex_token_iterator iter_glob (command_str.begin (),
+                                                      command_str.end (),
+                                                      rgx_global,
+                                                      -1);
+                std::sregex_token_iterator end;
+
+                string crash_operation = "none";
+                string crash_timing    = "none";
+                string crash_from_rgx  = "none";
+                string crash_to_rgx    = "none";
+
+                // VF = Valid fault
+                bool VF = true;
+                vector<string> errors;
+
+                for (; iter_glob != end; ++iter_glob) {
+
+                    string current = string (*iter_glob);
+
+                    if (current.rfind ("op=", 0) == 0) {
+
+                        string tmp_op = current.erase (0, current.find ("=") + 1);
+
+                        if (tmp_op.length () != 0 &&
+                            filesystem->allow_crash_fs_operations.find (tmp_op) !=
+                                filesystem->allow_crash_fs_operations.end ())
+                            crash_operation = tmp_op;
+                        else {
+                            VF = false;
+                            errors.push_back ("operation not available");
+                        }
+
+                    } else if (current.rfind ("timing=", 0) == 0) {
+
+                        string tmp_tim = current.erase (0, current.find ("=") + 1);
+
+                        if (tmp_tim.length () != 0 && (tmp_tim == "before" || tmp_tim == "after"))
+                            crash_timing = tmp_tim;
+                        else {
+                            errors.push_back ("timing should be 'before' or 'after'");
+                            VF = false;
+                        }
+
+                    } else if (current.rfind ("from_rgx=", 0) == 0) {
+
+                        string tmp_from_rgx = current.erase (0, current.find ("=") + 1);
+
+                        if (tmp_from_rgx.length () != 0)
+                            crash_from_rgx = tmp_from_rgx;
+
+                    } else if (current.rfind ("to_rgx=", 0) == 0) {
+
+                        string tmp_to_rgx = current.erase (0, current.find ("=") + 1);
+
+                        if (tmp_to_rgx.length () != 0)
+                            crash_to_rgx = tmp_to_rgx;
+                    }
+                }
+
+                bool is_from_to = false;
+
+                if (filesystem->fs_op_multi_path.find (crash_operation) !=
+                    filesystem->fs_op_multi_path.end ()) {
+
+                    if (crash_from_rgx == "none" && crash_to_rgx == "none") {
+                        errors.push_back ("should specify 'from_rgx' and/or 'to_rgx'");
+                        VF = false;
+                    }
+
+                    is_from_to = true;
+
+                } else {
+
+                    if (crash_from_rgx == "none" || crash_to_rgx != "none") {
+                        VF = false;
+                        errors.push_back ("should specify 'from_rgx' regex (and not 'to_rgx')");
+                    }
+                }
+
+                if (VF) {
+
+                    spdlog::critical ("[lazyfs.faults.worker]: received: VALID crash fault:");
+                    spdlog::critical ("[lazyfs.faults.worker]: => crash: timing = {}",
+                                      crash_timing);
+                    spdlog::critical ("[lazyfs.faults.worker]: => crash: operation = {}",
+                                      crash_operation);
+                    spdlog::critical ("[lazyfs.faults.worker]: => crash: from regex path = {}",
+                                      crash_from_rgx);
+                    if (is_from_to)
+                        spdlog::critical ("[lazyfs.faults.worker]: => crash: to regex path = {}",
+                                          crash_to_rgx);
+
+                    filesystem->add_crash_fault (crash_timing,
+                                                 crash_operation,
+                                                 crash_from_rgx,
+                                                 crash_to_rgx);
+
+                } else {
+
+                    spdlog::warn ("[lazyfs.faults.worker]: received: INVALID crash fault:");
+
+                    for (auto const err : errors) {
+                        spdlog::warn ("[lazyfs.faults.worker]: crash fault error: {}", err);
+                    }
+                }
+
+            } else if (!strcmp (buffer, "lazyfs::clear-cache")) {
 
                 spdlog::info ("[lazyfs.faults.worker]: received '{}'", string (buffer));
                 filesystem->command_fault_clear_cache ();
@@ -62,6 +174,28 @@ void fht_worker (LazyFS* filesystem) {
 
                 spdlog::info ("[lazyfs.faults.worker]: received '{}'", string (buffer));
                 filesystem->command_checkpoint ();
+
+            } else if (!strcmp (buffer, "lazyfs::unsynced-data-report")) {
+
+                spdlog::info ("[lazyfs.faults.worker]: received '{}'", string (buffer));
+                filesystem->command_unsynced_data_report ();
+
+            } else if (!strcmp (buffer, "lazyfs::help")) {
+
+                spdlog::info ("[lazyfs.faults.worker]: <" + string (buffer) + ">");
+
+                spdlog::info (
+                    "[lazyfs.faults.worker] help: 'lazyfs::clear-cache' => clears un-fsynced data");
+                spdlog::info (
+                    "[lazyfs.faults.worker] help: 'lazyfs::display-cache-usage' => shows the "
+                    "cache usage (#pages)");
+                spdlog::info ("[lazyfs.faults.worker] help: 'lazyfs::cache-checkpoint' => writes "
+                              "all cached data");
+                spdlog::info (
+                    "[lazyfs.faults.worker] help: 'lazyfs::unsynced-data-report' => reports which "
+                    "files have un-fsynced data");
+                spdlog::info (
+                    "[lazyfs.faults.worker] help: 'lazyfs::help' => displays this message");
 
             } else {
 

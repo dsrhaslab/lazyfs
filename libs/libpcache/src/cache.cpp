@@ -213,6 +213,8 @@ map<int, bool> Cache::put_data_blocks (string cid,
     // return
     map<int, bool> put_res;
 
+    bool allocated_at_least_one_page = false;
+
     for (auto const& it : allocations) {
 
         int bid            = it.first;
@@ -224,6 +226,7 @@ map<int, bool> Cache::put_data_blocks (string cid,
         int rs_to = get<3> (block_offsets);
 
         if (allocated_page >= 0) {
+            allocated_at_least_one_page = true;
             // todo: recheck rs_from = 0?
             // item->get_data ()->set_block_page_id (bid, allocated_page, rs_from, rs_to);
             int max_offset = item->get_data ()->set_block_page_id (bid, allocated_page, 0, rs_to);
@@ -232,6 +235,10 @@ map<int, bool> Cache::put_data_blocks (string cid,
             item->get_data ()->remove_block (bid);
 
         put_res.insert (make_pair (bid, allocated_page >= 0 ? true : false));
+    }
+
+    if (allocated_at_least_one_page) {
+        item->set_data_sync_flag (false);
     }
 
     unlockItem (cid);
@@ -338,6 +345,8 @@ bool Cache::truncate_item (string owner, off_t new_size) {
                                           truncate_from_block_id,
                                           truncate_from_block_index);
 
+    item->set_data_sync_flag (false);
+
     unlockItem (owner);
 
     return true;
@@ -364,6 +373,7 @@ int Cache::sync_owner (string owner, bool only_sync_data, char* orig_path) {
     off_t last_size = get_content_metadata (owner)->size;
 
     res = this->engine->sync_pages (owner, last_size, orig_path);
+    _get_content_ptr (owner)->set_data_sync_flag (true);
 
     if (not only_sync_data) {
 
@@ -548,6 +558,37 @@ void Cache::full_checkpoint () {
 
     for (auto const& it : this->file_inode_mapping)
         this->sync_owner (it.second, false, (char*)it.first.c_str ());
+}
+
+std::vector<tuple<string, size_t, vector<tuple<int, pair<int, int>, int>>>>
+Cache::report_unsynced_data () {
+
+    std::lock_guard<shared_mutex> lock (lock_cache_mtx);
+
+    std::vector<tuple<string, size_t, vector<tuple<int, pair<int, int>, int>>>> unsynced_data;
+
+    for (auto const& it : this->contents) {
+        if (not it.second->is_synced ()) {
+            unsynced_data.push_back (
+                std::make_tuple (it.first, 0, this->engine->get_dirty_blocks_info (it.first)));
+        }
+    }
+
+    return unsynced_data;
+}
+
+vector<string> Cache::find_files_mapped_to_inode (string inode) {
+
+    std::lock_guard<shared_mutex> lock (lock_cache_mtx);
+
+    vector<string> res;
+
+    for (auto it = this->file_inode_mapping.begin (); it != this->file_inode_mapping.end (); ++it) {
+        if (it->second == inode)
+            res.push_back (it->first);
+    }
+
+    return res;
 }
 
 } // namespace cache

@@ -122,6 +122,8 @@ pair<int, int> Page::get_block_offsets (int block_id) {
 
 void Page::_rewrite_offset_data (char* new_data, int off_min, int off_max) {
 
+    this->set_page_as_dirty (true);
+
     memcpy (this->data + off_min, new_data, off_max - off_min + 1);
 }
 
@@ -148,7 +150,7 @@ bool Page::update_block_data (int block_id, char* new_data, size_t data_length, 
 
 bool Page::is_page_dirty () { return this->is_dirty; }
 
-void Page::set_page_as_dirty () { this->is_dirty = true; }
+void Page::set_page_as_dirty (bool dirty) { this->is_dirty = dirty; }
 
 bool Page::sync_data () {
 

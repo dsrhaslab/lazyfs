@@ -136,6 +136,56 @@ Finally, one can control LazyFS by echoing the following commands to the configu
     echo "lazyfs::display-cache-usage" > /tmp/faults.fifo
     ```
 
+-   **Report unsynced data,** which displays the inodes that have data in cache:
+
+    ```bash
+    echo "lazyfs::unsynced-data-report" > /my/path/faults.fifo
+    ```
+
+-   **Kill the filesystem,** which is triggered by an operation, a timing and a path regex:
+
+    Here **timing** should be one of `before` or `after`, and **op** should be a valid system call name (e.g. `write` or `read`).
+
+    - In the case of operations that have a source path only (e.g. `create`, `open`, `read`, `write`, ...)
+
+        ```bash
+        echo "lazyfs::crash::timing=...::op=...::from_rgx=..." > /my/path/faults.fifo
+        ```
+
+        Here, `from_rgx` is required (do not specify to_rgx).
+
+    - For `rename`, `link` and `symlink`, one is able to specify the destination path:
+
+        ```bash
+        echo "lazyfs::crash::timing=...::op=...::from_rgx=...::to_rgx=..." > /my/path/faults.fifo
+        ```
+
+        Here, only one of `from_rgx` or `to_rgx` is required.
+
+    Example 1:
+
+    ```bash
+    echo "lazyfs::crash::timing=before::op=write::from_rgx=file1" > /my/path/faults.fifo
+    ```
+
+    > Kills LazyFS before executing a write operation to the file pattern 'file1'.
+
+    Example 2:
+
+    ```bash
+    echo "lazyfs::crash::timing=before::op=link::from_rgx=file1::to_rgx=file2" > /my/path/faults.fifo
+    ```
+
+    > Kills LazyFS before executing a rename operation from the file pattern 'file1' to the file pattern 'file2'.
+
+    Example 3:
+
+    ```bash
+    echo "lazyfs::crash::timing=before::op=rename::to_rgx=fileabd" > /my/path/faults.fifo
+    ```
+
+    > Kills LazyFS before executing a link operation to the file pattern 'fileabd'.
+
 LazyFS expects that every buffer written to the FIFO file terminates with a new line character (**echo** does this by default). Thus, if using `pwrite`, for example, make sure you end the buffer with `\n`.
 
 ## Contact

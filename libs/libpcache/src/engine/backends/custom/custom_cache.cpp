@@ -279,7 +279,7 @@ void CustomCacheEngine::_update_owner_pages (string new_owner,
 
         this->owner_pages_mapping.at (new_owner).insert (page_id);
         this->owner_ordered_pages_mapping.at (new_owner).insert (
-            {block_id, {page_id, p, block_offsets_inside_page}});
+            {block_id, {page_id, p, block_offsets_inside_page, false}});
 
     } else {
 
@@ -291,7 +291,7 @@ void CustomCacheEngine::_update_owner_pages (string new_owner,
             pair<string, unordered_set<int>> (new_owner, owner_pages));
         this->owner_free_pages_mapping.insert (pair<string, vector<int>> (new_owner, {}));
         this->owner_ordered_pages_mapping.insert (
-            {new_owner, {{block_id, {page_id, p, block_offsets_inside_page}}}});
+            {new_owner, {{block_id, {page_id, p, block_offsets_inside_page, false}}}});
     }
 
     if (p->has_free_space ()) {
@@ -375,6 +375,10 @@ map<int, int> CustomCacheEngine::allocate_blocks (
 
                 res_block_allocated_pages.insert (pair<int, int> (blk_id, page_id));
 
+                auto& owner_ref =
+                    this->owner_ordered_pages_mapping.at (content_owner_id).at (blk_id);
+                get<3> (owner_ref) = false;
+
                 lock.unlock ();
 
                 // skip page allocation algorithm
@@ -395,7 +399,7 @@ map<int, int> CustomCacheEngine::allocate_blocks (
             free_page_ptr->update_block_data (blk_id, (char*)blk_data, blk_data_len, offset_start);
 
             if (operation_type == OP_WRITE)
-                free_page_ptr->set_page_as_dirty ();
+                free_page_ptr->set_page_as_dirty (true);
 
             // here, page_id = -1 indicates that the allocation failed
             res_block_allocated_pages.insert (pair<int, int> (blk_id, page_id));
@@ -480,19 +484,30 @@ bool CustomCacheEngine::sync_pages (string owner, off_t size, char* orig_path) {
         off_t wrote_bytes = 0;
         off_t page_streak = 0;
 
-        auto const& iterate_blocks = this->owner_ordered_pages_mapping.at (owner);
+        auto& iterate_blocks = this->owner_ordered_pages_mapping.at (owner);
+
+        map<int, tuple<int, Page*, pair<int, int>, bool>> new_iterate_blocks;
+
+        for (auto cit = iterate_blocks.begin (); cit != iterate_blocks.end (); cit++) {
+            auto pptr = std::get<1> (cit->second);
+            if (pptr->is_page_dirty ()) {
+                new_iterate_blocks.insert ({cit->first, cit->second});
+                pptr->set_page_as_dirty (false);
+            }
+        }
+
         off_t page_streak_last_offset =
-            (iterate_blocks.begin ()->first) * this->config->IO_BLOCK_SIZE;
+            (new_iterate_blocks.begin ()->first) * this->config->IO_BLOCK_SIZE;
 
-        vector<tuple<int, Page*, pair<int, int>>> page_chunk;
-        page_chunk.reserve (iterate_blocks.size ());
+        vector<tuple<int, Page*, pair<int, int>, bool>> page_chunk;
+        page_chunk.reserve (new_iterate_blocks.size ());
 
-        for (auto it = iterate_blocks.begin (); it != iterate_blocks.end (); it++) {
+        for (auto it = new_iterate_blocks.begin (); it != new_iterate_blocks.end (); it++) {
 
             auto current_block_id     = it->first;
             auto const& next_block_id = std::next (it, 1)->first;
 
-            if ((page_streak < (__IOV_MAX - 1)) && (it != prev (iterate_blocks.end (), 1)) &&
+            if ((page_streak < (__IOV_MAX - 1)) && (it != prev (new_iterate_blocks.end (), 1)) &&
                 (current_block_id == (next_block_id - 1))) {
 
                 page_streak++;
@@ -526,6 +541,9 @@ bool CustomCacheEngine::sync_pages (string owner, off_t size, char* orig_path) {
                     } else {
                         iov[p_id].iov_len = this->config->IO_BLOCK_SIZE;
                     }
+
+                    // mark block as clean
+                    std::get<3> (iterate_blocks.at (streak_block)) = true;
                 }
 
                 wrote_bytes += pwritev (fd, iov, page_streak, page_streak_last_offset);
@@ -557,7 +575,7 @@ bool CustomCacheEngine::rename_owner_pages (string old_owner, string new_owner) 
 
     unordered_set<int> old_page_mapping = this->owner_pages_mapping.at (old_owner);
     vector<int> old_free_mapping        = this->owner_free_pages_mapping.at (old_owner);
-    map<int, tuple<int, Page*, pair<int, int>>> old_ordered_pages =
+    map<int, tuple<int, Page*, pair<int, int>, bool>> old_ordered_pages =
         this->owner_ordered_pages_mapping.at (old_owner);
 
     for (auto const& it : old_page_mapping) {
@@ -631,6 +649,31 @@ bool CustomCacheEngine::truncate_cached_blocks (string content_owner_id,
     }
 
     return true;
+}
+
+vector<tuple<int, pair<int, int>, int>> CustomCacheEngine::get_dirty_blocks_info (string owner) {
+
+    std::unique_lock<std::shared_mutex> lock (lock_cache_mtx);
+
+    vector<tuple<int, pair<int, int>, int>> res;
+
+    if (this->owner_ordered_pages_mapping.find (owner) !=
+        this->owner_ordered_pages_mapping.end ()) {
+
+        for (auto const& it : this->owner_ordered_pages_mapping.at (owner)) {
+
+            auto const& page_ptr = std::get<1> (it.second);
+            pair<int, int> offs;
+            offs.first     = 0;
+            offs.second    = page_ptr->allocated_block_ids.get_readable_to (it.first);
+            bool is_synced = std::get<3> (it.second);
+
+            if (not is_synced)
+                res.push_back (std::make_tuple (it.first, offs, get<0> (it.second)));
+        }
+    }
+
+    return res;
 }
 
 } // namespace cache::engine::backends::custom

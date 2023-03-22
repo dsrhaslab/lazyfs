@@ -38,6 +38,12 @@ class Item {
      */
     Metadata* metadata;
 
+    /**
+     * @brief Is item's data synced
+     *
+     */
+    bool data_synced;
+
   public:
     /**
      * @brief Construct a new Item object
@@ -81,6 +87,21 @@ class Item {
      *
      */
     void print_item ();
+
+    /**
+     * @brief Set the data sync flag
+     *
+     * @param flag the flag
+     */
+    void set_data_sync_flag (bool flag);
+
+    /**
+     * @brief Returns de sync flag
+     *
+     * @return true is synced
+     * @return false not synced
+     */
+    bool is_synced ();
 };
 
 } // namespace cache::item

@@ -15,6 +15,7 @@
 #include <cache/engine/backends/custom/custom_cache.hpp>
 #include <lazyfs/fusepp/Fuse-impl.h>
 #include <lazyfs/fusepp/Fuse.h>
+#include <regex>
 #include <thread>
 #include <vector>
 
@@ -51,6 +52,12 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      *
      */
     void (*fht_worker) (LazyFS* filesystem);
+
+    /**
+     * @brief
+     *
+     */
+    std::unordered_map<string, unordered_set<string>> crash_faults;
 
   public:
     /**
@@ -95,6 +102,12 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      *
      */
     void command_checkpoint ();
+
+    /**
+     * @brief Fifo: Reports which files have unsynced data.
+     *
+     */
+    void command_unsynced_data_report ();
 
     /**
      * @brief Checks whether a directory is empty of not by counting the number of entries.
@@ -195,6 +208,61 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
 
     static int lfs_chmod (const char*, mode_t, struct fuse_file_info*);
     static int lfs_chown (const char*, uid_t, gid_t, fuse_file_info*);
+
+    /**
+     * @brief Map of faults associated with each filesystem operation
+     *
+     */
+    // operation -> [((from_rgx, to_rgx), before?true:false), ...]
+    std::unordered_map<string, vector<pair<std::regex, string>>> crash_faults_before_map;
+    std::unordered_map<string, vector<pair<std::regex, string>>> crash_faults_after_map;
+
+    /**
+     * @brief Map of allowed operations to have a crash fault
+     *
+     */
+    std::unordered_set<string> allow_crash_fs_operations = {"unlink",
+                                                            "truncate",
+                                                            "fsync",
+                                                            "write",
+                                                            "create",
+                                                            "access",
+                                                            "open",
+                                                            "read",
+                                                            "rename",
+                                                            "link",
+                                                            "symlink"};
+
+    /**
+     * @brief Map of operations that have two paths
+     *
+     */
+    std::unordered_set<string> fs_op_multi_path = {"rename", "link", "symlink"};
+
+    /**
+     * @brief Adds a crash fault to the faults map
+     *
+     * @param crash_timing 'before' or 'after'
+     * @param crash_operation one of 'allow_crash_fs_operations'
+     * @param crash_regex_from a regex indicating the source fault path
+     * @param crash_regex_to a regex indicating the destination fault path (for some operations like
+     * rename, link...)
+     */
+    void add_crash_fault (string crash_timing,
+                          string crash_operation,
+                          string crash_regex_from,
+                          string crash_regex_to);
+
+    /**
+     * @brief kills lazyfs with SIGINT if any fault condition verifies
+     *
+     * @param opname operation to check
+     * @param optiming one of 'allow_crash_fs_operations'
+     * @param from_op_path source path specified in the operation
+     * @param dest_op_path destination path specified in the operation
+     */
+    void
+    trigger_crash_fault (string opname, string optiming, string from_op_path, string to_op_path);
 };
 
 } // namespace lazyfs

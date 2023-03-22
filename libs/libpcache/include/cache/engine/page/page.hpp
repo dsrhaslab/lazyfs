@@ -201,7 +201,7 @@ class Page {
      * @brief Set the page as dirty
      *
      */
-    void set_page_as_dirty ();
+    void set_page_as_dirty (bool dirty);
 
     /**
      * @brief Writes null bytes after the block and offset specified
