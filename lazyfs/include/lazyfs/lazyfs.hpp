@@ -54,20 +54,25 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
     void (*fht_worker) (LazyFS* filesystem);
 
     /**
-     * @brief
+     * @brief Faults programmed in the configuration file.
+     */
+    unordered_map<string,vector<cache::config::Fault>>* faults;
+
+    /**
+     * @brief Faults of LazyFS crash injected during runtime.
      *
      */
     std::unordered_map<string, unordered_set<string>> crash_faults;
 
   public:
     /**
-     * @brief Construct a new LazyFS object
+     * @brief Construct a new LazyFS object.
      *
      */
     LazyFS ();
 
     /**
-     * @brief Construct a new LazyFS object
+     * @brief Construct a new LazyFS object.
      *
      * @param cache Cache object
      * @param config LazyFS configuration
@@ -77,7 +82,8 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
     LazyFS (Cache* cache,
             cache::config::Config* config,
             std::thread* faults_handler_thread,
-            void (*fht_worker) (LazyFS* filesystem));
+            void (*fht_worker) (LazyFS* filesystem),
+            unordered_map<string,vector<cache::config::Fault>>* faults);
 
     /**
      * @brief Destroy the LazyFS object
@@ -108,6 +114,24 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      *
      */
     void command_unsynced_data_report ();
+
+    /**
+     * @brief Checks if a programmed fault for the given path and operation exists. If so, updates the counter and returns the fault.
+     * @param path the path 
+     * @param op the operation
+     * @return pointer to the Counter ass
+    */
+    cache::config::Fault* get_and_update_fault(string path, string op);
+
+    /**
+     * Persists a write if a there is a programmed fault for write in the given path and if the counter matches one of the writes to persist.
+     * @param fd File descriptor for the file
+     * @param path Path of the file
+     * @param buf Buffer with what is to be written
+     * @param size Bytes to be written
+     * @param offset Offset inside the file to start to writes    
+     */
+    void persist_write(int fd, const char* path, const char* buf, size_t size, off_t offset);
 
     /**
      * @brief Checks whether a directory is empty of not by counting the number of entries.

@@ -20,6 +20,19 @@ using namespace std;
 
 namespace cache::config {
 
+Fault::Fault(string op, vector<int> persist) {
+    this->counter = 0;
+    this->op = op;
+    this->persist = persist;
+}
+
+Fault::Fault() {
+	vector <int> v;
+	this->counter = 0;
+    this->op = "";
+	this->persist = v;
+}
+
 Config::Config (size_t prealloc_bytes, int nr_blocks_per_page) {
     this->setup_config_by_size (prealloc_bytes, nr_blocks_per_page);
 }
@@ -55,7 +68,7 @@ void Config::setup_config_by_size (size_t prealloc_bytes, int nr_blocks_per_page
 
 Config::~Config () {}
 
-void Config::load_config (string filename) {
+unordered_map<string,vector<Fault>> Config::load_config (string filename) {
 
     const auto data = toml::parse (filename);
 
@@ -139,6 +152,39 @@ void Config::load_config (string filename) {
             this->LOG_FILE = logfile;
         }
     }
+
+    unordered_map<string,vector<Fault>> faults; 
+    if (data.contains ("injection")) {
+        const auto& programmed_injections = toml::find<toml::array>(data,"injection");
+	
+        for (const auto& injection : programmed_injections) {
+            if (!injection.contains("file")) throw std::runtime_error("Key 'file' for some injection is not defined in the configuration file.");
+            string file = toml::find<string>(injection,"file");
+
+            if (!injection.contains("op")) throw std::runtime_error("Key 'op' for some injection is not defined in the configuration file.");
+            string op = toml::find<string>(injection,"op");
+
+            if (!injection.contains("persist") && op == "write") throw std::runtime_error("Key 'persist' for some injection with \"write\" as op is not defined in the configuration file.");     
+            vector<int> persist = toml::find<vector<int>>(injection,"persist");
+	   
+            auto it = faults.find(file);
+            cache::config::Fault fault(op,persist);
+
+            if (it == faults.end()) {
+                vector<Fault> v_faults;
+                v_faults.push_back(fault);
+                faults[file] = v_faults;
+            } else {
+                for (auto& fault : it->second) {
+                    if (fault.op == op) throw std::runtime_error("It is only acceptable one fault per type of operation for a given file.");
+                    (it->second).push_back(fault);
+                }
+            }
+        }
+	
+    }
+
+    return faults;
 }
 
 void Config::set_eviction_flag (bool flag) { this->APPLY_LRU_EVICTION = flag; }

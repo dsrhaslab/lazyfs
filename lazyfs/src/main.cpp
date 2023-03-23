@@ -247,7 +247,7 @@ int main (int argc, char* argv[]) {
 
     // Load LazyFS's config
 
-    std_config.load_config (config_path);
+    unordered_map<string,vector<cache::config::Fault>> faults = std_config.load_config (config_path);
 
     // Setup logger
 
@@ -331,7 +331,7 @@ int main (int argc, char* argv[]) {
     CustomCacheEngine* engine = new CustomCacheEngine (&std_config);
     Cache* cache              = new Cache (&std_config, engine);
 
-    new (&fs) LazyFS (cache, &std_config, &faults_handler_thread, fht_worker);
+    new (&fs) LazyFS (cache, &std_config, &faults_handler_thread, fht_worker, &faults);
 
     spdlog::info ("[lazyfs.fifo]: running LazyFS...");
 

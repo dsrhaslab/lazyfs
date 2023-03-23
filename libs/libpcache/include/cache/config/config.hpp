@@ -11,11 +11,50 @@
 #define CACHE_CONFIG_HPP
 
 #include <string>
+#include <vector>
+#include <unordered_map>
 #include <sys/types.h>
 
 using namespace std;
 
 namespace cache::config {
+
+/**
+ * @brief Stores the programmed faults present in the configuration file.
+ */
+
+class Fault {
+
+  public:
+
+    /**
+     * @brief Operation related to the fault. 
+     */
+    string op;
+    /**
+     * @brief When op is called sequentially for a certain path, count the number of calls. When the sequence is broken, counter is set to 0.
+     */
+    int counter;
+    /**
+     * @brief If the vector is [3,4] it means that if op is called for a certain path sequentially, the 3th and 4th call will be persisted.
+     */
+    vector<int> persist;
+
+  
+    /**
+     * @brief Construct a new Fault object manually.
+     *
+     * @param op operation (i.e. "write", "read", ...)
+     * @param persist vector with operations to persist
+     */
+    Fault(string op, vector<int> persist);
+
+    /**
+     * @brief Default constructor for Fault.
+     */    
+    Fault();
+};
+
 
 /**
  * @brief Stores the cache configuration parameters.
@@ -132,8 +171,9 @@ class Config {
      * @brief Loads and constructs a Config object from the LazyFS config file.
      *
      * @param filename Filename to read the config from
+     * @return Map from files to programmed faults for those files
      */
-    void load_config (string filename);
+    unordered_map<string,vector<Fault>> load_config (string filename);
 };
 
 } // namespace cache::config

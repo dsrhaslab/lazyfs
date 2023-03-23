@@ -45,12 +45,14 @@ LazyFS::LazyFS () {}
 LazyFS::LazyFS (Cache* cache,
                 cache::config::Config* config,
                 std::thread* faults_handler_thread,
-                void (*fht_worker) (LazyFS* filesystem)) {
+                void (*fht_worker) (LazyFS* filesystem),
+                unordered_map<string,vector<cache::config::Fault>>* faults) {
 
     this->FSConfig              = config;
     this->FSCache               = cache;
     this->faults_handler_thread = faults_handler_thread;
     this->fht_worker            = fht_worker;
+    this->faults                = faults;
 
     for (auto const& it : this->allow_crash_fs_operations) {
         this->crash_faults_before_map.insert ({it, {}});
@@ -237,6 +239,41 @@ void LazyFS::command_checkpoint () {
     FSCache->full_checkpoint ();
 
     spdlog::warn ("[lazyfs.cmds]: checkpoint is done.");
+}
+
+cache::config::Fault* LazyFS::get_and_update_fault(string path, string op) {
+    cache::config::Fault* fault_r = NULL;
+    if (faults->find(path) != faults->end()) {
+        cout << "find!!246" << endl;
+        auto& v_faults = faults->at(path);
+        for (auto& fault : v_faults) {
+            if (fault.op == op) {fault.counter += 1; fault_r = &fault;}
+            else fault.counter = 0;
+        }
+    }
+    return fault_r;
+}
+
+void LazyFS::persist_write(int fd, const char* path, const char* buf, size_t size, off_t offset) {
+    string path_str(path);
+    cache::config::Fault* fault = get_and_update_fault(path_str,"write");
+    cout << fault->counter;
+    
+    if (fault) {
+        if (find((fault->persist).begin(), (fault->persist).end(), fault->counter) != (fault->persist).end()) {
+            int pw = pwrite(fd,buf,size,offset);
+            cout << "pwrite res: " << pw << " and lfs size: " << size << "\n";
+            int max = *max_element(fault->persist.begin(), fault->persist.end());
+            if (max == fault->counter) {
+                this_ ()->add_crash_fault ("after", "write", path_str, "none"); 
+                
+                spdlog::critical ("[lazyfs.faults]: Added crash fault: ");
+                spdlog::critical ("[lazyfs.faults]: => crash: timing = after");
+                spdlog::critical ("[lazyfs.faults.worker]: => crash: operation = write");
+                spdlog::critical ("[lazyfs.faults.worker]: => crash: from regex path = {}",path_str);            
+            }
+        } 
+    }
 }
 
 void* LazyFS::lfs_init (struct fuse_conn_info* conn, struct fuse_config* cfg) {
@@ -582,21 +619,19 @@ int LazyFS::lfs_write (const char* path,
 
         if (fi != NULL) {
 
-            off_t file_size_offset = FILE_SIZE_BEFORE - 1;
-
-            if (file_size_offset < offset) {
+            if (FILE_SIZE_BEFORE < offset) {
 
                 // fill sparse write with zeros, how?
                 // [file_size_offset, offset - 1] = zeros
 
-                // std::printf ("calling a sparse write...\n");
+                std::printf ("calling a sparse write...\n");
 
-                off_t size_to_fill = offset - std::max (file_size_offset, (off_t)0);
+                off_t size_to_fill = offset - std::max (FILE_SIZE_BEFORE, (off_t)0);
 
                 if (size_to_fill > 0) {
 
                     char* fill_zeros = (char*)calloc (size_to_fill, 1);
-                    lfs_write (path, fill_zeros, size_to_fill, file_size_offset + 1, NULL);
+                    lfs_write (path, fill_zeros, size_to_fill, FILE_SIZE_BEFORE, NULL);
                     free (fill_zeros);
                 }
             }
@@ -840,6 +875,8 @@ int LazyFS::lfs_write (const char* path,
     }
 
     // ----------------------------------------------------------------------------------
+    
+    this_ () -> persist_write(fd,path,buf,size,offset);
 
     // res should be = actual bytes written as pwrite could fail...
     res = size;

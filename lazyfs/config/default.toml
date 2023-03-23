@@ -10,5 +10,13 @@ blocks_per_page=1
 # page_size=4096
 # no_pages=10
 [filesystem]
-log_all_operations=false
+log_all_operations=true
 logfile=""
+[[injection]]
+op="write"
+file="/home/gsd/data/zookeeper-root/version-2/log.100000001"
+persist=[2,4]
+[[injection]]
+op="write"
+file="/home/gsd/etcd-v2.3.0-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal"
+persist=[1,2]
