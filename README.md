@@ -69,6 +69,7 @@ apply_eviction=false
 [cache.simple]
 custom_size="0.5GB"
 blocks_per_page=1
+
 # [cache.manual]
 # io_block_size=4096
 # page_size=4096
@@ -79,7 +80,7 @@ log_all_operations=false
 logfile="/tmp/lazyfs.log"
 ```
 
-The section **[cache]** requires that you specify the following:
+I recommend following the `simple` cache configuration (indicating the cache size and using a similar configuration file as `default.toml`), since it's currently the most tested schema in our experiments. Additionally, for the section **[cache]**, you can specify the following:
 
 -   **apply_eviction**: Whether the cache should behave like the real page cache, evicting pages when the cache fills to the maximum.
 
@@ -98,15 +99,15 @@ cd lazyfs/
 
 # Running LazyFS in the foreground (add '-f/--foregound')
 
-./scripts/mount-lazyfs.sh -c config/default.toml -m /tmp/lazyfs.mnt -r /mnt/lazyfs.root -f
+./scripts/mount-lazyfs.sh -c config/default.toml -m /tmp/lazyfs.mnt -r /tmp/lazyfs.root -f
 
 # Running LazyFS in the background
 
-./scripts/mount-lazyfs.sh -c config/default.toml -m /tmp/lazyfs.mnt -r /mnt/lazyfs.root
+./scripts/mount-lazyfs.sh -c config/default.toml -m /tmp/lazyfs.mnt -r /tmp/lazyfs.root
 
 # Umount with
 
-./scripts/umount-lazyfs.sh -m /tmp/lazyfs.mnt
+./scripts/umount-lazyfs.sh -m /tmp/lazyfs.mnt/
 
 # Display help
 
@@ -136,7 +137,7 @@ Finally, one can control LazyFS by echoing the following commands to the configu
     echo "lazyfs::display-cache-usage" > /tmp/faults.fifo
     ```
 
-LazyFS expects that every buffer written to the FIFO file terminates with a new line character (**echo** does this by default). Thus, if using `pwrite`, for example, make sure you end the buffer with `\n`.
+LazyFS expects that every buffer written to the FIFO file terminates with a new line character. Thus, if using `pwrite`, for example, make sure you end the buffer with `\n`.
 
 ## Contact
 
