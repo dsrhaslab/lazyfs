@@ -257,7 +257,6 @@ cache::config::Fault* LazyFS::get_and_update_fault(string path, string op) {
 void LazyFS::persist_write(int fd, const char* path, const char* buf, size_t size, off_t offset) {
     string path_str(path);
     cache::config::Fault* fault = get_and_update_fault(path_str,"write");
-    cout << fault->counter;
     
     if (fault) {
         if (find((fault->persist).begin(), (fault->persist).end(), fault->counter) != (fault->persist).end()) {
