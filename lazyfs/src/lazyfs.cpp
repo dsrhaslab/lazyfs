@@ -40,6 +40,22 @@ std::shared_mutex cache_command_lock;
 
 namespace lazyfs {
 
+LazyFS::Write() {
+    this->path = this->buf = NULL;
+}
+
+LazyFS::Write(const char* path, const char* buf, size_t size, off_t offset) {
+    this->path = strdup(path);
+    this->buf = strdup(buf);
+    this->size = size;
+    this->offset = offset;
+}
+
+LazyFS::~Write() {
+    free(this->path);
+    free(this->buf);
+}
+
 LazyFS::LazyFS () {}
 
 LazyFS::LazyFS (Cache* cache,
@@ -53,6 +69,7 @@ LazyFS::LazyFS (Cache* cache,
     this->faults_handler_thread = faults_handler_thread;
     this->fht_worker            = fht_worker;
     this->faults                = faults;
+    this->pending_write         = NULL;
 
     for (auto const& it : this->allow_crash_fs_operations) {
         this->crash_faults_before_map.insert ({it, {}});
@@ -250,27 +267,44 @@ cache::config::Fault* LazyFS::get_and_update_fault(string path, string op) {
             if (fault.op == op) {fault.counter += 1; fault_r = &fault;}
             else fault.counter = 0;
         }
-    }
+    } else cout << "did not found";
     return fault_r;
 }
 
 void LazyFS::persist_write(int fd, const char* path, const char* buf, size_t size, off_t offset) {
     string path_str(path);
+    int pw,fd1;
     cache::config::Fault* fault = get_and_update_fault(path_str,"write");
-    cout << fault->counter;
     
-    if (fault) {
-        if (find((fault->persist).begin(), (fault->persist).end(), fault->counter) != (fault->persist).end()) {
-            int pw = pwrite(fd,buf,size,offset);
-            cout << "pwrite res: " << pw << " and lfs size: " << size << "\n";
-            int max = *max_element(fault->persist.begin(), fault->persist.end());
-            if (max == fault->counter) {
-                this_ ()->add_crash_fault ("after", "write", path_str, "none"); 
-                
-                spdlog::critical ("[lazyfs.faults]: Added crash fault: ");
+    if (fault) { //Fault for path found
+        if (this->pending_write!=NULL) {
+            fd1 = open (path, O_WRONLY);
+            pw = pwrite(fd1,this->pending_write->buf,this->pending_write->size,this->pending_write->offset);
+            delete(this->pending_write); this->pending_write = NULL;    
+
+            if ((fault->persist).size()==1) {
+                this_ ()->add_crash_fault ("after", "write", path_str, "none");            
+                spdlog::critical ("[lazyfs.faults]: Added crash fault ");
                 spdlog::critical ("[lazyfs.faults]: => crash: timing = after");
                 spdlog::critical ("[lazyfs.faults.worker]: => crash: operation = write");
-                spdlog::critical ("[lazyfs.faults.worker]: => crash: from regex path = {}",path_str);            
+                spdlog::critical ("[lazyfs.faults.worker]: => crash: from regex path = {}",path_str);     
+            }
+        }
+
+        if (find((fault->persist).begin(), (fault->persist).end(), fault->counter) != (fault->persist).end()) { //if count is in vector persist
+            if (fault->counter==1) { //if array persist has 1st write, we need to store this write until we know another write will happen
+                this->pending_write = new Write(path,buf,size,offset);
+            } else {
+                pw = pwrite(fd,buf,size,offset);
+                int max = *max_element(fault->persist.begin(), fault->persist.end());
+                if (max == fault->counter) {
+                    this_ ()->add_crash_fault ("after", "write", path_str, "none"); 
+                        
+                    spdlog::critical ("[lazyfs.faults]: Added crash fault ");
+                    spdlog::critical ("[lazyfs.faults]: => crash: timing = after");
+                    spdlog::critical ("[lazyfs.faults.worker]: => crash: operation = write");
+                    spdlog::critical ("[lazyfs.faults.worker]: => crash: from regex path = {}",path_str);            
+                }
             }
         } 
     }
@@ -1200,7 +1234,6 @@ void LazyFS::lfs_get_dir_filenames (const char* dirname, std::vector<string>* re
     while ((from_DIRENT = readdir (from_DIR)) != NULL) {
 
         // skip "." and ".." folders
-
         if (strcmp (from_DIRENT->d_name, ".") != 0 && strcmp (from_DIRENT->d_name, "..") != 0) {
 
             string base_path = string (string (dirname) + "/" + string (from_DIRENT->d_name));

@@ -23,6 +23,24 @@ using namespace cache;
 
 namespace lazyfs {
 
+class Write {
+  public:
+    const char* path;
+    const char* buf;
+    size_t size;
+    off_t offset;
+
+    Write ();
+
+    Write (const char* path,
+           const char* buf,
+           size_t size,
+           off_t offset);
+
+    ~Write ();
+
+}
+
 /**
  * @brief The LazyFS implementation in C++.
  *
@@ -63,6 +81,8 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      *
      */
     std::unordered_map<string, unordered_set<string>> crash_faults;
+
+    Write *pending_write;
 
   public:
     /**
