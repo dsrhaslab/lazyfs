@@ -133,6 +133,8 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      */
     void persist_write(int fd, const char* path, const char* buf, size_t size, off_t offset);
 
+    void restart_counter(string path, string op);
+
     /**
      * @brief Checks whether a directory is empty of not by counting the number of entries.
      *        It must be <= 2 to be empty, only containing "." and ".."

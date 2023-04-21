@@ -34,7 +34,7 @@ class Fault {
     /**
      * @brief When op is called sequentially for a certain path, count the number of calls. When the sequence is broken, counter is set to 0.
      */
-    int counter;
+    atomic<int> counter;
     /**
      * @brief If the vector is [3,4] it means that if op is called for a certain path sequentially, the 3th and 4th call will be persisted.
      */
