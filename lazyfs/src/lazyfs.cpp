@@ -258,16 +258,25 @@ void LazyFS::command_checkpoint () {
     spdlog::warn ("[lazyfs.cmds]: checkpoint is done.");
 }
 
+void LazyFS::restart_counter(string path, string op) {
+    if (faults->find(path) != faults->end()) {
+            cout << ">>>>>>>>>>>>>>>>>restart counter!!" << endl;
+            auto& v_faults = faults->at(path);
+            for (auto& fault : v_faults) {
+                if (fault.op == op) {fault.counter = 0;}
+            }
+    }
+}
+
 cache::config::Fault* LazyFS::get_and_update_fault(string path, string op) {
     cache::config::Fault* fault_r = NULL;
     if (faults->find(path) != faults->end()) {
-        cout << "find!!246" << endl;
+        cout << ">>>>>>>>>>>>>>>>>found fault!!" << endl;
         auto& v_faults = faults->at(path);
         for (auto& fault : v_faults) {
             if (fault.op == op) {fault.counter += 1; fault_r = &fault;}
-            else fault.counter = 0;
         }
-    } else cout << "did not found";
+    } else cout << ">>>>>>>>>>>>>>>>>>>>>not found!!" << endl; else cout << "did not found";
     return fault_r;
 }
 
@@ -1182,6 +1191,8 @@ int LazyFS::lfs_fsync (const char* path, int isdatasync, struct fuse_file_info* 
     if (this_ ()->FSConfig->log_all_operations) {
         spdlog::info ("[lazyfs.ops]: {}(path={},isdatasync={})", __FUNCTION__, path, isdatasync);
     }
+    
+    this_ ()->restart_counter(path,"write");
 
     string owner (path);
     string inode = this_ ()->FSCache->get_original_inode (owner);
