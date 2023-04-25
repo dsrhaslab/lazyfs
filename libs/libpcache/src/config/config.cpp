@@ -15,6 +15,7 @@
 #include <spdlog/spdlog.h>
 #include <sys/types.h>
 #include <toml.hpp>
+#include <atomic>
 
 using namespace std;
 

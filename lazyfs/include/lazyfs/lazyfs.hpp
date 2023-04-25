@@ -39,7 +39,7 @@ class Write {
 
     ~Write ();
 
-}
+};
 
 /**
  * @brief The LazyFS implementation in C++.
@@ -155,6 +155,7 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
 
     void restart_counter(string path, string op);
 
+    bool check_and_persist_pendingwrite(const char* path);
     /**
      * @brief Checks whether a directory is empty of not by counting the number of entries.
      *        It must be <= 2 to be empty, only containing "." and ".."

@@ -14,8 +14,8 @@ log_all_operations=true
 logfile="/home/gsd/lazyfs_etcd.log"
 #[[injection]]
 #op="write"
-file="/home/gsd/data/zookeeper-root/version-2/log.100000001"
-#persist=[2,4]
+#file="/home/gsd/data/zookeeper-root/version-2/log.100000001"
+#persist=[3]
 #[[injection]]
 #op="write"
 #file="/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal.tmp/0000000000000000-0000000000000000.wal"
@@ -24,7 +24,7 @@ file="/home/gsd/data/zookeeper-root/version-2/log.100000001"
 #op="write"
 #file="/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db"
 #persist=[2]
-#[[injection]]
-#op="write"
-#file="/home/gsd/etcd-v2.3.0-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal"
-#persist=[1,2]
+[[injection]]
+op="write"
+file="/home/gsd/etcd-v2.3.0-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal"
+persist=[2]

@@ -40,20 +40,20 @@ std::shared_mutex cache_command_lock;
 
 namespace lazyfs {
 
-LazyFS::Write() {
+Write::Write() {
     this->path = this->buf = NULL;
 }
 
-LazyFS::Write(const char* path, const char* buf, size_t size, off_t offset) {
+Write::Write(const char* path, const char* buf, size_t size, off_t offset) {
     this->path = strdup(path);
     this->buf = strdup(buf);
     this->size = size;
     this->offset = offset;
 }
 
-LazyFS::~Write() {
-    free(this->path);
-    free(this->buf);
+Write::~Write() {
+    free((char*)this->path);
+    free((char*)this->buf);
 }
 
 LazyFS::LazyFS () {}
@@ -259,24 +259,36 @@ void LazyFS::command_checkpoint () {
 }
 
 void LazyFS::restart_counter(string path, string op) {
-    if (faults->find(path) != faults->end()) {
-            cout << ">>>>>>>>>>>>>>>>>restart counter!!" << endl;
-            auto& v_faults = faults->at(path);
+    auto it = faults->find(path);
+    if (it != faults->end()) {
+            cout << ">>>>>>>>>>>>>>>>> restart counter!!" << endl;
+            auto& v_faults = it->second;
             for (auto& fault : v_faults) {
-                if (fault.op == op) {fault.counter = 0;}
+                if (fault.op == op) fault.counter = 0;
             }
     }
 }
 
+bool LazyFS::check_and_persist_pendingwrite(const char* path) {
+    bool res;
+    if (this->pending_write && (res = (strcmp(this->pending_write->path,path) == 0))) {
+        delete(this->pending_write); 
+        this->pending_write = NULL;
+    }
+    cout << ">>>>>>>>>>>>> PERSIST " << res << endl;
+    return res;
+}
+
 cache::config::Fault* LazyFS::get_and_update_fault(string path, string op) {
     cache::config::Fault* fault_r = NULL;
-    if (faults->find(path) != faults->end()) {
+    auto it = faults->find(path);
+    if (it != faults->end()) {
         cout << ">>>>>>>>>>>>>>>>>found fault!!" << endl;
-        auto& v_faults = faults->at(path);
+        auto& v_faults = it->second;
         for (auto& fault : v_faults) {
-            if (fault.op == op) {fault.counter += 1; fault_r = &fault;}
+            if (fault.op == op) {fault.counter +=1; fault_r = &fault;}
         }
-    } else cout << ">>>>>>>>>>>>>>>>>>>>>not found!!" << endl; else cout << "did not found";
+    } else cout << ">>>>>>>>>>>>>>>>>>>>>not found!!" << endl;
     return fault_r;
 }
 
@@ -286,12 +298,14 @@ void LazyFS::persist_write(int fd, const char* path, const char* buf, size_t siz
     cache::config::Fault* fault = get_and_update_fault(path_str,"write");
     
     if (fault) { //Fault for path found
+    
         if (this->pending_write!=NULL) {
             fd1 = open (path, O_WRONLY);
             pw = pwrite(fd1,this->pending_write->buf,this->pending_write->size,this->pending_write->offset);
             delete(this->pending_write); this->pending_write = NULL;    
 
             if ((fault->persist).size()==1) {
+                cout << ">>>>>>>>>>>>>>>>>< PENDING WRITE NOT NULL AND ONLY ONE FAULT" << endl;
                 this_ ()->add_crash_fault ("after", "write", path_str, "none");            
                 spdlog::critical ("[lazyfs.faults]: Added crash fault ");
                 spdlog::critical ("[lazyfs.faults]: => crash: timing = after");
@@ -303,10 +317,11 @@ void LazyFS::persist_write(int fd, const char* path, const char* buf, size_t siz
         if (find((fault->persist).begin(), (fault->persist).end(), fault->counter) != (fault->persist).end()) { //if count is in vector persist
             if (fault->counter==1) { //if array persist has 1st write, we need to store this write until we know another write will happen
                 this->pending_write = new Write(path,buf,size,offset);
+                cout << ">>>>>>>>>>>>>>< COUNTER IS 1" << endl;
             } else {
                 pw = pwrite(fd,buf,size,offset);
                 int max = *max_element(fault->persist.begin(), fault->persist.end());
-                if (max == fault->counter) {
+                if (max == (fault->counter)) {
                     this_ ()->add_crash_fault ("after", "write", path_str, "none"); 
                         
                     spdlog::critical ("[lazyfs.faults]: Added crash fault ");
@@ -316,7 +331,7 @@ void LazyFS::persist_write(int fd, const char* path, const char* buf, size_t siz
                 }
             }
         } 
-    }
+    } else cout << ">>>>>>> NO FAULT" << endl;
 }
 
 void* LazyFS::lfs_init (struct fuse_conn_info* conn, struct fuse_config* cfg) {
@@ -920,6 +935,7 @@ int LazyFS::lfs_write (const char* path,
     // ----------------------------------------------------------------------------------
     
     this_ () -> persist_write(fd,path,buf,size,offset);
+    cout << ">>>>>>>>>>>>>>>>< persist write exec" << endl;
 
     // res should be = actual bytes written as pwrite could fail...
     res = size;
@@ -1193,6 +1209,7 @@ int LazyFS::lfs_fsync (const char* path, int isdatasync, struct fuse_file_info* 
     }
     
     this_ ()->restart_counter(path,"write");
+    this_ ()->check_and_persist_pendingwrite(path);
 
     string owner (path);
     string inode = this_ ()->FSCache->get_original_inode (owner);
