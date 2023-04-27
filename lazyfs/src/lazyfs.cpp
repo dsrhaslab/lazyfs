@@ -89,7 +89,7 @@ void LazyFS::trigger_crash_fault (string opname,
 
     vector<pair<std::regex, string>> opfaults;
     const int length = from_op_path.length();
- 
+ /*
     // declaring character array (+1 for null terminator)
     char* char_array = new char[length + 1];
  
@@ -100,12 +100,12 @@ void LazyFS::trigger_crash_fault (string opname,
     int status;
 
     status = lstat(char_array, &buffer);
-
+*/
 
     if (optiming == "before") {
         opfaults = this->crash_faults_before_map.at (opname);
     } else {
-        cout << "\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> SIZE TRIGGER :: " << buffer.st_size << endl;
+        //cout << "\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> SIZE TRIGGER :: " << buffer.st_size << endl;
         opfaults = this->crash_faults_after_map.at (opname);
     }
 
@@ -345,7 +345,7 @@ void LazyFS::persist_write(int fd, const char* path, const char* buf, size_t siz
         if (find((fault->persist).begin(), (fault->persist).end(), fault->counter) != (fault->persist).end()) { //if count is in vector persist
             if (fault->counter==1) { //if array persist has 1st write, we need to store this write until we know another write will happen
                 this->pending_write = new Write(path,buf,size,offset);
-                cout << ">>>>>>>>>>>>>>< COUNTER IS 1, CREATED PENDING WRITE " << endl;
+                cout << ">>>>>>>>>>>>>>< COUNTER IS 1, CREATED PENDING WRITE " << this->pending_write->buf << endl;
             } else {
                 cout << ">>>>>>>>>>>> GOING TO PERSIST THIS WRITE WITH COUNTER " << fault->counter << endl;
                 pw = pwrite(fd,buf,size,offset);
@@ -965,7 +965,7 @@ int LazyFS::lfs_write (const char* path,
 
     // ----------------------------------------------------------------------------------
     
-    this_ () -> persist_write(fd,path,buf,size,offset);
+    //this_ () -> persist_write(fd,path,buf,size,offset);
     /*
     cw++;
     //if (cw==36) { m = size;}
@@ -1261,8 +1261,8 @@ int LazyFS::lfs_fsync (const char* path, int isdatasync, struct fuse_file_info* 
         spdlog::info ("[lazyfs.ops]: {}(path={},isdatasync={})", __FUNCTION__, path, isdatasync);
     }
     
-    this_ ()->restart_counter(path,"write");
-    this_ ()->check_and_persist_pendingwrite(path);
+    //this_ ()->restart_counter(path,"write");
+    //this_ ()->check_and_persist_pendingwrite(path);
 
     string owner (path);
     string inode = this_ ()->FSCache->get_original_inode (owner);
