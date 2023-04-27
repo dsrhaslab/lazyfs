@@ -27,4 +27,9 @@ logfile="/home/gsd/lazyfs_etcd.log"
 [[injection]]
 op="write"
 file="/home/gsd/etcd-v2.3.0-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal"
-persist=[2]
+persist=[1,2]
+[[injection]]
+op="write"
+file="/home/gsd/test_rer/output.txt"
+persist=[1,2]
+
