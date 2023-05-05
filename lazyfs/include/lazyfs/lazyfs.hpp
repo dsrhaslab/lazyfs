@@ -23,20 +23,48 @@ using namespace cache;
 
 namespace lazyfs {
 
+/**
+ * @brief To store writes.
+ */
 class Write {
   public:
-    const char* path;
-    const char* buf;
+    /**
+     * @brief The file path.
+     */
+    char* path;
+
+    /**
+     * @brief The content of the write.
+     */
+    char* buf;
+
+    /**
+     * @brief The number of bytes to write.
+     */
     size_t size;
+
+    /**
+     * @brief The offset in the file
+     */
     off_t offset;
 
+    /**
+     * @brief Construct a new Write object.
+     */
     Write ();
 
+    /**
+     * @brief Construct a new Write object.
+     */
     Write (const char* path,
            const char* buf,
            size_t size,
            off_t offset);
 
+    /**
+     * @brief Destroy the Write object
+     *
+     */   
     ~Write ();
 
 };
@@ -74,7 +102,7 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
     /**
      * @brief Faults programmed in the configuration file.
      */
-    unordered_map<string,vector<cache::config::Fault>>* faults;
+    unordered_map<string,vector<cache::config::Fault*>>* faults;
 
     /**
      * @brief Faults of LazyFS crash injected during runtime.
@@ -82,7 +110,11 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      */
     std::unordered_map<string, unordered_set<string>> crash_faults;
 
+    /**
+     * @brief Write that was put on hold and may or may not be persisted.
+     */
     Write *pending_write;
+    std::mutex write_lock;
 
   public:
     /**
@@ -103,7 +135,7 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
             cache::config::Config* config,
             std::thread* faults_handler_thread,
             void (*fht_worker) (LazyFS* filesystem),
-            unordered_map<string,vector<cache::config::Fault>>* faults);
+            unordered_map<string,vector<cache::config::Fault*>>* faults);
 
     /**
      * @brief Destroy the LazyFS object
@@ -155,7 +187,7 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
 
     void restart_counter(string path, string op);
 
-    bool check_and_persist_pendingwrite(const char* path);
+    bool check_pendingwrite(const char* path);
     /**
      * @brief Checks whether a directory is empty of not by counting the number of entries.
      *        It must be <= 2 to be empty, only containing "." and ".."

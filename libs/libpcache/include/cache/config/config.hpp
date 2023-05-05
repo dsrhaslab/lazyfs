@@ -35,7 +35,7 @@ class Fault {
     /**
      * @brief When op is called sequentially for a certain path, count the number of calls. When the sequence is broken, counter is set to 0.
      */
-    int counter;
+    std::atomic_int counter;
     /**
      * @brief If the vector is [3,4] it means that if op is called for a certain path sequentially, the 3th and 4th call will be persisted.
      */
@@ -43,9 +43,9 @@ class Fault {
 
   
     /**
-     * @brief Construct a new Fault object manually.
+     * @brief Construct a new Fault object.
      *
-     * @param op operation (i.e. "write", "read", ...)
+     * @param op operation (i.e. "write", ...)
      * @param persist vector with operations to persist
      */
     Fault(string op, vector<int> persist);
@@ -54,8 +54,9 @@ class Fault {
      * @brief Default constructor for Fault.
      */    
     Fault();
-};
 
+    ~Fault ();
+};
 
 /**
  * @brief Stores the cache configuration parameters.
@@ -174,7 +175,7 @@ class Config {
      * @param filename Filename to read the config from
      * @return Map from files to programmed faults for those files
      */
-    unordered_map<string,vector<Fault>> load_config (string filename);
+    unordered_map<string,vector<Fault*>> load_config (string filename);
 };
 
 } // namespace cache::config
