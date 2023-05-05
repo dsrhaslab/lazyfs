@@ -41,6 +41,8 @@ class Fault {
      */
     vector<int> persist;
 
+    std::atomic_int count_ocurrence;
+    int ocurrence;
   
     /**
      * @brief Construct a new Fault object.
@@ -48,7 +50,7 @@ class Fault {
      * @param op operation (i.e. "write", ...)
      * @param persist vector with operations to persist
      */
-    Fault(string op, vector<int> persist);
+    Fault(string op, vector<int> persist, int ocurrence);
 
     /**
      * @brief Default constructor for Fault.

@@ -319,7 +319,7 @@ void LazyFS::persist_write(int fd, const char* path, const char* buf, size_t siz
     cache::config::Fault* fault = get_and_update_fault(path_str,"write");
     
     if (fault) { //Fault for path found
-        (this->pending_write).lock();
+        (this->write_lock).lock();
         if (this->pending_write!=NULL) {
             fd1 = open (this->pending_write->path, O_CREAT|O_RDWR, 0666);
             pw = pwrite(fd1,this->pending_write->buf,this->pending_write->size,this->pending_write->offset);
@@ -336,29 +336,36 @@ void LazyFS::persist_write(int fd, const char* path, const char* buf, size_t siz
                 return;
             }
         }
-        (this->pending_write).unlock();
+        (this->write_lock).unlock();
+
 
         if (find((fault->persist).begin(), (fault->persist).end(), fault->counter) != (fault->persist).end()) { //If count is in vector persist
             if (fault->counter==1) { //If array persist has 1st write, we need to store this write until we know another write will happen
-                (this->pending_write).lock();
-                this->pending_write = new Write(path,buf,size,offset);
-                (this->pending_write).unlock();
-
-            } else {
-                pw = pwrite(fd,buf,size,offset);
-
-                int max = *max_element(fault->persist.begin(), fault->persist.end());
-                if (max == fault->counter) {
-                    this_ ()->add_crash_fault ("after", "write", path_str, "none"); 
-                    spdlog::critical ("[lazyfs.faults]: Added crash fault ");
-                    spdlog::critical ("[lazyfs.faults]: => crash: timing = after");
-                    spdlog::critical ("[lazyfs.faults.worker]: => crash: operation = write");
-                    spdlog::critical ("[lazyfs.faults.worker]: => crash: from regex path = {}",path_str);            
+                if ((fault->count_ocurrence).load()==fault->ocurrence) {
+                    (this->write_lock).lock();
+                    this->pending_write = new Write(path,buf,size,offset);
+                    (this->write_lock).unlock();
                 }
+            } else {
+                //if ((fault->count_ocurrence).load() == this->fault->ocurrence) {
+                    pw = pwrite(fd,buf,size,offset);
+
+                    int max = *max_element(fault->persist.begin(), fault->persist.end());
+                    if (max == fault->counter) {
+                        this_ ()->add_crash_fault ("after", "write", path_str, "none"); 
+                        spdlog::critical ("[lazyfs.faults]: Added crash fault ");
+                        spdlog::critical ("[lazyfs.faults]: => crash: timing = after");
+                        spdlog::critical ("[lazyfs.faults.worker]: => crash: operation = write");
+                        spdlog::critical ("[lazyfs.faults.worker]: => crash: from regex path = {}",path_str);            
+                    }
+                //} else 
+                  //  (fault->count_ocurrence).store(0);
             }
         } 
     } 
 }
+
+
 
 void* LazyFS::lfs_init (struct fuse_conn_info* conn, struct fuse_config* cfg) {
 

@@ -21,10 +21,12 @@ using namespace std;
 
 namespace cache::config {
 
-Fault::Fault(string op, vector<int> persist) {
+Fault::Fault(string op, vector<int> persist, int ocurrence) {
     (this->counter).store(0);
     this->op = op;
     this->persist = persist;
+    (this->count_ocurrence).store(0);
+    this->ocurrence = ocurrence;
 }
 
 Fault::Fault() {
@@ -32,6 +34,8 @@ Fault::Fault() {
 	(this->counter).store(0);
     this->op = "";
 	this->persist = v;
+    (this->count_ocurrence).store(0);
+    this->ocurrence = 1;
 }
 
 Fault::~Fault(){}
@@ -169,9 +173,13 @@ unordered_map<string,vector<Fault*>> Config::load_config (string filename) {
 
             if (!injection.contains("persist") && op == "write") throw std::runtime_error("Key 'persist' for some injection with \"write\" as op is not defined in the configuration file.");     
             vector<int> persist = toml::find<vector<int>>(injection,"persist");
-	   
+
+            int ocurrence = 1;
+            if (injection.contains("ocurrence")) ocurrence = toml::find<int>(injection,"ocurrence");	 
+            if (ocurrence <= 0) throw std::runtime_error("Key 'ocurrence' for some injection with \"write\" as op has an invalid number in the configuration file. It should be greater than 0.");
+           
             auto it = faults.find(file);
-            cache::config::Fault * fault = new Fault(op,persist);
+            cache::config::Fault * fault = new Fault(op,persist,ocurrence);
 
             if (it == faults.end()) {
                 vector<Fault*> v_faults;
