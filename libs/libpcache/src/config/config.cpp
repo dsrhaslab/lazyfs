@@ -16,29 +16,62 @@
 #include <sys/types.h>
 #include <toml.hpp>
 #include <atomic>
+#include <typeinfo>
 
 using namespace std;
 
 namespace cache::config {
 
-Fault::Fault(string op, vector<int> persist, int ocurrence) {
+/*  Faults  */
+
+Fault::Fault(string type) {
+    this->type = type;
+}
+
+Fault::~Fault(){}
+
+ReorderF::ReorderF(string op, vector<int> persist) : Fault(REORDER) {
     (this->counter).store(0);
     this->op = op;
     this->persist = persist;
-    (this->count_ocurrence).store(0);
-    this->ocurrence = ocurrence;
 }
 
-Fault::Fault() {
+ReorderF::ReorderF() : Fault(REORDER) {
 	vector <int> v;
 	(this->counter).store(0);
     this->op = "";
 	this->persist = v;
-    (this->count_ocurrence).store(0);
-    this->ocurrence = 1;
 }
 
-Fault::~Fault(){}
+ReorderF::~ReorderF(){}
+
+SplitWriteF::SplitWriteF(int ocurrence, int persist, int parts) : Fault(SPLITWRITE) {
+    (this->counter).store(0);
+    this->ocurrence = ocurrence;
+    this->persist = persist;
+    this->parts = parts;
+}
+
+SplitWriteF::SplitWriteF(int ocurrence, int persist, vector<int> parts_bytes) : Fault(SPLITWRITE) {
+    (this->counter).store(0);
+    this->ocurrence = ocurrence;
+    this->persist = persist;
+    this->parts = -1;
+    this->parts_bytes = parts_bytes;
+}
+
+SplitWriteF::SplitWriteF() : Fault(SPLITWRITE) {
+	vector <int> v;
+	(this->counter).store(0);
+    this->ocurrence = 0;
+	this->persist = 0;
+    this->parts_bytes = v;
+    this->parts = 0;
+}
+
+SplitWriteF::~SplitWriteF(){}
+
+/* Configuration */
 
 Config::Config (size_t prealloc_bytes, int nr_blocks_per_page) {
     this->setup_config_by_size (prealloc_bytes, nr_blocks_per_page);
@@ -165,31 +198,70 @@ unordered_map<string,vector<Fault*>> Config::load_config (string filename) {
         const auto& programmed_injections = toml::find<toml::array>(data,"injection");
 	
         for (const auto& injection : programmed_injections) {
-            if (!injection.contains("file")) throw std::runtime_error("Key 'file' for some injection is not defined in the configuration file.");
-            string file = toml::find<string>(injection,"file");
+            if (!injection.contains("type")) throw std::runtime_error("Key 'type' for some injection of type \"reorder\" is not defined in the configuration file.");
+            string type = toml::find<string>(injection,"file");
 
-            if (!injection.contains("op")) throw std::runtime_error("Key 'op' for some injection is not defined in the configuration file.");
-            string op = toml::find<string>(injection,"op");
+            if (type == REORDER) {
 
-            if (!injection.contains("persist") && op == "write") throw std::runtime_error("Key 'persist' for some injection with \"write\" as op is not defined in the configuration file.");     
-            vector<int> persist = toml::find<vector<int>>(injection,"persist");
+                if (!injection.contains("file")) throw std::runtime_error("Key 'file' for some injection of type \"reorder\" is not defined in the configuration file.");
+                string file = toml::find<string>(injection,"file");
 
-            int ocurrence = 1;
-            if (injection.contains("ocurrence")) ocurrence = toml::find<int>(injection,"ocurrence");	 
-            if (ocurrence <= 0) throw std::runtime_error("Key 'ocurrence' for some injection with \"write\" as op has an invalid number in the configuration file. It should be greater than 0.");
-           
-            auto it = faults.find(file);
-            cache::config::Fault * fault = new Fault(op,persist,ocurrence);
+                if (!injection.contains("op")) throw std::runtime_error("Key 'op' for some injection of type \"reorder\" is not defined in the configuration file.");
+                string op = toml::find<string>(injection,"op");
 
-            if (it == faults.end()) {
-                vector<Fault*> v_faults;
-                v_faults.push_back(fault);
-                faults[file] = v_faults;
-            } else {
-                for (auto fault : it->second) {
-                    if (fault->op == op) throw std::runtime_error("It is only acceptable one fault per type of operation for a given file.");
+                if (!injection.contains("persist") && op == "write") throw std::runtime_error("Key 'persist' for some injection of type \"reorder\" with \"write\" as op is not defined in the configuration file.");     
+                vector<int> persist = toml::find<vector<int>>(injection,"persist");
+            
+                cache::config::ReorderF * fault = new ReorderF(op,persist);
+                auto it = faults.find(file);
+
+                if (it == faults.end()) {
+                    vector<Fault*> v_faults;
+                    v_faults.push_back(fault);
+                    faults[file] = v_faults;
+                } else {
+                    for (Fault* fault : it->second) {
+                        ReorderF* reorder_fault = dynamic_cast<ReorderF*>(fault);
+                        if (reorder_fault && reorder_fault->op == op) throw std::runtime_error("It is only acceptable one fault per type of operation for a given file.");
+                    }
+                    (it->second).push_back(fault);
                 }
-                (it->second).push_back(fault);
+            } else if (type == SPLITWRITE) {
+
+                if (!injection.contains("file")) throw std::runtime_error("Key 'file' for some injection of type \"split_write\" is not defined in the configuration file.");
+                string file = toml::find<string>(injection,"file");
+
+                if (!injection.contains("ocurrence")) throw std::runtime_error("Key 'ocurrence' for some injection of type \"split_write\" is not defined in the configuration file.");
+                int ocurrence = toml::find<int>(injection,"ocurrence");
+
+                if (!injection.contains("persist")) throw std::runtime_error("Key 'persist' for some injection of type \"split_write\" is not defined in the configuration file.");
+                int persist = toml::find<int>(injection,"persist");
+
+                if (!injection.contains("parts") || !injection.contains("parts_bytes")) throw std::runtime_error("None of the keys 'parts' and 'key_parts' for some injection of type \"split_write\" is defined in the configuration file. Please define at most one of them.");     
+                if (injection.contains("parts") && injection.contains("parts_bytes")) throw std::runtime_error("Keys 'parts' and 'key_parts' for some injection of type \"split_write\" are exclusive in the configuration file. Please define at most one of them.");     
+                
+                cache::config::SplitWriteF * fault = NULL;
+                if (injection.contains("parts")) {
+                    int parts = toml::find<int>(injection,"parts");
+                    fault = new SplitWriteF(ocurrence,persist,parts);
+                }
+                if (injection.contains("parts_bytes")) {
+                    vector<int> parts_bytes = toml::find<vector<int>>(injection,"parts_bytes");
+                    fault = new SplitWriteF(ocurrence,persist,parts_bytes);
+                }
+
+                auto it = faults.find(file);
+
+                if (it == faults.end()) {
+                    vector<Fault*> v_faults;
+                    v_faults.push_back(fault);
+                    faults[file] = v_faults;
+                } else {
+                    (it->second).push_back(fault);
+                }
+                
+            } else {
+                throw std::runtime_error("Key 'type' for some injection has an unknown type in the configuration file.");
             }
         }
 	

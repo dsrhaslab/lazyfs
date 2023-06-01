@@ -39,7 +39,9 @@ using namespace cache::engine::backends::custom;
 std::shared_mutex cache_command_lock;
 
 namespace lazyfs {
-//cache::config::Fault& operator=(cache::config::Fault const&);
+
+int count = 0;
+
 Write::Write() {
     this->path = this->buf = NULL;
 }
@@ -47,8 +49,7 @@ Write::Write() {
 Write::Write(const char* path, const char* buf, size_t size, off_t offset) {
     this->path = strdup(path);
     this->buf = (char *) malloc(sizeof(char) * size);
-    int i;
-    for(i=0; i<size; i++) {
+    for(int i=0; i<size; i++) {
         this->buf[i] = buf[i];
     }
     this->size = size;
@@ -341,11 +342,10 @@ void LazyFS::persist_write(int fd, const char* path, const char* buf, size_t siz
 
         if (find((fault->persist).begin(), (fault->persist).end(), fault->counter) != (fault->persist).end()) { //If count is in vector persist
             if (fault->counter==1) { //If array persist has 1st write, we need to store this write until we know another write will happen
-                if ((fault->count_ocurrence).load()==fault->ocurrence) {
-                    (this->write_lock).lock();
-                    this->pending_write = new Write(path,buf,size,offset);
-                    (this->write_lock).unlock();
-                }
+                (this->write_lock).lock();
+                this->pending_write = new Write(path,buf,size,offset);
+                (this->write_lock).unlock();
+                
             } else {
                 //if ((fault->count_ocurrence).load() == this->fault->ocurrence) {
                     pw = pwrite(fd,buf,size,offset);
@@ -968,6 +968,27 @@ int LazyFS::lfs_write (const char* path,
     // ----------------------------------------------------------------------------------
     
     this_ () -> persist_write(fd,path,buf,size,offset);
+    this_ () -> split_write(fd,path,buf,size,offset);
+
+    //split write 
+    if (strcmp(path,"/home/gsd/test_postgres/postgres-r/postgresql/15/main/base/5/16400")==0) {
+        count++;
+        cout << "COUNT " << count << endl;
+
+        int fd2 = open("/home/gsd/24592.txt",O_CREAT|O_RDWR|O_TRUNC, 0666);
+        pwrite(fd2,buf,size,offset);
+        close(fd2);
+
+       if (count==1000000) {
+
+        int pw = pwrite(fd,buf,4096,offset+4096);
+        string path_str(path);
+
+        this_ ()->add_crash_fault ("before", "write", path_str, "none");            
+        spdlog::critical ("[lazyfs.faults]: Added crash fault ");
+       }
+
+    }
 
     // res should be = actual bytes written as pwrite could fail...
     res = size;
@@ -1258,6 +1279,7 @@ int LazyFS::lfs_fsync (const char* path, int isdatasync, struct fuse_file_info* 
     else
         res = is_owner_cached ? this_ ()->FSCache->sync_owner (inode, false, (char*)path)
                               : fsync (fi->fh);
+
 
     this_ ()->trigger_crash_fault ("fsync", "after", path, "");
 

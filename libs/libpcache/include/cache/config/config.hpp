@@ -9,6 +9,9 @@
 
 #ifndef CACHE_CONFIG_HPP
 #define CACHE_CONFIG_HPP
+#define SPLITWRITE "split_write"
+#define REORDER "reorder"
+
 
 #include <string>
 #include <vector>
@@ -21,10 +24,42 @@ using namespace std;
 namespace cache::config {
 
 /**
- * @brief Stores the programmed faults present in the configuration file.
+ * @brief Stores a generic fault programmed in the configuration file.
  */
 
 class Fault {
+  public:
+    /**
+     * @brief Type of fault. 
+     */
+    string type;
+
+    Fault();
+    Fault(string type);
+    virtual ~Fault();
+};
+
+/**
+ * @brief Fault for splitting writes in smaller writes and persist only one write.
+*/
+class SplitWriteF : public Fault {
+  public:
+    int ocurrence;
+    std::atomic_int counter;
+    int persist;
+    int parts;
+    vector<int> parts_bytes;
+
+    SplitWriteF();
+    SplitWriteF(int ocurrence, int persist, vector<int> parts_bytes);
+    SplitWriteF(int ocurrence, int persist, int parts);
+    ~SplitWriteF();
+};
+
+/**
+ * @brief Fault for reordering system calls.
+*/
+class ReorderF : public Fault {
 
   public:
 
@@ -41,23 +76,21 @@ class Fault {
      */
     vector<int> persist;
 
-    std::atomic_int count_ocurrence;
-    int ocurrence;
   
     /**
      * @brief Construct a new Fault object.
      *
-     * @param op operation (i.e. "write", ...)
+     * @param op system call (i.e. "write", ...)
      * @param persist vector with operations to persist
      */
-    Fault(string op, vector<int> persist, int ocurrence);
+    ReorderF(string op, vector<int> persist);
 
     /**
      * @brief Default constructor for Fault.
      */    
-    Fault();
+    ReorderF();
 
-    ~Fault ();
+    ~ReorderF ();
 };
 
 /**
