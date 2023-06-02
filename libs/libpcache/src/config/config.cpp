@@ -243,6 +243,8 @@ unordered_map<string,vector<Fault*>> Config::load_config (string filename) {
                 cache::config::SplitWriteF * fault = NULL;
                 if (injection.contains("parts")) {
                     int parts = toml::find<int>(injection,"parts");
+                    
+                    if (parts <= 0) throw std::runtime_error("Key 'parts' for some injection of type \"split_write\" has an invalid value in the configuration file. It should be greater than 0.");
                     fault = new SplitWriteF(ocurrence,persist,parts);
                 }
                 if (injection.contains("parts_bytes")) {

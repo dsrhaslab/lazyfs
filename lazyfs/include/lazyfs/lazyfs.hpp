@@ -173,7 +173,7 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      * @param op the operation
      * @return pointer to the Counter ass
     */
-    cache::config::Fault* get_and_update_fault(string path, string op);
+    cache::config::ReorderF* get_and_update_reorder_fault(string path, string op);
 
     /**
      * Persists a write if a there is a programmed fault for write in the given path and if the counter matches one of the writes to persist.
@@ -188,6 +188,9 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
     void restart_counter(string path, string op);
 
     bool check_pendingwrite(const char* path);
+
+    void split_write(int fd, const char* path, const char* buf, size_t size, off_t offset);
+
     /**
      * @brief Checks whether a directory is empty of not by counting the number of entries.
      *        It must be <= 2 to be empty, only containing "." and ".."

@@ -285,7 +285,8 @@ void LazyFS::restart_counter(string path, string op) {
     if (it != faults->end()) {
         auto& v_faults = it->second;
         for (auto fault : v_faults) {
-            if (fault->op == op) fault->counter.store(0);
+            cache::config::ReorderF* reorder_fault = dynamic_cast<cache::config::ReorderF*>(fault);
+            if (reorder_fault && reorder_fault->op == op) reorder_fault->counter.store(0);
         }
     }
 }
@@ -301,14 +302,15 @@ bool LazyFS::check_pendingwrite(const char* path) {
     return res;
 }
 
-cache::config::Fault* LazyFS::get_and_update_fault(string path, string op) {
-    cache::config::Fault* fault_r = NULL;
+cache::config::ReorderF* LazyFS::get_and_update_reorder_fault(string path, string op) {
+    cache::config::ReorderF* fault_r = NULL;
     auto it = faults->find(path);
     if (it != faults->end()) {
         cout << ">>>>> Found fault!!" << endl;
         auto& v_faults = it->second;
         for (auto fault : v_faults) {
-            if (fault->op == op) {fault->counter +=1; fault_r = fault;}
+            cache::config::ReorderF* reorder_fault = dynamic_cast<cache::config::ReorderF*>(fault);
+            if (reorder_fault && reorder_fault->op == op) {reorder_fault->counter +=1; fault_r = reorder_fault;}
         }
     } else cout << ">>>>> Not found!!" << endl;
     return fault_r;
@@ -317,7 +319,7 @@ cache::config::Fault* LazyFS::get_and_update_fault(string path, string op) {
 void LazyFS::persist_write(int fd, const char* path, const char* buf, size_t size, off_t offset) {
     string path_str(path);
     int pw,fd1;
-    cache::config::Fault* fault = get_and_update_fault(path_str,"write");
+    cache::config::ReorderF* fault = get_and_update_reorder_fault(path_str,"write");
     
     if (fault) { //Fault for path found
         (this->write_lock).lock();
@@ -363,6 +365,76 @@ void LazyFS::persist_write(int fd, const char* path, const char* buf, size_t siz
             }
         } 
     } 
+}
+
+void LazyFS::split_write(int fd, const char* path, const char* buf, size_t size, off_t offset) {
+    string path_s(path);
+
+
+    auto it = faults->find(path_s);
+    if (it != faults->end()) {
+        cout << ">>>>> Found fault!!" << endl;
+        auto& v_faults = it->second;
+        for (auto fault : v_faults) {
+            cache::config::SplitWriteF* split_fault = dynamic_cast<cache::config::SplitWriteF*>(fault);
+            if (split_fault) {
+                split_fault->counter.fetch_add(1);
+
+                if (split_fault->counter.load() == split_fault->ocurrence) {
+                    size_t size_to_persist;
+                    off_t off_to_persist;
+
+                    if (split_fault->parts == -1) {
+                        int sum = 0;
+                        int sum_until_persist = 0;
+                        
+                        for (int i = 0; i< split_fault->parts_bytes.size(); i++) {
+                            sum += split_fault->parts_bytes[i];
+                            if (i < split_fault->persist)
+                                sum_until_persist += split_fault->parts_bytes[i];
+                        }
+
+                        if (sum!=size) spdlog::critical ("[lazyfs.faults]: Could not inject fault of split write for file {} because sum of parts is different of size of write!",path_s);
+                        else {
+                            size_to_persist = split_fault->parts_bytes[split_fault->persist - 1];
+                            off_to_persist = offset + sum_until_persist;
+                        }
+
+                    } else {
+                        size_to_persist = size/split_fault->parts;
+                        off_to_persist = offset + (split_fault->persist - 1) * size_to_persist;
+                    }
+
+                    int pw = pwrite(fd,buf,size_to_persist,off_to_persist);
+                    this_ ()->add_crash_fault ("after", "write", path_s, "none");            
+                    spdlog::critical ("[lazyfs.faults]: Added crash fault ");
+                }
+                break;
+            }
+        }
+    } else cout << ">>>>> Not found!!" << endl;
+
+     
+    /*
+    if (strcmp(path,"/home/gsd/test_postgres/postgres-r/postgresql/15/main/base/5/16400")==0) {
+        count++;
+        cout << "COUNT " << count << endl;
+
+        int fd2 = open("/home/gsd/24592.txt",O_CREAT|O_RDWR|O_TRUNC, 0666);
+        pwrite(fd2,buf,size,offset);
+        close(fd2);
+
+       if (count==1000000) {
+
+        int pw = pwrite(fd,buf,4096,offset+4096);
+        string path_str(path);
+
+        this_ ()->add_crash_fault ("before", "write", path_str, "none");            
+        spdlog::critical ("[lazyfs.faults]: Added crash fault ");
+       }
+
+    }
+    */
 }
 
 
@@ -969,26 +1041,6 @@ int LazyFS::lfs_write (const char* path,
     
     this_ () -> persist_write(fd,path,buf,size,offset);
     this_ () -> split_write(fd,path,buf,size,offset);
-
-    //split write 
-    if (strcmp(path,"/home/gsd/test_postgres/postgres-r/postgresql/15/main/base/5/16400")==0) {
-        count++;
-        cout << "COUNT " << count << endl;
-
-        int fd2 = open("/home/gsd/24592.txt",O_CREAT|O_RDWR|O_TRUNC, 0666);
-        pwrite(fd2,buf,size,offset);
-        close(fd2);
-
-       if (count==1000000) {
-
-        int pw = pwrite(fd,buf,4096,offset+4096);
-        string path_str(path);
-
-        this_ ()->add_crash_fault ("before", "write", path_str, "none");            
-        spdlog::critical ("[lazyfs.faults]: Added crash fault ");
-       }
-
-    }
 
     // res should be = actual bytes written as pwrite could fail...
     res = size;

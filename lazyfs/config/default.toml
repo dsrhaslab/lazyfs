@@ -15,14 +15,22 @@ log_all_operations=true
 logfile="/home/gsd/lfs_postgres.log"
 
 #[[injection]]
-type=split_write
-file="/home/gsd/test_postgres/postgres-r/postgresql/15/main/base/5/16400"
-ocurrence=100
-parts=2
+#type=split_write
+#file="/home/gsd/test_postgres/postgres-r/postgresql/15/main/base/5/16400"
+#ocurrence=100
+#parts=2
 #parts_bytes=[4096,6790]
+#persist=2
+
+[[injection]]
+type=split_write
+file="/home/gsd/output.txt"
+ocurrence=2
+parts_bytes=[4,4]
 persist=2
+
 #[[injection]]
-type=reorder
+#type=reorder
 #op="write"
 #file="/home/gsd/data/zookeeper-root/version-2/log.100000001"
 #persist=[1,2,3,4]
