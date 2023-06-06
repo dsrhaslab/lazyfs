@@ -183,13 +183,13 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      * @param size Bytes to be written
      * @param offset Offset inside the file to start to writes    
      */
-    void persist_write(int fd, const char* path, const char* buf, size_t size, off_t offset);
+    void persist_write(const char* path, const char* buf, size_t size, off_t offset);
 
     void restart_counter(string path, string op);
 
     bool check_pendingwrite(const char* path);
 
-    void split_write(int fd, const char* path, const char* buf, size_t size, off_t offset);
+    void split_write(const char* path, const char* buf, size_t size, off_t offset);
 
     /**
      * @brief Checks whether a directory is empty of not by counting the number of entries.

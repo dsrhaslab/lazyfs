@@ -9,10 +9,15 @@ blocks_per_page=1
 # io_block_size=4096
 # page_size=4096
 # no_pages=10
-
 [filesystem]
 log_all_operations=true
 logfile="/home/gsd/lfs_postgres.log"
+[[injection]]
+type="split_write"
+file="/home/gsd/teste_split/s-r/output.txt"
+ocurrence=2
+parts_bytes=[4,4]
+persist=2
 
 #[[injection]]
 #type=split_write
@@ -22,18 +27,25 @@ logfile="/home/gsd/lfs_postgres.log"
 #parts_bytes=[4096,6790]
 #persist=2
 
-[[injection]]
-type=split_write
-file="/home/gsd/output.txt"
-ocurrence=2
-parts_bytes=[4,4]
-persist=2
 
-#[[injection]]
-#type=reorder
-#op="write"
-#file="/home/gsd/data/zookeeper-root/version-2/log.100000001"
-#persist=[1,2,3,4]
+
+[[injection]]
+type="reorder"
+op="write"
+file="/home/gsd/data/zookeeper-root/version-2/log.600000001"
+persist=[2,4]
+[[injection]]
+type="split_write"
+file="/home/gsd/data/zookeeper-root/version-2/log.700000001"
+ocurrence=3
+parts=3
+persist=2
+[[injection]]
+type="reorder"
+op="write"
+file="/home/gsd/data/zookeeper-root/version-2/log.100000001"
+persist=[2,4]
+
 #[[injection]]
 #op="write"
 #file="/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal.tmp/0000000000000000-0000000000000000.wal"
@@ -42,9 +54,10 @@ persist=2
 #op="write"
 #file="/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db"
 #persist=[2]
-#[[injection]]
-#op="write"
-#file="/home/gsd/etcd-v2.3.0-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal"
-#persist=[2]
+[[injection]]
+type="reorder"
+op="write"
+file="/home/gsd/etcd-v2.3.0-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal"
+persist=[2]
 
 

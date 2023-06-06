@@ -198,8 +198,8 @@ unordered_map<string,vector<Fault*>> Config::load_config (string filename) {
         const auto& programmed_injections = toml::find<toml::array>(data,"injection");
 	
         for (const auto& injection : programmed_injections) {
-            if (!injection.contains("type")) throw std::runtime_error("Key 'type' for some injection of type \"reorder\" is not defined in the configuration file.");
-            string type = toml::find<string>(injection,"file");
+            if (!injection.contains("type")) throw std::runtime_error("Key 'type' for some injection of is not defined in the configuration file.");
+            string type = toml::find<string>(injection,"type");
 
             if (type == REORDER) {
 
@@ -237,7 +237,7 @@ unordered_map<string,vector<Fault*>> Config::load_config (string filename) {
                 if (!injection.contains("persist")) throw std::runtime_error("Key 'persist' for some injection of type \"split_write\" is not defined in the configuration file.");
                 int persist = toml::find<int>(injection,"persist");
 
-                if (!injection.contains("parts") || !injection.contains("parts_bytes")) throw std::runtime_error("None of the keys 'parts' and 'key_parts' for some injection of type \"split_write\" is defined in the configuration file. Please define at most one of them.");     
+                if (!injection.contains("parts") && !injection.contains("parts_bytes")) throw std::runtime_error("None of the keys 'parts' and 'key_parts' for some injection of type \"split_write\" is defined in the configuration file. Please define at most one of them.");     
                 if (injection.contains("parts") && injection.contains("parts_bytes")) throw std::runtime_error("Keys 'parts' and 'key_parts' for some injection of type \"split_write\" are exclusive in the configuration file. Please define at most one of them.");     
                 
                 cache::config::SplitWriteF * fault = NULL;
@@ -253,17 +253,18 @@ unordered_map<string,vector<Fault*>> Config::load_config (string filename) {
                 }
 
                 auto it = faults.find(file);
-
                 if (it == faults.end()) {
                     vector<Fault*> v_faults;
                     v_faults.push_back(fault);
                     faults[file] = v_faults;
+                    cout << "ADDED FAULT1" << endl;
                 } else {
                     (it->second).push_back(fault);
+                    cout << "ADDED FAULT2" << endl;
                 }
                 
             } else {
-                throw std::runtime_error("Key 'type' for some injection has an unknown type in the configuration file.");
+                throw std::runtime_error("Key 'type' for some injection has an unknown value in the configuration file.");
             }
         }
 	
