@@ -12,12 +12,13 @@ blocks_per_page=1
 [filesystem]
 log_all_operations=true
 logfile="/home/gsd/lfs_postgres.log"
-[[injection]]
-type="split_write"
-file="/home/gsd/teste_split/s-r/output.txt"
-ocurrence=2
-parts_bytes=[4,4]
-persist=2
+
+#[[injection]]
+#type="split_write"
+#file="/home/gsd/teste_split/s-r/output.txt"
+#ocurrence=1
+#parts_bytes=[4,4,4]
+#persist=2
 
 #[[injection]]
 #type=split_write
@@ -27,13 +28,19 @@ persist=2
 #parts_bytes=[4096,6790]
 #persist=2
 
-
+[[injection]]
+type="reorder"
+op="write"
+file="/home/gsd/teste_split/s-r/output.txt"
+persist=[2,3]
 
 [[injection]]
 type="reorder"
 op="write"
 file="/home/gsd/data/zookeeper-root/version-2/log.600000001"
 persist=[2,4]
+
+
 [[injection]]
 type="split_write"
 file="/home/gsd/data/zookeeper-root/version-2/log.700000001"
