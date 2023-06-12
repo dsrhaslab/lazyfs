@@ -1,0 +1,110 @@
+{'syscall': 'create', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/.touch', 'mode': 'O_TRUNC'}
+{'syscall': 'release', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/.touch'}
+{'syscall': 'create', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/.touch', 'mode': 'O_TRUNC'}
+{'syscall': 'release', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/.touch'}
+{'syscall': 'create', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db', 'mode': 'O_RDWR'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db', 'size': '16384', 'off': '0'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db'}
+{'syscall': 'read', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db', 'size': '16384', 'off': '0'}
+{'syscall': 'create', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal.tmp/.touch', 'mode': 'O_TRUNC'}
+{'syscall': 'release', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal.tmp/.touch'}
+{'syscall': 'create', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal.tmp/0000000000000000-0000000000000000.wal', 'mode': 'O_WRONLY'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal.tmp/0000000000000000-0000000000000000.wal', 'size': '64000000', 'off': '0'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal.tmp/0000000000000000-0000000000000000.wal', 'size': '80', 'off': '0'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal.tmp/0000000000000000-0000000000000000.wal'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db', 'size': '16785408', 'off': '16384'}
+{'syscall': 'rename', 'from_': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal.tmp', 'to': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal'}
+{'syscall': 'create', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0.tmp', 'mode': 'O_WRONLY'}
+{'syscall': 'create', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/.touch', 'mode': 'O_TRUNC'}
+{'syscall': 'release', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/.touch'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0.tmp', 'size': '64000000', 'off': '0'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db', 'size': '4096', 'off': '16384'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db', 'size': '4096', 'off': '0'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db'}
+{'syscall': 'read', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db', 'size': '4096', 'off': '4096'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db', 'size': '4096', 'off': '8192'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db', 'size': '4096', 'off': '4096'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db', 'size': '4096', 'off': '12288'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db', 'size': '4096', 'off': '0'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db', 'size': '4096', 'off': '8192'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db', 'size': '4096', 'off': '4096'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db', 'size': '4096', 'off': '12288'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db', 'size': '4096', 'off': '0'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal', 'size': '152', 'off': '80'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db', 'size': '4096', 'off': '8192'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db', 'size': '4096', 'off': '4096'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal', 'size': '56', 'off': '232'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal', 'size': '208', 'off': '288'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal', 'size': '128', 'off': '496'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db', 'size': '4096', 'off': '12288'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db', 'size': '4096', 'off': '0'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal', 'size': '1888', 'off': '624'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db', 'size': '4096', 'off': '8192'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db', 'size': '4096', 'off': '16384'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db', 'size': '4096', 'off': '4096'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal', 'size': '912', 'off': '2512'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal', 'size': '96', 'off': '3424'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal', 'size': '160', 'off': '3520'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal', 'size': '216', 'off': '3680'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal', 'size': '136', 'off': '3896'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal', 'size': '64', 'off': '4032'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal', 'size': '6048', 'off': '4096'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal', 'size': '200', 'off': '10144'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db', 'size': '4096', 'off': '12288'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db', 'size': '8192', 'off': '20480'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db', 'size': '4096', 'off': '28672'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal', 'size': '144', 'off': '10344'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db', 'size': '4096', 'off': '32768'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db', 'size': '4096', 'off': '0'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal', 'size': '120', 'off': '10488'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal', 'size': '144', 'off': '10608'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal', 'size': '120', 'off': '10752'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db', 'size': '4096', 'off': '8192'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db', 'size': '4096', 'off': '16384'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db', 'size': '8192', 'off': '36864'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db', 'size': '4096', 'off': '45056'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db', 'size': '4096', 'off': '4096'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db'}
+{'syscall': 'rename', 'from_': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0.tmp', 'to': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/.fuse_hidden0000000a00000001'}
+{'syscall': 'release', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/.fuse_hidden0000000a00000001'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal'}
+{'syscall': 'release', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db'}
+{'syscall': 'write', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db', 'size': '4096', 'off': '0'}
+{'syscall': 'fsync', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db'}
+{'syscall': 'release', 'path': '/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db'}

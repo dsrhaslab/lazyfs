@@ -114,6 +114,10 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      * @brief Write that was put on hold and may or may not be persisted.
      */
     Write *pending_write;
+
+    /**
+     * @brief Lock for pending write.
+    */
     std::mutex write_lock;
 
   public:
@@ -168,7 +172,7 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
     void command_unsynced_data_report ();
 
     /**
-     * @brief Checks if a programmed fault for the given path and operation exists. If so, updates the counter and returns the fault.
+     * @brief Checks if a programmed reorder fault for the given path and operation exists. If so, updates the counter and returns the fault.
      * @param path the path 
      * @param op the operation
      * @return pointer to the Counter ass
@@ -176,19 +180,34 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
     cache::config::ReorderF* get_and_update_reorder_fault(string path, string op);
 
     /**
-     * Persists a write if a there is a programmed fault for write in the given path and if the counter matches one of the writes to persist.
-     * @param fd File descriptor for the file
+     * @brief Persists a write if a there is a programmed reorder fault for write in the given path and if the counter matches one of the writes to persist.
      * @param path Path of the file
      * @param buf Buffer with what is to be written
      * @param size Bytes to be written
-     * @param offset Offset inside the file to start to writes    
+     * @param offset Offset inside the file to start to write
      */
     void persist_write(const char* path, const char* buf, size_t size, off_t offset);
 
+    /**
+     * @brief Restarts the counter for some operation of a certain path.
+     * @param path Path of the file
+     * @param op Operation ('write','fsync',...)
+    */
     void restart_counter(string path, string op);
 
-    bool check_pendingwrite(const char* path);
+    /**
+     * @brief Checks the existence of a pending write (a write that could be persisted if it is followed by another one) and deletes it if it exists. 
+     * @param path Path of the file
+     */
+    bool check_and_delete_pendingwrite(const char* path);
 
+    /**
+     * @brief Splits and persists part of a write if a there is a programmed split_write fault for the given path and if the ocurrence of the file matches the ocurrence in the config file.
+     * @param path Path of the file
+     * @param buf Buffer with what is to be written
+     * @param size Bytes to be written
+     * @param offset Offset inside the file to start to write
+     */
     void split_write(const char* path, const char* buf, size_t size, off_t offset);
 
     /**

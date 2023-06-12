@@ -14,20 +14,35 @@ buffer = []
 ops_i = 0
 buffer_i = 0
 i = 0
-limit_group = 4
+group_limit = 1
+
+writes = {}
 
 log_file = '/tmp/lazyfs.log'
 covered_syscalls = 'write|rename|fsync|fdatasync|create|open|release|read'
 files = ''
 text = False
 filter_only = False
+out = "out"
+big_write = False
 
 #Two operations are the same if they have the same syscall and path
 def compare_ops(op1,op2): 
     if op1['syscall'] == 'rename':
-         return (op2['syscall'] == rename and op1['from'] == op2['from'] and op1['to'] == op2['to'])
+        return (op2['syscall'] == 'rename' and op1['from_'] == op2['from_'] and op1['to'] == op2['to'])
     else:
         return op1['syscall'] == op2['syscall'] and op1['path'] == op2['path'] 
+
+def add_to_writes(op):
+    path = op['path']
+    if path in writes:
+        writes[path][0]+=1
+        if op['size'] >= 4096:
+            writes[path][1].append({size:op['size'], off:op['off'], ocurrence:writes[path][0]})
+    else:
+        writes[path] = [1,[]]
+        if op['size'] >= 4096:
+            writes[path][1].append({size:op['size'], off:op['off'], occurrence:writes[path][0]})
 
 def parse_ops():
     global log_file, ops
@@ -43,7 +58,7 @@ def parse_ops():
         to = '(' + files + ')'
     for line in lines:  
         #.*\[lazyfs.ops\]:\s*lfs_((rename|write|open)\((path=([^,]*)|from=(.*?),to=(.*?)\)))(,size=(\d+),off=(\d+))?(,mode=([A-Z_\-]+))?\)
-        if op:=re.match(r'.*\[lazyfs.ops\]:\s*lfs_((' + covered_syscalls + r')\((path=' + path + r'|from='+ from_ + r',to=' + to + r'\)))(,size=(\d+),off=(\d+))?(,mode=([A-Z_\-]+))?(,isdatasync=[01])?\)',line):
+        if op:=re.match(r'.*\[lazyfs.ops\]:\s*lfs_((' + covered_syscalls + r')\((path=' + path + r'|from='+ from_ + r',to=' + to + r'))(,size=(\d+),off=(\d+))?(,mode=([A-Z_\-]+))?(,isdatasync=[01])?\)',line):
             op_parsed = {'syscall':op.group(2)}
             if op.group(2)!='rename':
                 op_parsed['path'] = op.group(4)
@@ -52,19 +67,23 @@ def parse_ops():
                 op_parsed['size'] = op.group(8)
                 op_parsed['off'] = op.group(9)
             elif op.group(2) == 'rename':
-                op_parsed['from_'] = op.group(3)
-                op_parsed['to'] = op.group(4)
+                op_parsed['from_'] = op.group(5)
+                op_parsed['to'] = op.group(6)
             elif op.group(2) == 'open' or op.group(2) == 'create':
                 op_parsed['mode'] = op.group(11)
 
             ops.append(op_parsed)
+            if big_write:
+                if op_parsed['syscall'] == 'write':
+                    add_to_writes(op_parsed)
+
         elif op:=re.match(r'.*?(Triggered fault condition).*?\n',line):
             ops.append({'syscall': 'fault'})
 
 def group_ops(ops):
-    global ops_i, buffer_i, i, limit_group, ops_grouped, buffer
+    global ops_i, buffer_i, i, group_limit, ops_grouped, buffer
 
-    while ops_i < len(ops) and len(buffer) < limit_group:
+    while ops_i < len(ops) and len(buffer) < group_limit:
             #print('ops',ops, ops_i)
             op = ops[ops_i]
             #print(buffer, op)
@@ -108,7 +127,7 @@ def group_ops(ops):
         group_ops(ops[buffer_i+1:])                 #We'll try to build a pattern, but now starting in another operation    
 
 def buffer_to_ops_grouped():
-    global ops_i, buffer_i, i, limit_group, ops_grouped, buffer
+    global ops_i, buffer_i, i, group_limit, ops_grouped, buffer
 
     count_reps = buffer[0][1]                       #Check in what repetion we were (reps of the 1st op)
     right_count = buffer[len(buffer)-1][1]          #Check how many repetions of the pattern were actually done (reps of the last op)
@@ -156,13 +175,13 @@ def make_graph():
             if op[0]['syscall'] == 'group':
                 for syscall in op[0]['group']:
                     if syscall['syscall'] == 'rename':
-                        label += syscall['syscall'] + ' from=' +  syscall['from'] + ' to=' +  syscall['to'] + '\n'
+                        label += syscall['syscall'] + ' from=' +  syscall['from_'] + ' to=' +  syscall['to'] + '\n'
                     else:
                         label += syscall['syscall'] + ' path=' +  syscall['path'] + '\n'
             else:
                 syscall = op[0]
                 if syscall['syscall'] == 'rename':
-                    label = syscall['syscall'] + ' from=' +  syscall['from'] + ' to=' +  syscall['to']
+                    label = syscall['syscall'] + ' from=' +  syscall['from_'] + ' to=' +  syscall['to']
                 else:
                     label = op[0]['syscall'] + ' path=' + op[0]['path']
                 if 'size' in op[0]:
@@ -176,11 +195,11 @@ def make_graph():
         if counter<len(ops_grouped)-1:
             graph.add_edge(pydot.Edge(counter, counter+1, color='blue'))
             counter += 1
-    graph.write_png('logs_graph.png')
+    graph.write_png(out + '.png')
 
 def ouput_text():
     global ops, ops_grouped
-    with open("parse_out_text.txt",'w') as f:
+    with open(out + ".txt",'w') as f:
         for op in ops_grouped:
             if op[0]['syscall'] == 'fault':
                 f.write('\n***************** FAULT ******************')
@@ -190,56 +209,68 @@ def ouput_text():
 
 def output_filter():
     global ops
-    with open("parse_out.txt",'w') as f:
+    with open(out + ".txt",'w') as f:
         for op in ops:  
             f.write(str(op) + '\n')
 
 
-parser = argparse.ArgumentParser()
+def main():
+    global log_file, covered_syscalls, files, text, filter_only, out, big_write
 
-parser.add_argument("--logpath", nargs=1, help="Log file to parse.", dest='logpath')
-parser.add_argument("--syscalls", nargs='*', help="System calls to consider. Examples: \"rename write\".", dest='syscalls')
-parser.add_argument("-t","--text", action='store_true', help="The output will be in text format, not in a graph.")
-parser.add_argument("--files", nargs='*', help="Only syscalls for those paths will be considered.", dest='files')
-parser.add_argument("--limit_group", nargs=1, help="Define the maximum number of ops in a group. A lower number is better for performance.", dest='limit_group')
-parser.add_argument("-fo","--filter_only", action='store_true',help="Define the maximum number of ops in a group. A lower number is better for performance.")
+    parser = argparse.ArgumentParser()
 
-args = parser.parse_args()	
+    parser.add_argument("--logpath", nargs=1, help="Log file to parse.", dest='logpath')
+    parser.add_argument("--syscalls", nargs='*', help="System calls to consider. Examples: \"rename write\".", dest='syscalls')
+    parser.add_argument("-t","--text", action='store_true', help="The output will be in text format, not in a graph.")
+    parser.add_argument("-o","--out", action='store', help="The name of the file where the result will be stored.")
+    parser.add_argument("--files", nargs='*', help="Only syscalls for those paths will be considered.", dest='files')
+    parser.add_argument("--group_limit", nargs=1, help="Define the maximum number of ops in a group. A lower number is better for performance.", dest='group_limit')
+    parser.add_argument("-fo","--filter_only", action='store_true',help="Only filter the log. No agroupation will be performed.")
+    parser.add_argument("--big_write", action='store_true', help="Finds writes bigger than 4Kb. Gives info about the path and the ocurrence of that write.")
 
-if args.logpath:
-    log_file = args.logpath[0]
-if args.limit_group:
-    limit_group = args.limit_group[0]
-if args.syscalls:
-    covered_syscalls_arr = args.syscalls
-    covered_syscalls = ''
-    for syscall in covered_syscalls_arr[:-1]:
-        covered_syscalls += syscall+'|'
-    covered_syscalls += covered_syscalls_arr[-1]
-if args.text:
-    text = True
-if args.filter_only:
-    filter_only = True
-if args.files:
-    files_arr = args.paths
-    files = ''
-    for file in files_arr[:-1]:
-        files += file+'|'
-    files += files_arr[-1]
+    args = parser.parse_args()	
 
+    if args.logpath:
+        log_file = args.logpath[0]
+    if args.group_limit:
+        group_limit = int(args.group_limit[0])
+    if args.syscalls:
+        covered_syscalls_arr = args.syscalls
+        covered_syscalls = ''
+        for syscall in covered_syscalls_arr[:-1]:
+            covered_syscalls += syscall+'|'
+        covered_syscalls += covered_syscalls_arr[-1]
+    if args.text:
+        text = True
+    if args.filter_only:
+        filter_only = True
+    if args.big_write:
+        big_write = False
+    if args.files:
+        files_arr = args.paths
+        files = ''
+        for file in files_arr[:-1]:
+            files += file+'|'
+        files += files_arr[-1]
+    if args.out:
+        out = args.out
+        if re.search(r'[./\[\]()?,;:´`*+~^«»<>!|"@€$%\\]',out):
+            print("Invalid output name!")
+            return
 
-parse_ops()
-if filter_only:
-    output_filter()
-else: 
-    group_ops(ops)
-    if text:
-        ouput_text()
-    else:
-        make_graph()
+    parse_ops()
+    if filter_only:
+        output_filter()
+    else: 
+        group_ops(ops)
+        if text:
+            ouput_text()
+        else:
+            make_graph()
+    
+    if big_write:
+        for k,v in writes:
+            print('> ',k,v)
 
-
-
-
-
-
+if __name__ == "__main__":
+    main()

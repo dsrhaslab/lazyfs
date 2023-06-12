@@ -291,7 +291,7 @@ void LazyFS::restart_counter(string path, string op) {
     }
 }
 
-bool LazyFS::check_pendingwrite(const char* path) {
+bool LazyFS::check_and_delete_pendingwrite(const char* path) {
     bool res = false;
     (this->write_lock).lock();
     if (this->pending_write && (res = (strcmp(this->pending_write->path,path) == 0))) {
@@ -306,13 +306,12 @@ cache::config::ReorderF* LazyFS::get_and_update_reorder_fault(string path, strin
     cache::config::ReorderF* fault_r = NULL;
     auto it = faults->find(path);
     if (it != faults->end()) {
-        cout << ">>>>> reorder - found fault!!" << endl;
         auto& v_faults = it->second;
         for (auto fault : v_faults) {
             cache::config::ReorderF* reorder_fault = dynamic_cast<cache::config::ReorderF*>(fault);
             if (reorder_fault && reorder_fault->op == op) {reorder_fault->counter.fetch_add(1); fault_r = reorder_fault;}
         }
-    } else cout << ">>>>> reorder - not found!!" << endl;
+    } 
     return fault_r;
 }
 
@@ -369,13 +368,12 @@ void LazyFS::split_write(const char* path, const char* buf, size_t size, off_t o
 
     auto it = faults->find(path_s);
     if (it != faults->end()) {
-        cout << ">>>>> split write - found fault!!" << endl;
         auto& v_faults = it->second;
         for (auto fault : v_faults) {
             cache::config::SplitWriteF* split_fault = dynamic_cast<cache::config::SplitWriteF*>(fault);
             if (split_fault) {
+                bool split = true;
                 split_fault->counter.fetch_add(1);
-
 
                 if (split_fault->counter.load() == split_fault->ocurrence) {
                     fd = open(path, O_CREAT|O_WRONLY, 0666);
@@ -393,8 +391,10 @@ void LazyFS::split_write(const char* path, const char* buf, size_t size, off_t o
                                 buf_i += split_fault->parts_bytes[i];
                         }
 
-                        if (sum!=size) spdlog::critical ("[lazyfs.faults]: Could not inject fault of split write for file {} because sum of parts is different of size of write!",path_s);
-                        else {
+                        if (sum!=size) {
+                            spdlog::critical ("[lazyfs.faults]: Could not inject fault of split write for file {} because sum of parts is different of size of write!",path_s);
+                            split = false;
+                        } else {
                             size_to_persist = split_fault->parts_bytes[split_fault->persist - 1];
                             off_to_persist = offset + buf_i;
                         }
@@ -405,15 +405,17 @@ void LazyFS::split_write(const char* path, const char* buf, size_t size, off_t o
                         buf_i = (split_fault->persist - 1) * size_to_persist;
                     }
 
-                    int pw = pwrite(fd,buf+buf_i,size_to_persist,off_to_persist);
-                    cout << offset << " " << off_to_persist << " " << pw << endl;
-                    this_ ()->add_crash_fault ("after", "write", path_s, "none");            
-                    spdlog::critical ("[lazyfs.faults]: Added crash fault ");
+                    if (split) {
+                        int pw = pwrite(fd,buf+buf_i,size_to_persist,off_to_persist);
+                        cout << offset << " " << off_to_persist << " " << pw << endl;
+                        this_ ()->add_crash_fault ("after", "write", path_s, "none");            
+                        spdlog::critical ("[lazyfs.faults]: Added crash fault ");
+                    }
                 }
                 break;
             }
         }
-    } else cout << ">>>>> split write - not found!!" << endl;
+    } 
 }
 
 
@@ -766,7 +768,7 @@ int LazyFS::lfs_write (const char* path,
                 // fill sparse write with zeros, how?
                 // [file_size_offset, offset - 1] = zeros
 
-                std::printf ("calling a sparse write...\n");
+                std::printf ("calling a sparse write (path=%s, size=%ld, off=%ld)\n",path,size,offset);
 
                 off_t size_to_fill = offset - std::max (FILE_SIZE_BEFORE, (off_t)0);
 
@@ -1295,7 +1297,7 @@ int LazyFS::lfs_fsync (const char* path, int isdatasync, struct fuse_file_info* 
     }
     
     this_ ()->restart_counter(path,"write"); //Reset counter of op write for this path
-    this_ ()->check_pendingwrite(path); //If there's a pending write, remove it
+    this_ ()->check_and_delete_pendingwrite(path); //If there's a pending write, remove it
 
     string owner (path);
     string inode = this_ ()->FSCache->get_original_inode (owner);
