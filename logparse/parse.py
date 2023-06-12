@@ -14,11 +14,12 @@ buffer = []
 ops_i = 0
 buffer_i = 0
 i = 0
-group_limit = 1
+group_limit = 4
 
 writes = {}
+big = 4096
 
-log_file = '/tmp/lazyfs.log'
+log_file = '/home/gsd/lfs.log'
 covered_syscalls = 'write|rename|fsync|fdatasync|create|open|release|read'
 files = ''
 text = False
@@ -37,12 +38,12 @@ def add_to_writes(op):
     path = op['path']
     if path in writes:
         writes[path][0]+=1
-        if op['size'] >= 4096:
-            writes[path][1].append({size:op['size'], off:op['off'], ocurrence:writes[path][0]})
+        if int(op['size']) > big:
+            writes[path][1].append({'size':op['size'], 'off':op['off'], 'occurrence':writes[path][0]})
     else:
         writes[path] = [1,[]]
-        if op['size'] >= 4096:
-            writes[path][1].append({size:op['size'], off:op['off'], occurrence:writes[path][0]})
+        if int(op['size']) > big:
+            writes[path][1].append({'size':op['size'], 'off':op['off'], 'occurrence':writes[path][0]})
 
 def parse_ops():
     global log_file, ops
@@ -128,7 +129,6 @@ def group_ops(ops):
 
 def buffer_to_ops_grouped():
     global ops_i, buffer_i, i, group_limit, ops_grouped, buffer
-
     count_reps = buffer[0][1]                       #Check in what repetion we were (reps of the 1st op)
     right_count = buffer[len(buffer)-1][1]          #Check how many repetions of the pattern were actually done (reps of the last op)
     group1 = {'syscall':'group','group':[]}
@@ -147,7 +147,6 @@ def buffer_to_ops_grouped():
         
         for o in buffer:
             ops_i -= o[1]
-        
         #ops_i-=len(buffer)+1
     elif count_reps>2:                              #Example: "ababac"
         for elem in buffer:
@@ -158,6 +157,7 @@ def buffer_to_ops_grouped():
                 del elem[0]['mode']
             group1['group'].append(elem[0])
         ops_grouped.append((group1,right_count)) 
+        ops_i-=len(buffer)      # a4b4c3 -> abcabcabcabd
 
     buffer.clear()
     i = 0
@@ -226,7 +226,7 @@ def main():
     parser.add_argument("--files", nargs='*', help="Only syscalls for those paths will be considered.", dest='files')
     parser.add_argument("--group_limit", nargs=1, help="Define the maximum number of ops in a group. A lower number is better for performance.", dest='group_limit')
     parser.add_argument("-fo","--filter_only", action='store_true',help="Only filter the log. No agroupation will be performed.")
-    parser.add_argument("--big_write", action='store_true', help="Finds writes bigger than 4Kb. Gives info about the path and the ocurrence of that write.")
+    parser.add_argument("-bw","--big_write", action='store_true', help="Finds writes bigger than 4Kb. Gives info about the path and the ocurrence of that write.")
 
     args = parser.parse_args()	
 
@@ -245,7 +245,7 @@ def main():
     if args.filter_only:
         filter_only = True
     if args.big_write:
-        big_write = False
+        big_write = True
     if args.files:
         files_arr = args.paths
         files = ''
@@ -267,10 +267,13 @@ def main():
             ouput_text()
         else:
             make_graph()
-    
+
     if big_write:
-        for k,v in writes:
-            print('> ',k,v)
+        for k,v in writes.items():
+            if len(v[1])!=0:
+                print('> ',k)
+                for op in v[1]:
+                    print('     - size: ',op['size'],', off: ', op['off'], ', occurrence: ', op['occurrence'])
 
 if __name__ == "__main__":
     main()

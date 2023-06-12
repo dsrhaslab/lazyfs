@@ -16,9 +16,15 @@ logfile="/home/gsd/lfs.log"
 #[[injection]]
 #type="split_write"
 #file="/home/gsd/teste_split/s-r/output.txt"
-#ocurrence=1
-#parts_bytes=[4,4,4]
+#ocurrence=2
+#parts_bytes=[3,2]
 #persist=2
+
+#[[injection]]
+#type="reorder"
+#op="write"
+#file="/home/gsd/teste_split/s-r/output.txt"
+#persist=[2,3]
 
 [[injection]]
 type="split_write"
@@ -27,11 +33,7 @@ ocurrence=10000000
 parts=2
 persist=2
 
-#[[injection]]
-#type="reorder"
-#op="write"
-#file="/home/gsd/teste_split/s-r/output.txt"
-#persist=[2,3]
+
 
 #[[injection]]
 #type="reorder"
@@ -67,10 +69,10 @@ persist=2
 
 #[[injection]]
 #type="split_write"
-#file="/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal"
+#file="/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0.tmp"
 #persist=2
 #parts=2
-#ocurrence=12
+#ocurrence=1
 
 #[[injection]]
 #type="reorder"

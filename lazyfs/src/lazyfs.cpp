@@ -392,7 +392,7 @@ void LazyFS::split_write(const char* path, const char* buf, size_t size, off_t o
                         }
 
                         if (sum!=size) {
-                            spdlog::critical ("[lazyfs.faults]: Could not inject fault of split write for file {} because sum of parts is different of size of write!",path_s);
+                            spdlog::warn ("[lazyfs.faults]: Could not inject fault of split write for file {} because sum of parts is different of size of write!",path_s);
                             split = false;
                         } else {
                             size_to_persist = split_fault->parts_bytes[split_fault->persist - 1];
@@ -407,7 +407,7 @@ void LazyFS::split_write(const char* path, const char* buf, size_t size, off_t o
 
                     if (split) {
                         int pw = pwrite(fd,buf+buf_i,size_to_persist,off_to_persist);
-                        cout << offset << " " << off_to_persist << " " << pw << endl;
+                        spdlog::warn ("[lazyfs.faults]: Write to path {}: will persist {} bytes from offset {}",path,size_to_persist,off_to_persist);
                         this_ ()->add_crash_fault ("after", "write", path_s, "none");            
                         spdlog::critical ("[lazyfs.faults]: Added crash fault ");
                     }
