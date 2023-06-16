@@ -26,13 +26,12 @@ logfile="/home/gsd/lfs.log"
 #file="/home/gsd/teste_split/s-r/output.txt"
 #persist=[2,3]
 
-[[injection]]
-type="split_write"
-file="/home/gsd/test_postgres/postgres-r/postgresql/15/main/base/5/16400"
-ocurrence=10000000
-parts=2
-persist=2
-
+#[[injection]]
+#type="split_write"
+#file="/home/gsd/test_postgres/postgres-r/postgresql/15/main/base/5/16400"
+#ocurrence=10000000
+#parts=2
+#persist=2
 
 
 #[[injection]]
@@ -86,4 +85,26 @@ persist=2
 #file="/home/gsd/etcd-v2.3.0-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal"
 #persist=[2]
 
+
+
+
+#[[injection]]
+#type="split_write"
+#file="/home/gsd/leveldb-testes/data-r/000003.log"
+#ocurrence=3
+#parts_bytes=[4096,1894]
+#persist=[2]
+
+[[injection]]
+type="reorder"
+op="write"
+file="/home/gsd/leveldb-testes/data-r/000003.log"
+persist=[1,3,5]
+
+#[[injection]]
+#type="split_write"
+#file="/home/gsd/leveldb-testes/data-r/000005.ldb"
+#ocurrence=1
+#parts_bytes=[4096,453]
+#persist=[2]
 

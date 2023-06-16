@@ -20,7 +20,7 @@ writes = {}
 big = 4096
 
 log_file = '/home/gsd/lfs.log'
-covered_syscalls = 'write|rename|fsync|fdatasync|create|open|release|read'
+covered_syscalls = 'write|rename|fsync|fdatasync|create|open|release|read|truncate'
 files = ''
 text = False
 filter_only = False

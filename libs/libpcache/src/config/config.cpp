@@ -45,14 +45,14 @@ ReorderF::ReorderF() : Fault(REORDER) {
 
 ReorderF::~ReorderF(){}
 
-SplitWriteF::SplitWriteF(int ocurrence, int persist, int parts) : Fault(SPLITWRITE) {
+SplitWriteF::SplitWriteF(int ocurrence, vector<int> persist, int parts) : Fault(SPLITWRITE) {
     (this->counter).store(0);
     this->ocurrence = ocurrence;
     this->persist = persist;
     this->parts = parts;
 }
 
-SplitWriteF::SplitWriteF(int ocurrence, int persist, vector<int> parts_bytes) : Fault(SPLITWRITE) {
+SplitWriteF::SplitWriteF(int ocurrence, vector<int> persist, vector<int> parts_bytes) : Fault(SPLITWRITE) {
     (this->counter).store(0);
     this->ocurrence = ocurrence;
     this->persist = persist;
@@ -62,9 +62,10 @@ SplitWriteF::SplitWriteF(int ocurrence, int persist, vector<int> parts_bytes) : 
 
 SplitWriteF::SplitWriteF() : Fault(SPLITWRITE) {
 	vector <int> v;
+    vector<int> p;
 	(this->counter).store(0);
     this->ocurrence = 0;
-	this->persist = 0;
+	this->persist = p;
     this->parts_bytes = v;
     this->parts = 0;
 }
@@ -235,7 +236,7 @@ unordered_map<string,vector<Fault*>> Config::load_config (string filename) {
                 int ocurrence = toml::find<int>(injection,"ocurrence");
 
                 if (!injection.contains("persist")) throw std::runtime_error("Key 'persist' for some injection of type \"split_write\" is not defined in the configuration file.");
-                int persist = toml::find<int>(injection,"persist");
+                vector<int> persist = toml::find<vector<int>>(injection,"persist");
 
                 if (!injection.contains("parts") && !injection.contains("parts_bytes")) throw std::runtime_error("None of the keys 'parts' and 'key_parts' for some injection of type \"split_write\" is defined in the configuration file. Please define at most one of them.");     
                 if (injection.contains("parts") && injection.contains("parts_bytes")) throw std::runtime_error("Keys 'parts' and 'key_parts' for some injection of type \"split_write\" are exclusive in the configuration file. Please define at most one of them.");     
@@ -257,10 +258,8 @@ unordered_map<string,vector<Fault*>> Config::load_config (string filename) {
                     vector<Fault*> v_faults;
                     v_faults.push_back(fault);
                     faults[file] = v_faults;
-                    cout << "ADDED FAULT1" << endl;
                 } else {
                     (it->second).push_back(fault);
-                    cout << "ADDED FAULT2" << endl;
                 }
                 
             } else {

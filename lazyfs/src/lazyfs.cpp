@@ -377,37 +377,61 @@ void LazyFS::split_write(const char* path, const char* buf, size_t size, off_t o
 
                 if (split_fault->counter.load() == split_fault->ocurrence) {
                     fd = open(path, O_CREAT|O_WRONLY, 0666);
-                    size_t size_to_persist = size;
-                    off_t off_to_persist = offset;
-                    int buf_i = 0;
+                    vector<tuple<int,int,int>> persist_info; 
+                    persist_info.reserve((split_fault->persist).size());
+
+                    size_t size_to_persist;
+                    off_t off_to_persist;
+                    int buf_i;
 
                     if (split_fault->parts == -1) {
-                        int sum = 0;
-                        int sum_until_persist = 0;
+                        for (auto & p : split_fault->persist) {
+                            int sum = 0;
+                            int sum_until_persist = 0;
+                            buf_i = 0;
                         
-                        for (int i = 0; i< split_fault->parts_bytes.size(); i++) {
-                            sum += split_fault->parts_bytes[i];
-                            if (i < split_fault->persist - 1)
-                                buf_i += split_fault->parts_bytes[i];
-                        }
+                            for (int i = 0; i< split_fault->parts_bytes.size(); i++) {
+                                sum += split_fault->parts_bytes[i];
+                                if (i < p - 1)
+                                    buf_i += split_fault->parts_bytes[i];
+                            }
 
-                        if (sum!=size) {
-                            spdlog::warn ("[lazyfs.faults]: Could not inject fault of split write for file {} because sum of parts is different of size of write!",path_s);
-                            split = false;
-                        } else {
-                            size_to_persist = split_fault->parts_bytes[split_fault->persist - 1];
-                            off_to_persist = offset + buf_i;
-                        }
+                            if (sum!=size) {
+                                spdlog::warn ("[lazyfs.faults]: Could not inject fault of split write for file {} because sum of parts is different of size of write!",path_s);
+                                split = false;
+                                break;
+                            } else {
+                                size_to_persist = split_fault->parts_bytes[p - 1];
+                                off_to_persist = offset + buf_i;
+                            }
 
-                    } else {
-                        size_to_persist = size/split_fault->parts;
-                        off_to_persist = offset + (split_fault->persist - 1) * size_to_persist;
-                        buf_i = (split_fault->persist - 1) * size_to_persist;
+                            tuple <int,int,int> info_part (buf_i,size_to_persist,off_to_persist);
+                            persist_info.push_back(info_part);
+                        }
+                        
+
+                    } else { //equal parts
+                        
+                        for (auto & p : split_fault->persist) {
+                            size_to_persist = size/split_fault->parts;
+                            off_to_persist = offset + (p - 1) * size_to_persist;
+                            buf_i = (p - 1) * size_to_persist;
+
+                            tuple <int,int,int> info_part (buf_i,size_to_persist,off_to_persist);
+                            persist_info.push_back(info_part);
+                         }
+                        //size_to_persist = size/split_fault->parts;
+                        //off_to_persist = offset + (split_fault->persist - 1) * size_to_persist;
+                        //buf_i = (split_fault->persist - 1) * size_to_persist;
                     }
 
                     if (split) {
-                        int pw = pwrite(fd,buf+buf_i,size_to_persist,off_to_persist);
-                        spdlog::warn ("[lazyfs.faults]: Write to path {}: will persist {} bytes from offset {}",path,size_to_persist,off_to_persist);
+                        for (auto & persist : persist_info) {
+                            //int pw = pwrite(fd,buf+buf_i,size_to_persist,off_to_persist);
+                            int pw = pwrite(fd,buf+get<0>(persist),get<1>(persist),get<2>(persist));
+                            spdlog::warn ("[lazyfs.faults]: Write to path {}: will persist {} bytes from offset {}",path,get<1>(persist),get<2>(persist));
+                              
+                        }
                         this_ ()->add_crash_fault ("after", "write", path_s, "none");            
                         spdlog::critical ("[lazyfs.faults]: Added crash fault ");
                     }
@@ -417,7 +441,6 @@ void LazyFS::split_write(const char* path, const char* buf, size_t size, off_t o
         }
     } 
 }
-
 
 
 void* LazyFS::lfs_init (struct fuse_conn_info* conn, struct fuse_config* cfg) {

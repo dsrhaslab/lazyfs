@@ -46,13 +46,13 @@ class SplitWriteF : public Fault {
   public:
     int ocurrence;
     std::atomic_int counter;
-    int persist;
+    vector<int> persist;
     int parts;
     vector<int> parts_bytes;
 
     SplitWriteF();
-    SplitWriteF(int ocurrence, int persist, vector<int> parts_bytes);
-    SplitWriteF(int ocurrence, int persist, int parts);
+    SplitWriteF(int ocurrence, vector<int> persist, vector<int> parts_bytes);
+    SplitWriteF(int ocurrence, vector<int> persist, int parts);
     ~SplitWriteF();
 };
 
