@@ -173,9 +173,9 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
 
     /**
      * @brief Checks if a programmed reorder fault for the given path and operation exists. If so, updates the counter and returns the fault.
-     * @param path the path 
-     * @param op the operation
-     * @return pointer to the Counter ass
+     * @param path Path of the file 
+     * @param op Operation ('write','fsync',...)
+     * @return Pointer to the ReorderF object
     */
     cache::config::ReorderF* get_and_update_reorder_fault(string path, string op);
 
@@ -202,7 +202,7 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
     bool check_and_delete_pendingwrite(const char* path);
 
     /**
-     * @brief Splits and persists part of a write if a there is a programmed split_write fault for the given path and if the ocurrence of the file matches the ocurrence in the config file.
+     * @brief Splits and persists part of a write if a there is a programmed split_write fault for the given path and if the ocurrence matches the counter.
      * @param path Path of the file
      * @param buf Buffer with what is to be written
      * @param size Bytes to be written

@@ -13,18 +13,6 @@ blocks_per_page=1
 log_all_operations=true
 logfile="/home/gsd/lfs.log"
 
-#[[injection]]
-#type="split_write"
-#file="/home/gsd/teste_split/s-r/output.txt"
-#ocurrence=2
-#parts_bytes=[3,2]
-#persist=2
-
-#[[injection]]
-#type="reorder"
-#op="write"
-#file="/home/gsd/teste_split/s-r/output.txt"
-#persist=[2,3]
 
 #[[injection]]
 #type="split_write"
@@ -32,7 +20,6 @@ logfile="/home/gsd/lfs.log"
 #ocurrence=10000000
 #parts=2
 #persist=2
-
 
 #[[injection]]
 #type="reorder"
@@ -85,26 +72,35 @@ logfile="/home/gsd/lfs.log"
 #file="/home/gsd/etcd-v2.3.0-linux-amd64/data-r/data.etcd/member/wal/0000000000000000-0000000000000000.wal"
 #persist=[2]
 
+#[[injection]]
+#type="split_write"
+#file="/home/gsd/leveldb-testes/data-r/000003.log"
+#ocurrence=4
+#parts_bytes=[4096,1903]
+#persist=[1]
 
+#[[injection]]
+#type="reorder"
+#op="write"
+#file="/home/gsd/leveldb-testes/data-r/000003.log"
+#persist=[1]
 
+#[[injection]]
+#type="reorder"
+#op="write"
+#file="/home/gsd/leveldb-testes/data-r/000003.log"
+#persist=[1,3,5]
 
 #[[injection]]
 #type="split_write"
 #file="/home/gsd/leveldb-testes/data-r/000003.log"
-#ocurrence=3
-#parts_bytes=[4096,1894]
-#persist=[2]
+#ocurrence=4
+#parts=4
+#persist=[1,2,4]
 
 [[injection]]
-type="reorder"
-op="write"
-file="/home/gsd/leveldb-testes/data-r/000003.log"
-persist=[1,3,5]
-
-#[[injection]]
-#type="split_write"
-#file="/home/gsd/leveldb-testes/data-r/000005.ldb"
-#ocurrence=1
-#parts_bytes=[4096,453]
-#persist=[2]
-
+type="split_write"
+file="/home/gsd/pebble-testes/data-r/000002.log"
+ocurrence=4
+parts_bytes=[4096,1911]
+persist=[2]

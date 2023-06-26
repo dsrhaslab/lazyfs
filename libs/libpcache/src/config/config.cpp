@@ -194,7 +194,7 @@ unordered_map<string,vector<Fault*>> Config::load_config (string filename) {
         }
     }
 
-    unordered_map<string,vector<Fault*>> faults; //(path,[Fault1,Fault2,...]
+    unordered_map<string,vector<Fault*>> faults; //(path,[Fault1,Fault2,...])
     if (data.contains ("injection")) {
         const auto& programmed_injections = toml::find<toml::array>(data,"injection");
 	
@@ -223,7 +223,7 @@ unordered_map<string,vector<Fault*>> Config::load_config (string filename) {
                 } else {
                     for (Fault* fault : it->second) {
                         ReorderF* reorder_fault = dynamic_cast<ReorderF*>(fault);
-                        if (reorder_fault && reorder_fault->op == op) throw std::runtime_error("It is only acceptable one fault per type of operation for a given file.");
+                        if (reorder_fault && reorder_fault->op == op) throw std::runtime_error("It is only acceptable one reorder fault per type of operation for a given file.");
                     }
                     (it->second).push_back(fault);
                 }
@@ -250,6 +250,10 @@ unordered_map<string,vector<Fault*>> Config::load_config (string filename) {
                 }
                 if (injection.contains("parts_bytes")) {
                     vector<int> parts_bytes = toml::find<vector<int>>(injection,"parts_bytes");
+                    
+                    for (auto & part : parts_bytes) {
+                        if (part <= 0) throw std::runtime_error("Key 'parts_bytes' for some injection of type \"split_write\" has an invalid value in the configuration file. Every part should be greater than 0.");
+                    } 
                     fault = new SplitWriteF(ocurrence,persist,parts_bytes);
                 }
 
