@@ -65,8 +65,10 @@ void fht_worker (LazyFS* filesystem) {
                 filesystem->command_fault_clear_cache ();
                 
                 if (write_completed_faults) {
-                    const char* clear_cache = "clear-cache";
-                    write(fd_fifo_completed, clear_cache, strlen(clear_cache));
+                    const char* clear_cache = "finished::clear-cache\n";
+                    if ((ret = write(fd_fifo_completed, clear_cache, strlen(clear_cache))) < 0) {
+                        spdlog::warn ("[lazyfs.faults.worker]: failed to write to notifier fifo");
+                    };
                 }
 
             } else if (!strcmp (buffer, "lazyfs::display-cache-usage")) {
@@ -220,7 +222,7 @@ int main (int argc, char* argv[]) {
                 spdlog::critical ("[lazyfs] exiting...");
                 return -1;
             } else
-                spdlog::info ("[lazyfs.fifo]: faults fifo exists!");
+                spdlog::info ("[lazyfs.fifo]: faults notifier fifo exists!");
         } else
             spdlog::info ("[lazyfs.fifo]: fifo {} created", std_config.FIFO_PATH_COMPLETED.c_str ());
     }
