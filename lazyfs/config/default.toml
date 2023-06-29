@@ -34,6 +34,13 @@ logfile="/home/gsd/lfs.log"
 #parts=2
 #persist=2
 
+[[injection]]
+type="split_write"
+file="/home/gsd/data/zk37-root/version-2/log.100000001"
+ocurrence=3
+parts=2
+persist=2
+
 #[[injection]]
 #type="reorder"
 #op="write"

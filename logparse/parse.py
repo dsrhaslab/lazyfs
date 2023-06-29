@@ -1,6 +1,10 @@
 #!/usr/bin/python3
 #coding=utf-8
 
+#This program allows parsing the log created by LazyFS. 
+#It is possible to filter system calls and make them more readable or even create a graph.
+#One of the main features of this program is that it can group system calls. If the same syscalls are called sequentially, the program identifies this repetition and simplifies the output.
+
 import pydot
 import re
 import argparse
@@ -85,9 +89,7 @@ def group_ops(ops):
     global ops_i, buffer_i, i, group_limit, ops_grouped, buffer
 
     while ops_i < len(ops) and len(buffer) < group_limit:
-            #print('ops',ops, ops_i)
             op = ops[ops_i]
-            #print(buffer, op)
             if len(buffer) == 0:                    #If there's no pattern, we'll start one
                 buffer.append([op,1])
                 buffer_i = ops_i
