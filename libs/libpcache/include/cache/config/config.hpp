@@ -12,7 +12,6 @@
 #define SPLITWRITE "split_write"
 #define REORDER "reorder"
 
-
 #include <string>
 #include <vector>
 #include <unordered_map>
