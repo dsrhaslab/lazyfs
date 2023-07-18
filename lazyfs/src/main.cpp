@@ -29,6 +29,7 @@ LazyFS fs;
 
 void fht_worker (LazyFS* filesystem) {
     int fd_fifo, fd_fifo_completed;
+    std::shared_mutex fifo_lock;
     
     fd_fifo = open (std_config.FIFO_PATH.c_str (), O_RDWR);
     if (fd_fifo < 0) {
@@ -66,9 +67,11 @@ void fht_worker (LazyFS* filesystem) {
                 
                 if (write_completed_faults) {
                     const char* clear_cache = "finished::clear-cache\n";
+                    fifo_lock.lock();
                     if ((ret = write(fd_fifo_completed, clear_cache, strlen(clear_cache))) < 0) {
                         spdlog::warn ("[lazyfs.faults.worker]: failed to write to notifier fifo");
                     };
+                    fifo_lock.unlock();
                 }
 
             } else if (!strcmp (buffer, "lazyfs::display-cache-usage")) {

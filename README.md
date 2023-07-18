@@ -62,6 +62,7 @@ cd lazyfs && ./build.sh && cd -
 
 [faults]
 fifo_path="/tmp/faults.fifo"
+#fifo_path_completed="/tmp/faults_completed.fifo"
 
 [cache]
 apply_eviction=false
@@ -88,6 +89,7 @@ The section **[cache]** requires that you specify the following:
 Other parameters:
 
 - **fifo_path**: The absolute path where the faults FIFO should be created.
+- **fifo_path_completed**: If we plan to inject the clear-cache fault synchronously, it is necessary to determine the completion of the clear-cache command execution. By specifying this parameter, a message will be written to another FIFO once the clear-cache command is finished. It's important to note that if the parameter is defined and a FIFO path is provided, there must be a program reading from the FIFO. Otherwise, LazyFS will remain blocked until a reader becomes available, as this is the expected behavior of a FIFO.
 - **log_all_operations**: Whether to log all file system operations that LazyFS receives.
 - **logfile**: The log file for LazyFS's outputs. Fault acknowledgment is sent to `stdout` or to the `logfile`.
 
