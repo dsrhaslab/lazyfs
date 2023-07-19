@@ -29,7 +29,7 @@ sudo apt install g++ cmake
 # g++: 9.4.0
 ```
 
--   `FUSE 3`: 
+-   `FUSE 3`:
 
 ```bash
 sudo apt install libfuse3-dev libfuse3-3 fuse3
@@ -62,6 +62,7 @@ cd lazyfs && ./build.sh && cd -
 
 [faults]
 fifo_path="/tmp/faults.fifo"
+# fifo_path_completed="/tmp/faults_completed.fifo"
 
 [cache]
 apply_eviction=false
@@ -89,6 +90,7 @@ I recommend following the `simple` cache configuration (indicating the cache siz
 Other parameters:
 
 - **fifo_path**: The absolute path where the faults FIFO should be created.
+- **fifo_path_completed**: If we plan to inject the clear cache fault synchronously, it is necessary to determine the completion of the `lazyfs::clear-cache` command execution. By specifying this parameter, a message will be written to another FIFO (`finished::clear-cache`), so that users can set up a reader process that waits before making any post-fault consistency checks.
 - **log_all_operations**: Whether to log all file system operations that LazyFS receives.
 - **logfile**: The log file for LazyFS's outputs. Fault acknowledgment is sent to `stdout` or to the `logfile`.
 

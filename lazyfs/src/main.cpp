@@ -28,23 +28,35 @@ std::thread faults_handler_thread;
 LazyFS fs;
 
 void fht_worker (LazyFS* filesystem) {
-
-    int fd;
-    if ((fd = open (std_config.FIFO_PATH.c_str (), O_RDWR)) < 0) {
+    int fd_fifo, fd_fifo_completed;
+    std::shared_mutex fifo_lock;
+    
+    fd_fifo = open (std_config.FIFO_PATH.c_str (), O_RDWR);
+    if (fd_fifo < 0) {
         spdlog::critical ("[lazyfs.fifo]: failed to open fifo '{}' (error: {})",
                           std_config.FIFO_PATH.c_str (),
                           strerror (errno));
         return;
     }
 
+    bool write_completed_faults = (std_config.FIFO_PATH_COMPLETED != "");
+
+    if (write_completed_faults) {
+        fd_fifo_completed = open (std_config.FIFO_PATH_COMPLETED.c_str (), O_WRONLY);
+        if (fd_fifo_completed < 0) {
+            spdlog::critical ("[lazyfs.fifo]: failed to open fifo '{}' (error: {})",
+                            std_config.FIFO_PATH_COMPLETED.c_str (),
+                            strerror (errno));
+            return;
+        }
+    }
+
     spdlog::info ("[lazyfs.faults.worker]: waiting for fault commands...");
 
     char buffer[MAX_READ_CHUNK];
-
     int ret;
-
     while (true) {
-        if ((ret = read (fd, &buffer, MAX_READ_CHUNK)) > 0) {
+        if ((ret = read (fd_fifo, &buffer, MAX_READ_CHUNK)) > 0) {
 
             buffer[ret - 1] = '\0';
 
@@ -52,6 +64,15 @@ void fht_worker (LazyFS* filesystem) {
 
                 spdlog::info ("[lazyfs.faults.worker]: received '{}'", string (buffer));
                 filesystem->command_fault_clear_cache ();
+                
+                if (write_completed_faults) {
+                    const char* clear_cache = "finished::clear-cache\n";
+                    fifo_lock.lock();
+                    if ((ret = write(fd_fifo_completed, clear_cache, strlen(clear_cache))) < 0) {
+                        spdlog::warn ("[lazyfs.faults.worker]: failed to write to notifier fifo");
+                    };
+                    fifo_lock.unlock();
+                }
 
             } else if (!strcmp (buffer, "lazyfs::display-cache-usage")) {
 
@@ -74,7 +95,8 @@ void fht_worker (LazyFS* filesystem) {
 
     spdlog::info ("[lazyfs.faults.worker]: worker stopped");
 
-    close (fd);
+    close (fd_fifo);   
+    if (write_completed_faults) close(fd_fifo_completed);
 }
 
 int main (int argc, char* argv[]) {
@@ -172,25 +194,41 @@ int main (int argc, char* argv[]) {
     else
         spdlog::warn ("[lazyfs.args]: path not specified, using path 'config/default.toml'");
 
+    
+    //Fifos
+
     spdlog::info ("[lazyfs]: trying to create fifo '{}'", std_config.FIFO_PATH);
-
+    
     // Create fifo, if not exists already
-
     if (mkfifo (std_config.FIFO_PATH.c_str (), 0777) < 0) {
-        if (errno != EEXIST) {
-            spdlog::critical ("[lazyfs.fifo]: failed to create fifo '{}' (error: {})",
-                              std_config.FIFO_PATH.c_str (),
-                              strerror (errno));
-
+         if (errno != EEXIST) {
+             spdlog::critical ("[lazyfs.fifo]: failed to create fifo '{}' (error: {})",
+                             std_config.FIFO_PATH.c_str (),
+                             strerror (errno));
             spdlog::critical ("[lazyfs] exiting...");
-
             return -1;
-
         } else
-            spdlog::info ("[lazyfs.fifo]: faults fifo exists!");
-
+             spdlog::info ("[lazyfs.fifo]: faults fifo exists!");
     } else
-        spdlog::info ("[lazyfs.fifo]: fifo created");
+         spdlog::info ("[lazyfs.fifo]: fifo {} created", std_config.FIFO_PATH.c_str ());
+   
+    
+    if (std_config.FIFO_PATH_COMPLETED != "") {
+        spdlog::info ("[lazyfs]: trying to create fifo '{}'", std_config.FIFO_PATH_COMPLETED);
+        
+        // Create fifo, if not exists already
+        if (mkfifo (std_config.FIFO_PATH_COMPLETED.c_str (), 0777) < 0) {
+            if (errno != EEXIST) {
+                spdlog::critical ("[lazyfs.fifo]: failed to create fifo '{}' (error: {})",
+                                std_config.FIFO_PATH_COMPLETED.c_str (),
+                                strerror (errno));
+                spdlog::critical ("[lazyfs] exiting...");
+                return -1;
+            } else
+                spdlog::info ("[lazyfs.fifo]: faults notifier fifo exists!");
+        } else
+            spdlog::info ("[lazyfs.fifo]: fifo {} created", std_config.FIFO_PATH_COMPLETED.c_str ());
+    }
 
     // Create engine and cache objects
 
