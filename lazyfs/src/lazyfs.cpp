@@ -40,6 +40,7 @@ std::shared_mutex cache_command_lock;
 
 namespace lazyfs {
 
+/* Write class */
 Write::Write() {
     this->path = this->buf = NULL;
 }
@@ -60,6 +61,8 @@ Write::~Write() {
     this->path = NULL;
     this->buf = NULL;
 }
+
+/* LazyFS class */
 
 LazyFS::LazyFS () {}
 

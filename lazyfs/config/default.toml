@@ -15,6 +15,7 @@ logfile="/home/gsd/lfs.log"
 
 [[injection]]
 type="split_write"
+<<<<<<< HEAD
 file="/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/snap/db"
 persist=[2]
 parts=2
