@@ -130,14 +130,25 @@ class ReorderF : public Fault {
      */
     vector<int> persist;
 
+    /**
+     * @brief Group of writes ocurrence. For example, of this value is set to 3, on the third group of consecutive writes for a certain path, a fault will be injected.
+     */
+    int ocurrence;
+
+    /**
+     * @brief Counter for the groups of writes.
+     */
+    std::atomic_int group_counter;
+
   
     /**
      * @brief Construct a new Fault object.
      *
      * @param op System call (i.e. "write", ...)
      * @param persist Vector with operations to persist
+     * @param ocurrence Ocurrence of the group of writes to persist
      */
-    ReorderF(string op, vector<int> persist);
+    ReorderF(string op, vector<int> persist, int ocurrence);
 
     /**
      * @brief Default constructor for Fault.

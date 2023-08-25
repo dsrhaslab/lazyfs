@@ -72,8 +72,8 @@ echo -e "Running LazyFS (stop with ctrl+c or umount-lazyfs.sh)...\n"
 if [ -z "$CMD_FG" ]; then
    echo -e "(running in no foreground mode)\n"
    echo -e "Note: run in foreground to see the <stdio> logs.\n"
-   ./build/lazyfs $MOUNT_DIR --config-path $CMD_CONFIG -o allow_other -o modules=subdir -o subdir=$ROOT_DIR &
+   ./build/lazyfs $MOUNT_DIR --config-path $CMD_CONFIG -o allow_other -o modules=subdir -o subdir=$ROOT_DIR -s &
 else
    echo -e "(running in foreground mode)\n"
-   ./build/lazyfs $MOUNT_DIR --config-path $CMD_CONFIG -o allow_other -o modules=subdir -o subdir=$ROOT_DIR -f
+   ./build/lazyfs $MOUNT_DIR --config-path $CMD_CONFIG -o allow_other -o modules=subdir -o subdir=$ROOT_DIR -s -f
 fi

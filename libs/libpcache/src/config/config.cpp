@@ -30,17 +30,22 @@ Fault::Fault(string type) {
 
 Fault::~Fault(){}
 
-ReorderF::ReorderF(string op, vector<int> persist) : Fault(REORDER) {
+ReorderF::ReorderF(string op, vector<int> persist, int ocurrence) : Fault(REORDER) {
     (this->counter).store(0);
     this->op = op;
     this->persist = persist;
+    this->ocurrence = ocurrence;
+    (this->group_counter).store(0);
+
 }
 
 ReorderF::ReorderF() : Fault(REORDER) {
 	vector <int> v;
 	(this->counter).store(0);
+    (this->group_counter).store(0);
     this->op = "";
 	this->persist = v;
+    this->ocurrence = 0;
 }
 
 ReorderF::~ReorderF(){}
@@ -210,10 +215,18 @@ unordered_map<string,vector<Fault*>> Config::load_config (string filename) {
                 if (!injection.contains("op")) throw std::runtime_error("Key 'op' for some injection of type \"reorder\" is not defined in the configuration file.");
                 string op = toml::find<string>(injection,"op");
 
+                if (!injection.contains("ocurrence")) throw std::runtime_error("Key 'ocurrence' for some injection of type \"reorder\" is not defined in the configuration file.");
+                int ocurrence = toml::find<int>(injection,"ocurrence");
+                if (ocurrence <= 0) throw std::runtime_error("Key 'ocurrence' for some injection of type \"split_write\" has an invalid value in the configuration file. It should be greater than 0.");
+
                 if (!injection.contains("persist") && op == "write") throw std::runtime_error("Key 'persist' for some injection of type \"reorder\" with \"write\" as op is not defined in the configuration file.");     
                 vector<int> persist = toml::find<vector<int>>(injection,"persist");
+                sort(persist.begin(), persist.end()); 
+                for (auto & p : persist) {
+                    if (p <= 0) throw std::runtime_error("Key 'persist' for some injection of type \"reorder\" has an invalid value in the configuration file. The array must contain values greater than 0.");
+                } 
             
-                cache::config::ReorderF * fault = new ReorderF(op,persist);
+                cache::config::ReorderF * fault = new ReorderF(op,persist,ocurrence);
                 auto it = faults.find(file);
 
                 if (it == faults.end()) {
@@ -234,11 +247,16 @@ unordered_map<string,vector<Fault*>> Config::load_config (string filename) {
 
                 if (!injection.contains("ocurrence")) throw std::runtime_error("Key 'ocurrence' for some injection of type \"split_write\" is not defined in the configuration file.");
                 int ocurrence = toml::find<int>(injection,"ocurrence");
+                if (ocurrence <= 0) throw std::runtime_error("Key 'ocurrence' for some injection of type \"split_write\" has an invalid value in the configuration file. It should be greater than 0.");
 
                 if (!injection.contains("persist")) throw std::runtime_error("Key 'persist' for some injection of type \"split_write\" is not defined in the configuration file.");
                 vector<int> persist = toml::find<vector<int>>(injection,"persist");
+                for (auto & p : persist) {
+                    if (p <= 0) throw std::runtime_error("Key 'persist' for some injection of type \"split_write\" has an invalid value in the configuration file. The array must contain values greater than 0.");
+                } 
 
                 if (!injection.contains("parts") && !injection.contains("parts_bytes")) throw std::runtime_error("None of the keys 'parts' and 'key_parts' for some injection of type \"split_write\" is defined in the configuration file. Please define at most one of them.");     
+
                 if (injection.contains("parts") && injection.contains("parts_bytes")) throw std::runtime_error("Keys 'parts' and 'key_parts' for some injection of type \"split_write\" are exclusive in the configuration file. Please define at most one of them.");     
                 
                 cache::config::SplitWriteF * fault = NULL;

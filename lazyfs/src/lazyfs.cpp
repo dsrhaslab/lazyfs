@@ -40,8 +40,6 @@ std::shared_mutex cache_command_lock;
 
 namespace lazyfs {
 
-int count = 0;
-
 Write::Write() {
     this->path = this->buf = NULL;
 }
@@ -286,7 +284,9 @@ void LazyFS::restart_counter(string path, string op) {
         auto& v_faults = it->second;
         for (auto fault : v_faults) {
             cache::config::ReorderF* reorder_fault = dynamic_cast<cache::config::ReorderF*>(fault);
-            if (reorder_fault && reorder_fault->op == op) reorder_fault->counter.store(0);
+            if (reorder_fault && reorder_fault->op == op)  {
+                reorder_fault->counter.store(0);
+            }
         }
     }
 }
@@ -325,48 +325,57 @@ void LazyFS::persist_write(const char* path, const char* buf, size_t size, off_t
     
     if (fault) { //Fault for path found
         (this->write_lock).lock();
+
+        if (fault->counter.load()==2) fault->group_counter.fetch_add(1);
         if (this->pending_write!=NULL) {
-            cout << ">>>>>>>>>>>> pending write not null" << endl;
-            fd = open (this->pending_write->path, O_CREAT|O_WRONLY, 0666);
-            pw = pwrite(fd,this->pending_write->buf,this->pending_write->size,this->pending_write->offset);
+            //Update group counter
+            if (fault->group_counter.load() == fault->ocurrence) {
+                fd = open (this->pending_write->path, O_CREAT|O_WRONLY, 0666);
+                pw = pwrite(fd,this->pending_write->buf,this->pending_write->size,this->pending_write->offset);
+                cout << pw << " " << this->pending_write->size << endl;
+                size_t size_pw = this->pending_write->size;    
+                close(fd);
 
-            delete(this->pending_write); this->pending_write = NULL;    
-            close(fd);
-
-            if (pw==size) {
-                if ((fault->persist).size()==1) {
-                    this_ ()->add_crash_fault ("after", "write", path_str, "none");            
-                    spdlog::critical ("[lazyfs.faults]: Added crash fault ");
-                    (this->write_lock).unlock();
-                    return;
+                if (pw==size_pw) {
+                    if ((fault->persist).size()==1) {
+                        this_ ()->add_crash_fault ("after", "write", path_str, "none");            
+                        spdlog::critical ("[lazyfs.faults]: Added crash fault ");
+                        (this->write_lock).unlock();
+                        return;
+                    }
+                } else {
+                    spdlog::warn ("[lazyfs.faults]: Something went wrong when trying to persist the 1st write for path {} (pwrite failed).", path);
                 }
-            } else {
-                spdlog::warn ("[lazyfs.faults]: Something went wrong when trying to persist the 1st write for path {} (pwrite failed).", path);
             }
+            delete(this->pending_write); this->pending_write = NULL;
         }
         (this->write_lock).unlock();
-
-        if (find((fault->persist).begin(), (fault->persist).end(), fault->counter.load()) != (fault->persist).end())  //If count is in vector persist
+        
+        if (find((fault->persist).begin(), (fault->persist).end(), fault->counter.load()) != (fault->persist).end()) {  //If count is in vector persist
             if (fault->counter==1) { //If array persist has 1st write, we need to store this write until we know another write will happen
-                cout << ">>>>>>>>>>>> create pending write" << endl;
                 (this->write_lock).lock();
                 this->pending_write = new Write(path,buf,size,offset);
                 (this->write_lock).unlock();
                 
-            } else 
-                fd = open(path, O_CREAT|O_WRONLY, 0666);
-                pw = pwrite(fd,buf,size,offset);
-                close(fd);
+            } else {
+                // At this point we know that the counter of writes is greater than 1 and the group counter was updated
+                if (fault->group_counter.load() == fault->ocurrence) {
+                    fd = open(path, O_CREAT|O_WRONLY, 0666);
+                    pw = pwrite(fd,buf,size,offset);
+                    close(fd);
 
-                if (pw == size) {
-                    int max = *max_element(fault->persist.begin(), fault->persist.end());
-                    if (max == fault->counter) {
-                        this_ ()->add_crash_fault ("after", "write", path_str, "none"); 
-                        spdlog::critical ("[lazyfs.faults]: Added crash fault ");
+                    if (pw == size) {
+                        int max = fault->persist.back();
+                        if (max == fault->counter) {
+                            this_ ()->add_crash_fault ("after", "write", path_str, "none"); 
+                            spdlog::critical ("[lazyfs.faults]: Added crash fault ");
+                        }
+                    } else {
+                        spdlog::warn ("[lazyfs.faults]: Something went wrong when trying to persist the {} write for path {} (pwrite failed).",fault->counter.load(),path);
                     }
-                } else {
-                    spdlog::warn ("[lazyfs.faults]: Something went wrong when trying to persist the {} write for path {} (pwrite failed).",fault->counter.load(),path);
-                }
+                }     
+            }
+        }
     } 
 }
 
@@ -429,7 +438,6 @@ void LazyFS::split_write(const char* path, const char* buf, size_t size, off_t o
                     }
 
                     for (auto & persist : persist_info) {
-                        //int pw = pwrite(fd,buf+buf_i,size_to_persist,off_to_persist);
                         int pw = pwrite(fd,buf+get<0>(persist),get<1>(persist),get<2>(persist));
                         if (pw==get<1>(persist)) spdlog::warn ("[lazyfs.faults]: Write to path {}: will persist {} bytes from offset {}",path,get<1>(persist),get<2>(persist));      
                         else {
