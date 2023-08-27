@@ -101,7 +101,7 @@ def group_ops(ops):
                     if i==len(buffer):              #If we found the whole pattern, i is set to 0, because the pattern can be repeated more times
                         i = 0
                 else:
-                    if i==0 and buffer[0][1]==1:    #If the operation is not the sames as the one in the beggining of the pattern, but we are still forming a pattern, we add this operation to the buffer
+                    if i==0 and buffer[0][1]==1:    #If the operation is not the same as the one in the beggining of the pattern, but we are still forming a pattern, we add this operation to the buffer
                         buffer.append([op,1])
                     else:                           #If i>0, it means that we were already on the process of repeating a pattern and now it was broken
                         buffer_to_ops_grouped()
@@ -226,9 +226,11 @@ def main():
     parser.add_argument("-t","--text", action='store_true', help="The output will be in text format, not in a graph.")
     parser.add_argument("-o","--out", action='store', help="The name of the file where the result will be stored.")
     parser.add_argument("--files", nargs='*', help="Only syscalls for those paths will be considered.", dest='files')
-    parser.add_argument("--group_limit", nargs=1, help="Define the maximum number of ops in a group. A lower number is better for performance.", dest='group_limit')
+    parser.add_argument("--group_limit", nargs=1, help="Define the maximum number of ops in a group. A lower number is better for performance. The default is 4.", dest='group_limit')
     parser.add_argument("-fo","--filter_only", action='store_true',help="Only filter the log. No agroupation will be performed.")
-    parser.add_argument("-bw","--big_write", action='store_true', help="Finds writes bigger than 4Kb. Gives info about the path and the ocurrence of that write.")
+    parser.add_argument("-bw","--big_write", action='store_true', help="Finds writes bigger than a page (this value can be configurable). Gives info about the path and the ocurrence of that write.")
+    parser.add_argument("--page_size", nargs=1, help="Define the size of a page. The default is 4KB.", dest='group_limit')
+
 
     args = parser.parse_args()	
 
@@ -248,6 +250,8 @@ def main():
         filter_only = True
     if args.big_write:
         big_write = True
+    if args.page_size:
+        big = int(args.page_size[0])
     if args.files:
         files_arr = args.paths
         files = ''

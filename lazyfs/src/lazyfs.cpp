@@ -335,11 +335,9 @@ void LazyFS::persist_write(const char* path, const char* buf, size_t size, off_t
             if (fault->group_counter.load() == fault->ocurrence) {
                 fd = open (this->pending_write->path, O_CREAT|O_WRONLY, 0666);
                 pw = pwrite(fd,this->pending_write->buf,this->pending_write->size,this->pending_write->offset);
-                cout << pw << " " << this->pending_write->size << endl;
-                size_t size_pw = this->pending_write->size;    
                 close(fd);
 
-                if (pw==size_pw) {
+                if (pw==this->pending_write->size) {
                     if ((fault->persist).size()==1) {
                         this_ ()->add_crash_fault ("after", "write", path_str, "none");            
                         spdlog::critical ("[lazyfs.faults]: Added crash fault ");
@@ -448,11 +446,11 @@ void LazyFS::split_write(const char* path, const char* buf, size_t size, off_t o
                             return;
                         } 
                     }
+
                     this_ ()->add_crash_fault ("after", "write", path_s, "none");            
-                    spdlog::critical ("[lazyfs.faults]: Added crash fault ");
-                    
+                    spdlog::critical ("[lazyfs.faults]: Added crash fault ");          
                 }
-                break; 
+                break; //
             }
         }
     } 

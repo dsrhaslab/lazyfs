@@ -251,27 +251,32 @@ unordered_map<string,vector<Fault*>> Config::load_config (string filename) {
 
                 if (!injection.contains("persist")) throw std::runtime_error("Key 'persist' for some injection of type \"split_write\" is not defined in the configuration file.");
                 vector<int> persist = toml::find<vector<int>>(injection,"persist");
-                for (auto & p : persist) {
-                    if (p <= 0) throw std::runtime_error("Key 'persist' for some injection of type \"split_write\" has an invalid value in the configuration file. The array must contain values greater than 0.");
-                } 
 
                 if (!injection.contains("parts") && !injection.contains("parts_bytes")) throw std::runtime_error("None of the keys 'parts' and 'key_parts' for some injection of type \"split_write\" is defined in the configuration file. Please define at most one of them.");     
 
                 if (injection.contains("parts") && injection.contains("parts_bytes")) throw std::runtime_error("Keys 'parts' and 'key_parts' for some injection of type \"split_write\" are exclusive in the configuration file. Please define at most one of them.");     
-                
+
                 cache::config::SplitWriteF * fault = NULL;
                 if (injection.contains("parts")) {
                     int parts = toml::find<int>(injection,"parts");
                     
                     if (parts <= 0) throw std::runtime_error("Key 'parts' for some injection of type \"split_write\" has an invalid value in the configuration file. It should be greater than 0.");
+
+                    for (auto & p : persist) {
+                        if (p <= 0 || p>parts) throw std::runtime_error("Key 'persist' for some injection of type \"split_write\" has an invalid value in the configuration file. The array must contain values greater than 0 and lesser than the number of parts.");
+                    } 
                     fault = new SplitWriteF(ocurrence,persist,parts);
                 }
+
                 if (injection.contains("parts_bytes")) {
                     vector<int> parts_bytes = toml::find<vector<int>>(injection,"parts_bytes");
                     
                     for (auto & part : parts_bytes) {
                         if (part <= 0) throw std::runtime_error("Key 'parts_bytes' for some injection of type \"split_write\" has an invalid value in the configuration file. Every part should be greater than 0.");
                     } 
+                    for (auto & p : persist) {
+                        if (p <= 0 || (size_t)p > parts_bytes.size()) throw std::runtime_error("Key 'persist' for some injection of type \"split_write\" has an invalid value in the configuration file. The array must contain values greater than 0 and lesser than the number of parts.");
+                    }
                     fault = new SplitWriteF(ocurrence,persist,parts_bytes);
                 }
 
