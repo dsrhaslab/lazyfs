@@ -39,6 +39,7 @@ def compare_ops(op1,op2):
         return op1['syscall'] == op2['syscall'] and op1['path'] == op2['path'] 
 
 def add_to_writes(op):
+    global big
     path = op['path']
     if path in writes:
         writes[path][0]+=1
@@ -217,7 +218,7 @@ def output_filter():
 
 
 def main():
-    global log_file, covered_syscalls, files, text, filter_only, out, big_write
+    global log_file, covered_syscalls, files, text, filter_only, out, big_write, big
 
     parser = argparse.ArgumentParser()
 
@@ -229,7 +230,7 @@ def main():
     parser.add_argument("--group_limit", nargs=1, help="Define the maximum number of ops in a group. A lower number is better for performance. The default is 4.", dest='group_limit')
     parser.add_argument("-fo","--filter_only", action='store_true',help="Only filter the log. No agroupation will be performed.")
     parser.add_argument("-bw","--big_write", action='store_true', help="Finds writes bigger than a page (this value can be configurable). Gives info about the path and the ocurrence of that write.")
-    parser.add_argument("--page_size", nargs=1, help="Define the size of a page. The default is 4KB.", dest='group_limit')
+    #parser.add_argument("--page_size", nargs=1, help="Define the size of a page. The default is 4KB.", dest='page_size')
 
 
     args = parser.parse_args()	
@@ -250,8 +251,8 @@ def main():
         filter_only = True
     if args.big_write:
         big_write = True
-    if args.page_size:
-        big = int(args.page_size[0])
+    #if args.page_size:
+      #  big = int(args.page_size[0])
     if args.files:
         files_arr = args.paths
         files = ''

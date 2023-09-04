@@ -11,4 +11,11 @@ blocks_per_page=1
 # no_pages=10
 [filesystem]
 log_all_operations=true
-logfile="~/lfs.log"
+logfile="/home/gsd/lfs.log"
+
+#[[injection]]
+#type="split_write"
+#file="/home/gsd/etcd-v3.4.25-linux-amd64/data-r/data.etcd/member/wal/0.tmp"
+#persist=[1]
+#parts=10
+#ocurrence=1
