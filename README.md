@@ -15,6 +15,8 @@
 
 A FUSE file system with an internal dedicated page cache that only flushes data if explicitly requested by the application. This is useful for simulating power failures and losing all unsynced data.
 
+> **Note**: The main branch is probably unstable and with not fully-tested features, so we recommend using one of [existing releases](https://github.com/dsrhaslab/lazyfs/releases) already created.
+
 ## Installation
 
 LazyFS was tested with **ext4** (default mount options) as the underlying file system (FUSE backend), in both Debian 11 (bullseye) and Ubuntu 20.04 (focal) environment. It is C++17 compliant and requires the following packages to be installed:
@@ -190,6 +192,4 @@ LazyFS expects that every buffer written to the FIFO file terminates with a new 
 
 ## Contact
 
-For additional information regarding issues, possible improvements and collaborations please contact:
-
-- **João Azevedo** - [joao.azevedo@inesctec.pt](mailto:joao.azevedo@inesctec.pt)
+For additional information regarding possible improvements and collaborations please open an issue or contact: [@devzizu](https://github.com/devzizu), [@mj-ramos](https://github.com/mj-ramos) and [@dsrhaslab](https://github.com/dsrhaslab).
