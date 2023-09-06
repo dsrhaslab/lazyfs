@@ -1,5 +1,6 @@
 [faults]
 fifo_path="/tmp/faults.fifo"
+#fifo_path_completed="/tmp/faults_completed.fifo"
 [cache]
 apply_eviction=false
 [cache.simple]
@@ -10,5 +11,5 @@ blocks_per_page=1
 # page_size=4096
 # no_pages=10
 [filesystem]
-log_all_operations=true
-logfile="/home/gsd/lfs.log"
+log_all_operations=false
+logfile=""

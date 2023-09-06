@@ -222,6 +222,11 @@ class Config {
      */
     string FIFO_PATH = "faults.fifo";
     /**
+     * @brief The path for the faults completed fifo.
+     *
+     */
+    string FIFO_PATH_COMPLETED = "";
+    /**
      * @brief The path for the LazyFS logfile.
      *
      */

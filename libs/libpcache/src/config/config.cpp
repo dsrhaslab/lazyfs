@@ -121,10 +121,15 @@ unordered_map<string,vector<Fault*>> Config::load_config (string filename) {
     const auto& faults_settings = toml::find (data, "faults");
 
     if (faults_settings.contains ("fifo_path")) {
-        const auto fifo_path = toml::find (faults_settings, "fifo_path");
-        string fifo_path_str = fifo_path.as_string ().str;
-        if (fifo_path_str.length () > 0)
-            this->FIFO_PATH = fifo_path_str;
+        const string fifo_path = toml::find<toml::string> (faults_settings, "fifo_path");
+        if (fifo_path.length () > 0) 
+            this->FIFO_PATH = fifo_path;
+    }
+
+    if (faults_settings.contains ("fifo_path_completed")) {
+        const string fifo_path_completed = toml::find<toml::string> (faults_settings, "fifo_path_completed");
+        if (fifo_path_completed.length () > 0)
+            this->FIFO_PATH_COMPLETED = fifo_path_completed;
     }
 
     const auto& cache_settings = toml::find (data, "cache");

@@ -31,7 +31,7 @@ sudo apt install g++ cmake
 # g++: 9.4.0
 ```
 
--   `FUSE 3`: 
+-   `FUSE 3`:
 
 ```bash
 sudo apt install libfuse3-dev libfuse3-3 fuse3
@@ -64,6 +64,7 @@ cd lazyfs && ./build.sh && cd -
 
 [faults]
 fifo_path="/tmp/faults.fifo"
+# fifo_path_completed="/tmp/faults_completed.fifo"
 
 [cache]
 apply_eviction=false
@@ -71,6 +72,7 @@ apply_eviction=false
 [cache.simple]
 custom_size="0.5GB"
 blocks_per_page=1
+
 # [cache.manual]
 # io_block_size=4096
 # page_size=4096
@@ -95,7 +97,7 @@ parts=3 #or parts_bytes=[4096,3600,1260]
 persist=[1,3]
 ```
 
-The section **[cache]** requires that you specify the following:
+I recommend following the `simple` cache configuration (indicating the cache size and using a similar configuration file as `default.toml`), since it's currently the most tested schema in our experiments. Additionally, for the section **[cache]**, you can specify the following:
 
 -   **apply_eviction**: Whether the cache should behave like the real page cache, evicting pages when the cache fills to the maximum.
 
@@ -109,6 +111,7 @@ It is possible to specify a set of faults for injection. The example above illus
 Other parameters:
 
 - **fifo_path**: The absolute path where the faults FIFO should be created.
+- **fifo_path_completed**: If we plan to inject the clear cache fault synchronously, it is necessary to determine the completion of the `lazyfs::clear-cache` command execution. By specifying this parameter, a message will be written to another FIFO (`finished::clear-cache`), so that users can set up a reader process that waits before making any post-fault consistency checks.
 - **log_all_operations**: Whether to log all file system operations that LazyFS receives.
 - **logfile**: The log file for LazyFS's outputs. Fault acknowledgment is sent to `stdout` or to the `logfile`.
 
@@ -120,15 +123,15 @@ cd lazyfs/
 
 # Running LazyFS in the foreground (add '-f/--foregound')
 
-./scripts/mount-lazyfs.sh -c config/default.toml -m /tmp/lazyfs.mnt -r /mnt/lazyfs.root -f
+./scripts/mount-lazyfs.sh -c config/default.toml -m /tmp/lazyfs.mnt -r /tmp/lazyfs.root -f
 
 # Running LazyFS in the background
 
-./scripts/mount-lazyfs.sh -c config/default.toml -m /tmp/lazyfs.mnt -r /mnt/lazyfs.root
+./scripts/mount-lazyfs.sh -c config/default.toml -m /tmp/lazyfs.mnt -r /tmp/lazyfs.root
 
 # Umount with
 
-./scripts/umount-lazyfs.sh -m /tmp/lazyfs.mnt
+./scripts/umount-lazyfs.sh -m /tmp/lazyfs.mnt/
 
 # Display help
 
