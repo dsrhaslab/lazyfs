@@ -103,11 +103,11 @@ I recommend following the `simple` cache configuration (indicating the cache siz
 
 -   **[cache.simple]** or **[cache.manual]**: To setup the cache size and internal organization. For now, you could just follow the example using the **custom_size** in (Gb/Mb/Kb) and the **number of blocks in each page** (you can just leave 1 as default). For manual configurations, comment out the simple configuration and uncoment/change the example above to suit your needs.
 
-It is possible to specify a set of faults for injection. The example above illustrates how to define the two currently available fault types that can be defined through the configuration file (other faults are injected while LazyFS is running). For each injection, it is mandatory to specify the type, which can be one of the following:
+**Optionally**, users can specify a set of predefined `injection` faults before LazyFS starts running. These faults are introduced as additional features, namely:
 
--   **reorder**: This fault type is used when a sequence of system calls involving a given file, is executed consecutively without an intervening fsync. In the example, during the second group of consecutive writes (the group number is defined by the parameter `occurrence`) to the file "output.txt", the first and fourth writes will be persisted to disk (the writes to be persisted are defined by the parameter `persist`). After the fourth write (the last in the `persist` vector), LazyFS will crash.
+-   **reorder**: This fault type is used when a sequence of system calls, targeting a single file, is executed consecutively without an intervening `fsync`. *In the example*, during the second group of consecutive writes (the group number is defined by the parameter `occurrence`), to the file "output.txt", the first and fourth writes will be persisted to disk (the writes to be persisted are defined by the parameter `persist`). After the fourth write (the last in the `persist` vector), LazyFS will crash itself.
 -   **split_write**: This fault type involves dividing a write system call into smaller portions, with some of these portions being persisted while others are not. In the example, the fifth write issued (the number of the write is defined by the parameter `occurrence`) to the file "output1.txt" will be divided into three equal parts if the `parts` parameter is used, or into customizable-sized parts if the `parts_bytes` parameter is defined. In the commented code, there's an example of using `parts_bytes`, where the write will be split into three parts: the first with 4096 bytes, the second with 3600 bytes, and the last with 1200 bytes. The `persist` vector determines which parts will be persisted. After the persistence of these parts, LazyFS will crash.
-  
+
 Other parameters:
 
 - **fifo_path**: The absolute path where the faults FIFO should be created.
