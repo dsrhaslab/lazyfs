@@ -203,11 +203,13 @@ unordered_map<string,vector<Fault*>> Config::load_config (string filename) {
     if (data.contains ("injection")) {
         const auto& programmed_injections = toml::find<toml::array>(data,"injection");
 	
+        //Parse each injection
         for (const auto& injection : programmed_injections) {
             if (!injection.contains("type")) throw std::runtime_error("Key 'type' for some injection of is not defined in the configuration file.");
             string type = toml::find<string>(injection,"type");
 
             if (type == REORDER) {
+                //Checking the values of the parameters of the reordering fault 
 
                 if (!injection.contains("file")) throw std::runtime_error("Key 'file' for some injection of type \"reorder\" is not defined in the configuration file.");
                 string file = toml::find<string>(injection,"file");
@@ -219,9 +221,11 @@ unordered_map<string,vector<Fault*>> Config::load_config (string filename) {
                 int ocurrence = toml::find<int>(injection,"ocurrence");
                 if (ocurrence <= 0) throw std::runtime_error("Key 'ocurrence' for some injection of type \"split_write\" has an invalid value in the configuration file. It should be greater than 0.");
 
-                if (!injection.contains("persist") && op == "write") throw std::runtime_error("Key 'persist' for some injection of type \"reorder\" with \"write\" as op is not defined in the configuration file.");     
+                if (!injection.contains("persist") && op == "write") throw std::runtime_error("Key 'persist' for some injection of type \"reorder\" with \"write\" as op is not defined in the configuration file.");  
+
                 vector<int> persist = toml::find<vector<int>>(injection,"persist");
                 sort(persist.begin(), persist.end()); 
+
                 for (auto & p : persist) {
                     if (p <= 0) throw std::runtime_error("Key 'persist' for some injection of type \"reorder\" has an invalid value in the configuration file. The array must contain values greater than 0.");
                 } 
@@ -234,13 +238,16 @@ unordered_map<string,vector<Fault*>> Config::load_config (string filename) {
                     v_faults.push_back(fault);
                     faults[file] = v_faults;
                 } else {
+                    //At the moment, only one reorder fault per file is acceptable.
                     for (Fault* fault : it->second) {
                         ReorderF* reorder_fault = dynamic_cast<ReorderF*>(fault);
                         if (reorder_fault && reorder_fault->op == op) throw std::runtime_error("It is only acceptable one reorder fault per type of operation for a given file.");
                     }
                     (it->second).push_back(fault);
                 }
+
             } else if (type == SPLITWRITE) {
+                //Checking the values of the parameters of the split write fault 
 
                 if (!injection.contains("file")) throw std::runtime_error("Key 'file' for some injection of type \"split_write\" is not defined in the configuration file.");
                 string file = toml::find<string>(injection,"file");
@@ -257,6 +264,8 @@ unordered_map<string,vector<Fault*>> Config::load_config (string filename) {
                 if (injection.contains("parts") && injection.contains("parts_bytes")) throw std::runtime_error("Keys 'parts' and 'key_parts' for some injection of type \"split_write\" are exclusive in the configuration file. Please define at most one of them.");     
 
                 cache::config::SplitWriteF * fault = NULL;
+
+                //A split write fault either contains the parameter "parts" or the "pats_bytes"
                 if (injection.contains("parts")) {
                     int parts = toml::find<int>(injection,"parts");
                     
@@ -286,16 +295,19 @@ unordered_map<string,vector<Fault*>> Config::load_config (string filename) {
                     v_faults.push_back(fault);
                     faults[file] = v_faults;
                 } else {
+                    //At the moment, only one split write fault per file is acceptable.
+                    for (Fault* fault : it->second) {
+                        SplitWriteF* splitwrite_fault = dynamic_cast<SplitWriteF*>(fault);
+                        if (splitwrite_fault) throw std::runtime_error("It is only acceptable one split write fault per file.");
+                    }
                     (it->second).push_back(fault);
                 }
-                
             } else {
                 throw std::runtime_error("Key 'type' for some injection has an unknown value in the configuration file.");
             }
         }
 	
     }
-
     return faults;
 }
 
