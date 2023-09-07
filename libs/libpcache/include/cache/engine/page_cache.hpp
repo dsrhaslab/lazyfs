@@ -14,6 +14,7 @@
 #include <string>
 #include <sys/types.h>
 #include <unordered_map>
+#include <vector>
 
 using namespace std;
 
@@ -165,6 +166,12 @@ class PageCacheEngine {
                                          unordered_map<int, int> blocks_to_remove,
                                          int from_block_id,
                                          off_t index_inside_block) = 0;
+
+    /**
+     * @brief Gets the list of dirty block ids mapped to their offsets
+     *
+     */
+    virtual vector<tuple<int, pair<int, int>, int>> get_dirty_blocks_info (string owner) = 0;
 };
 
 } // namespace cache::engine

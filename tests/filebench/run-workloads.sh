@@ -3,14 +3,14 @@
 #--------------------------------------------------#
 # Main required variables
 
-TEST_VAR_OUTPUT_RESULTS_FOLDER=results
+TEST_VAR_OUTPUT_RESULTS_FOLDER=out-test
 
 # Setup to run for 15 min each test, 3 runs each
 #
-TEST_VAR_WORKLOADS_FOLDER=workloads/wl-folder
+TEST_VAR_WORKLOADS_FOLDER=workloads/wl-test
 TEST_VAR_TOTAL_RUNTIME_EACH_WORKLOAD=900 # seconds
-TEST_VAR_REPEAT_WORKLOADS=3 # number of times to re-run workloads
-TEST_VAR_FOR_FILESYSTEMS=("fuse.lazyfs-4096" "fuse.passthrough" "fuse.lazyfs-131072")
+TEST_VAR_REPEAT_WORKLOADS=1 # number of times to re-run workloads
+TEST_VAR_FOR_FILESYSTEMS=("fuse.lazyfs-4096" "fuse.passthrough" "fuse.lazyfs-32768")
 
 #--------------------------------------------------#
 # Test variables

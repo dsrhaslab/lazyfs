@@ -277,6 +277,15 @@ class Cache {
     void full_checkpoint ();
 
     /**
+     * @brief Gets the list of files that have unsynced data, mapped to
+     *        the size cached (number of bytes).
+     *
+     * @return std::vector<tuple<string, size_t, vector<pair<int, pair<int, int>>>>> unsynced items
+     * and their cache size
+     */
+    vector<tuple<string, size_t, vector<tuple<int, pair<int, int>, int>>>> report_unsynced_data ();
+
+    /**
      * @brief Get the original inode for a file name
      *
      * @param path file name
@@ -292,6 +301,14 @@ class Cache {
      * @param increase to increase link counter
      */
     void insert_inode_mapping (string path, string inode, bool increase);
+
+    /**
+     * @brief Gets the list of filenames mapped to an inode
+     *
+     * @param inode the inode
+     * @return vector<string> files mapped to that inode
+     */
+    vector<string> find_files_mapped_to_inode (string inode);
 };
 
 } // namespace cache

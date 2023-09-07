@@ -1,4 +1,4 @@
-Copyright (C) 2022, INESC TEC
+Copyright (C) 2023, INESC TEC
 
 LazyFS: A FUSE Filesystem with its own internal page cache, which can be used 
 to simulate failures on un-synced writes. On command, LazyFS is able to drop 

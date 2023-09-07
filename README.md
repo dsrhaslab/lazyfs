@@ -15,6 +15,8 @@
 
 A FUSE file system with an internal dedicated page cache that only flushes data if explicitly requested by the application. This is useful for simulating power failures and losing all unsynced data.
 
+> **Note**: The main branch is probably unstable and with not fully-tested features, so we recommend using one of [existing releases](https://github.com/dsrhaslab/lazyfs/releases) already created.
+
 ## Installation
 
 LazyFS was tested with **ext4** (default mount options) as the underlying file system (FUSE backend), in both Debian 11 (bullseye) and Ubuntu 20.04 (focal) environment. It is C++17 compliant and requires the following packages to be installed:
@@ -79,6 +81,20 @@ blocks_per_page=1
 [file system]
 log_all_operations=false
 logfile="/tmp/lazyfs.log"
+
+[[injection]]
+type="reorder"
+op="write"
+file="output.txt"
+persist=[1,4]
+ocurrence=2
+
+[[injection]]
+type="split_write"
+file="output1.txt"
+ocurrence=5
+parts=3 #or parts_bytes=[4096,3600,1260]
+persist=[1,3]
 ```
 
 I recommend following the `simple` cache configuration (indicating the cache size and using a similar configuration file as `default.toml`), since it's currently the most tested schema in our experiments. Additionally, for the section **[cache]**, you can specify the following:
@@ -87,12 +103,18 @@ I recommend following the `simple` cache configuration (indicating the cache siz
 
 -   **[cache.simple]** or **[cache.manual]**: To setup the cache size and internal organization. For now, you could just follow the example using the **custom_size** in (Gb/Mb/Kb) and the **number of blocks in each page** (you can just leave 1 as default). For manual configurations, comment out the simple configuration and uncoment/change the example above to suit your needs.
 
+**Optionally**, users can specify a set of predefined `injection` faults before LazyFS starts running. These faults are introduced as additional features, namely:
+
+-   **reorder**: This fault type is used when a sequence of system calls, targeting a single file, is executed consecutively without an intervening `fsync`. *In the example*, during the second group of consecutive writes (the group number is defined by the parameter `occurrence`), to the file "output.txt", the first and fourth writes will be persisted to disk (the writes to be persisted are defined by the parameter `persist`). After the fourth write (the last in the `persist` vector), LazyFS will crash itself.
+-   **split_write**: This fault type involves dividing a write system call into smaller portions, with some of these portions being persisted while others are not. In the example, the fifth write issued (the number of the write is defined by the parameter `occurrence`) to the file "output1.txt" will be divided into three equal parts if the `parts` parameter is used, or into customizable-sized parts if the `parts_bytes` parameter is defined. In the commented code, there's an example of using `parts_bytes`, where the write will be split into three parts: the first with 4096 bytes, the second with 3600 bytes, and the last with 1200 bytes. The `persist` vector determines which parts will be persisted. After the persistence of these parts, LazyFS will crash.
+
 Other parameters:
 
 - **fifo_path**: The absolute path where the faults FIFO should be created.
 - **fifo_path_completed**: If we plan to inject the clear cache fault synchronously, it is necessary to determine the completion of the `lazyfs::clear-cache` command execution. By specifying this parameter, a message will be written to another FIFO (`finished::clear-cache`), so that users can set up a reader process that waits before making any post-fault consistency checks.
 - **log_all_operations**: Whether to log all file system operations that LazyFS receives.
 - **logfile**: The log file for LazyFS's outputs. Fault acknowledgment is sent to `stdout` or to the `logfile`.
+
 
 To **run the file system**, one could use the **mount-lazyfs.sh** script, which calls FUSE with the correct parameters:
 
@@ -139,10 +161,58 @@ Finally, one can control LazyFS by echoing the following commands to the configu
     echo "lazyfs::display-cache-usage" > /tmp/faults.fifo
     ```
 
-LazyFS expects that every buffer written to the FIFO file terminates with a new line character. Thus, if using `pwrite`, for example, make sure you end the buffer with `\n`.
+-   **Report unsynced data,** which displays the inodes that have data in cache:
+
+    ```bash
+    echo "lazyfs::unsynced-data-report" > /my/path/faults.fifo
+    ```
+
+-   **Kill the filesystem,** which is triggered by an operation, a timing and a path regex:
+
+    Here **timing** should be one of `before` or `after`, and **op** should be a valid system call name (e.g. `write` or `read`).
+
+    - In the case of operations that have a source path only (e.g. `create`, `open`, `read`, `write`, ...)
+
+        ```bash
+        echo "lazyfs::crash::timing=...::op=...::from_rgx=..." > /my/path/faults.fifo
+        ```
+
+        Here, `from_rgx` is required (do not specify to_rgx).
+
+    - For `rename`, `link` and `symlink`, one is able to specify the destination path:
+
+        ```bash
+        echo "lazyfs::crash::timing=...::op=...::from_rgx=...::to_rgx=..." > /my/path/faults.fifo
+        ```
+
+        Here, only one of `from_rgx` or `to_rgx` is required.
+
+    Example 1:
+
+    ```bash
+    echo "lazyfs::crash::timing=before::op=write::from_rgx=file1" > /my/path/faults.fifo
+    ```
+
+    > Kills LazyFS before executing a write operation to the file pattern 'file1'.
+
+    Example 2:
+
+    ```bash
+    echo "lazyfs::crash::timing=before::op=link::from_rgx=file1::to_rgx=file2" > /my/path/faults.fifo
+    ```
+
+    > Kills LazyFS before executing a rename operation from the file pattern 'file1' to the file pattern 'file2'.
+
+    Example 3:
+
+    ```bash
+    echo "lazyfs::crash::timing=before::op=rename::to_rgx=fileabd" > /my/path/faults.fifo
+    ```
+
+    > Kills LazyFS before executing a link operation to the file pattern 'fileabd'.
+
+LazyFS expects that every buffer written to the FIFO file terminates with a new line character (**echo** does this by default). Thus, if using `pwrite`, for example, make sure you end the buffer with `\n`.
 
 ## Contact
 
-For additional information regarding issues, possible improvements and collaborations please contact:
-
-- **João Azevedo** - [joao.azevedo@inesctec.pt](mailto:joao.azevedo@inesctec.pt)
+For additional information regarding possible improvements and collaborations please open an issue or contact: [@devzizu](https://github.com/devzizu), [@mj-ramos](https://github.com/mj-ramos) and [@dsrhaslab](https://github.com/dsrhaslab).

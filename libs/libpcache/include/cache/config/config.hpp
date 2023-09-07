@@ -9,13 +9,154 @@
 
 #ifndef CACHE_CONFIG_HPP
 #define CACHE_CONFIG_HPP
+#define SPLITWRITE "split_write"
+#define REORDER "reorder"
 
 #include <string>
+#include <vector>
+#include <unordered_map>
 #include <sys/types.h>
+#include <atomic>
 
 using namespace std;
 
 namespace cache::config {
+
+/**
+ * @brief Stores a generic fault programmed in the configuration file.
+ */
+
+class Fault {
+  public:
+    /**
+     * @brief Type of fault. 
+     */
+    string type;
+
+    /**
+      * @brief Default constructor of a new Fault object.
+      */
+    Fault();
+
+    /**
+     * @brief Construct a new Fault object.
+     *
+     * @param type Type of fault.
+     */
+    Fault(string type);
+
+    /**
+     * @brief Default destructor for a Fault object.
+     */
+    virtual ~Fault();
+};
+
+/**
+ * @brief Fault for splitting writes in smaller writes.
+*/
+class SplitWriteF : public Fault {
+  public:
+    /**
+     * @brief Write ocurrence. For example, of this value is set to 3, on the third write for a certain path, a fault will be injected.
+     */
+    int ocurrence;
+
+    /**
+     * @brief Protected counter of writes for a certain path.
+     */
+    std::atomic_int counter;
+
+    /**
+     * @brief Which parts of the write to persist.
+     */
+    vector<int> persist;
+
+    /**
+     * @brief Number of parts to divide the write. For example, if this value is set to 3, the write will be divided into 3 same sized writes.
+     */
+    int parts;
+
+    /**
+     * @brief Specify the bytes that each part of the write will have. 
+     */
+    vector<int> parts_bytes;
+
+    /**
+     * @brief Default constructor of a new SplitWriteF object.
+     */
+    SplitWriteF();
+
+    /**
+     * @brief Contruct a new SplitWriteF object.
+     */
+    SplitWriteF(int ocurrence, vector<int> persist, vector<int> parts_bytes);
+    
+    /**
+     * @brief Contruct a new SplitWriteF object.
+     *
+     * @param ocurrence Write ocurrence.
+     * @param persist Which parts of the write to persist.
+     * @param parts_bytes Division of the write in bytes.
+     */
+    SplitWriteF(int ocurrence, vector<int> persist, int parts);
+
+    /**
+     * @brief Default destructor for a SplitWriteF object.
+     *
+     * @param ocurrence Write ocurrence.
+     * @param persist Which parts of the write to persist.
+     * @param parts Number of same-sixed parts to divide the write.
+     */
+    ~SplitWriteF();
+};
+
+/**
+ * @brief Fault for reordering system calls.
+*/
+class ReorderF : public Fault {
+
+  public:
+
+    /**
+     * @brief Operation related to the fault. 
+     */
+    string op;
+    /**
+     * @brief When op is called sequentially for a certain path, count the number of calls. When the sequence is broken, counter is set to 0.
+     */
+    std::atomic_int counter;
+    /**
+     * @brief If op is a write and the vector is [3,4] it means that if op is called for a certain path sequentially, the 3th and 4th write will be persisted.
+     */
+    vector<int> persist;
+
+    /**
+     * @brief Group of writes ocurrence. For example, of this value is set to 3, on the third group of consecutive writes for a certain path, a fault will be injected.
+     */
+    int ocurrence;
+
+    /**
+     * @brief Counter for the groups of writes.
+     */
+    std::atomic_int group_counter;
+
+  
+    /**
+     * @brief Construct a new Fault object.
+     *
+     * @param op System call (i.e. "write", ...)
+     * @param persist Vector with operations to persist
+     * @param ocurrence Ocurrence of the group of writes to persist
+     */
+    ReorderF(string op, vector<int> persist, int ocurrence);
+
+    /**
+     * @brief Default constructor for Fault.
+     */    
+    ReorderF();
+
+    ~ReorderF ();
+};
 
 /**
  * @brief Stores the cache configuration parameters.
@@ -137,8 +278,9 @@ class Config {
      * @brief Loads and constructs a Config object from the LazyFS config file.
      *
      * @param filename Filename to read the config from
+     * @return Map from files to programmed faults for those files
      */
-    void load_config (string filename);
+    unordered_map<string,vector<Fault*>> load_config (string filename);
 };
 
 } // namespace cache::config

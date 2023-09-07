@@ -14,8 +14,9 @@ namespace cache::item {
 
 Item::Item () {
 
-    this->data     = new Data ();
-    this->metadata = new Metadata ();
+    this->data        = new Data ();
+    this->metadata    = new Metadata ();
+    this->data_synced = true;
 }
 
 Item::~Item () {
@@ -52,5 +53,9 @@ void Item::update_metadata (Metadata new_meta, vector<string> values_to_update) 
 Metadata* Item::get_metadata () { return this->metadata; }
 
 Data* Item::get_data () { return this->data; }
+
+void Item::set_data_sync_flag (bool flag) { this->data_synced = flag; }
+
+bool Item::is_synced () { return this->data_synced; }
 
 } // namespace cache::item
