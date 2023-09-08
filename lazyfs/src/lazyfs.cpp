@@ -92,7 +92,8 @@ LazyFS::~LazyFS () {}
 void LazyFS::trigger_crash_fault (string opname,
                                   string optiming,
                                   string from_op_path,
-                                  string to_op_path) {
+                                  string to_op_path,
+                                  string fault_type) {
 
     vector<pair<std::regex, string>> opfaults;
     const int length = from_op_path.length();
@@ -147,7 +148,13 @@ void LazyFS::trigger_crash_fault (string opname,
 
                 spdlog::critical ("Triggered fault condition (op={},timing={})", opname, optiming);
 
-                this_ ()->command_unsynced_data_report ();
+                if (fault_type == CRASH)
+                    this_ ()->command_unsynced_data_report ();
+                else if (fault_type == SPLITWRITE) {
+                    //report unsynced data from other files
+                } else if (fault_type == REORDER) {
+                    //report unsynced data from other files
+                }
 
                 pid_t lazyfs_pid = getpid ();
 
@@ -321,9 +328,10 @@ cache::config::ReorderF* LazyFS::get_and_update_reorder_fault(string path, strin
     return fault_r;
 }
 
-void LazyFS::persist_write(const char* path, const char* buf, size_t size, off_t offset) {
+bool LazyFS::persist_write(const char* path, const char* buf, size_t size, off_t offset) {
     string path_str(path);
     int pw,fd;
+    bool res = false;
     cache::config::ReorderF* fault = get_and_update_reorder_fault(path_str,"write");
     
     if (fault) { //Fault for path found
@@ -332,7 +340,7 @@ void LazyFS::persist_write(const char* path, const char* buf, size_t size, off_t
         if (fault->counter.load()==2) fault->group_counter.fetch_add(1);
         if (this->pending_write!=NULL) {
             //Update group counter
-            if (fault->group_counter.load() == fault->ocurrence) {
+            if (fault->group_counter.load() == fault->occurrence) {
                 fd = open (this->pending_write->path, O_CREAT|O_WRONLY, 0666);
                 pw = pwrite(fd,this->pending_write->buf,this->pending_write->size,this->pending_write->offset);
                 close(fd);
@@ -360,7 +368,7 @@ void LazyFS::persist_write(const char* path, const char* buf, size_t size, off_t
                 
             } else {
                 // At this point we know that the counter of writes is greater than 1 and the group counter was updated
-                if (fault->group_counter.load() == fault->ocurrence) {
+                if (fault->group_counter.load() == fault->occurrence) {
                     fd = open(path, O_CREAT|O_WRONLY, 0666);
                     pw = pwrite(fd,buf,size,offset);
                     close(fd);
@@ -370,6 +378,7 @@ void LazyFS::persist_write(const char* path, const char* buf, size_t size, off_t
                         if (max == fault->counter) {
                             this_ ()->add_crash_fault ("after", "write", path_str, "none"); 
                             spdlog::critical ("[lazyfs.faults]: Added crash fault ");
+                            res= true;
                         }
                     } else {
                         spdlog::warn ("[lazyfs.faults]: Something went wrong when trying to persist the {} write for path {} (pwrite failed).",fault->counter.load(),path);
@@ -378,21 +387,23 @@ void LazyFS::persist_write(const char* path, const char* buf, size_t size, off_t
             }
         }
     } 
+    return res;
 }
 
-void LazyFS::split_write(const char* path, const char* buf, size_t size, off_t offset) {
+bool LazyFS::split_write(const char* path, const char* buf, size_t size, off_t offset) {
     string path_s(path);
     int fd;
+    bool res = false;
 
     auto it = faults->find(path_s);
     if (it != faults->end()) {
         auto& v_faults = it->second;
-        for (auto fault : v_faults) {
+        for (auto fault : v_faults) { 
             cache::config::SplitWriteF* split_fault = dynamic_cast<cache::config::SplitWriteF*>(fault);
             if (split_fault) {
                 split_fault->counter.fetch_add(1);
 
-                if (split_fault->counter.load() == split_fault->ocurrence) {
+                if (split_fault->counter.load() == split_fault->occurrence) {
                     fd = open(path, O_CREAT|O_WRONLY, 0666);
                     vector<tuple<int,int,int>> persist_info; 
                     persist_info.reserve((split_fault->persist).size());
@@ -402,7 +413,7 @@ void LazyFS::split_write(const char* path, const char* buf, size_t size, off_t o
                     int buf_i;
 
                     if (split_fault->parts == -1) {
-                        for (auto & p : split_fault->persist) {
+                        for (auto & p : split_fault->persist) { //not equal parts
                             int sum = 0;
                             int sum_until_persist = 0;
                             buf_i = 0;
@@ -427,13 +438,21 @@ void LazyFS::split_write(const char* path, const char* buf, size_t size, off_t o
                         
 
                     } else { //equal parts
-                        
-                        for (auto & p : split_fault->persist) {
-                            size_to_persist = size/split_fault->parts;
-                            off_to_persist = offset + (p - 1) * size_to_persist;
+                        size_to_persist = size/split_fault->parts;
+                        extra_size_to_persist = size%split_fault->parts;
+                        int p_i = 0;
+                        for (int p_i=0; p_i < split_fault->persist.size(); p_i++) {
+                            auto & p = split_fault->persist.at(p_i);
                             buf_i = (p - 1) * size_to_persist;
+                            size_t final_size_to_persist = size_to_persist;
 
-                            tuple <int,int,int> info_part (buf_i,size_to_persist,off_to_persist);
+                            off_to_persist = offset + (p - 1) * size_to_persist;
+                            if (extra_size_to_persist>0 && p_i == split_fault->persist.size()-1) {
+                                spdlog::info("[lazyfs.faults]: The value of 'parts' specified for the split write fault does not evenly divide the size of the write to split.");
+                                final_size_to_persist += 1;
+                            }
+                            
+                            tuple <int,int,int> info_part (buf_i,final_size_to_persist,off_to_persist);
                             persist_info.push_back(info_part);
                          }
                     }
@@ -442,18 +461,20 @@ void LazyFS::split_write(const char* path, const char* buf, size_t size, off_t o
                         int pw = pwrite(fd,buf+get<0>(persist),get<1>(persist),get<2>(persist));
                         if (pw==get<1>(persist)) spdlog::warn ("[lazyfs.faults]: Write to path {}: will persist {} bytes from offset {}",path,get<1>(persist),get<2>(persist));      
                         else {
-                            spdlog::warn("[lazyfs.faults]: There was a problem spliting the {} write for the file {} (pwrite failed).",split_fault->ocurrence,path);
+                            spdlog::warn("[lazyfs.faults]: There was a problem spliting the {} write for the file {} (pwrite failed).",split_fault->occurrence,path);
                             return;
                         } 
                     }
 
                     this_ ()->add_crash_fault ("after", "write", path_s, "none");            
-                    spdlog::critical ("[lazyfs.faults]: Added crash fault ");          
+                    spdlog::critical ("[lazyfs.faults]: Added crash fault ");  
+                    res = true;        
                 }
-                break; //
+                break; //At the moment only one fault per file is accepted.
             }
         }
     } 
+    return res;
 }
 
 
@@ -607,7 +628,7 @@ int LazyFS::lfs_readdir (const char* path,
 
 int LazyFS::lfs_open (const char* path, struct fuse_file_info* fi) {
 
-    this_ ()->trigger_crash_fault ("open", "before", path, "");
+    this_ ()->trigger_crash_fault ("open", "before", path, "", CRASH);
 
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
@@ -649,14 +670,14 @@ int LazyFS::lfs_open (const char* path, struct fuse_file_info* fi) {
     if (fi->flags & O_TRUNC)
         lfs_truncate (path, 0, fi);
 
-    this_ ()->trigger_crash_fault ("open", "after", path, "");
+    this_ ()->trigger_crash_fault ("open", "after", path, "", CRASH);
 
     return 0;
 }
 
 int LazyFS::lfs_create (const char* path, mode_t mode, struct fuse_file_info* fi) {
 
-    this_ ()->trigger_crash_fault ("create", "before", path, "");
+    this_ ()->trigger_crash_fault ("create", "before", path, "", CRASH);
 
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
@@ -722,7 +743,7 @@ int LazyFS::lfs_create (const char* path, mode_t mode, struct fuse_file_info* fi
         this_ ()->FSCache->unlockItem (inode);
     }
 
-    this_ ()->trigger_crash_fault ("create", "after", path, "");
+    this_ ()->trigger_crash_fault ("create", "after", path, "", CRASH);
 
     return 0;
 }
@@ -733,7 +754,7 @@ int LazyFS::lfs_write (const char* path,
                        off_t offset,
                        struct fuse_file_info* fi) {
 
-    this_ ()->trigger_crash_fault ("write", "before", path, "");
+    this_ ()->trigger_crash_fault ("write", "before", path, "", CRASH);
 
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
@@ -1057,8 +1078,14 @@ int LazyFS::lfs_write (const char* path,
 
     // ----------------------------------------------------------------------------------
     
-    this_ () -> persist_write(path,buf,size,offset);
-    this_ () -> split_write(path,buf,size,offset);
+    string fault_type = CRASH;
+    bool crash_added = this_ () -> persist_write(path,buf,size,offset);
+    if (!crash_added) { //At the moment only one fault type can be injected
+        crash_added =  () -> split_write(path,buf,size,offset);
+        fault_type = SPLITWRITE;
+    } else {
+        fault_type = REORDER; 
+    }
 
     // res should be = actual bytes written as pwrite could fail...
     res = size;
@@ -1073,7 +1100,7 @@ int LazyFS::lfs_write (const char* path,
 
     
 
-    this_ ()->trigger_crash_fault ("write", "after", path, "");
+    this_ ()->trigger_crash_fault ("write", "after", path, "",fault_type);
 
     return res;
 }
@@ -1084,7 +1111,7 @@ int LazyFS::lfs_read (const char* path,
                       off_t offset,
                       struct fuse_file_info* fi) {
 
-    this_ ()->trigger_crash_fault ("read", "before", path, "");
+    this_ ()->trigger_crash_fault ("read", "before", path, "", CRASH);
 
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
@@ -1315,14 +1342,14 @@ int LazyFS::lfs_read (const char* path,
     if (fi == NULL)
         close (fd);
 
-    this_ ()->trigger_crash_fault ("read", "after", path, "");
+    this_ ()->trigger_crash_fault ("read", "after", path, "", CRASH);
 
     return res;
 }
 
 int LazyFS::lfs_fsync (const char* path, int isdatasync, struct fuse_file_info* fi) {
 
-    this_ ()->trigger_crash_fault ("fsync", "before", path, "");
+    this_ ()->trigger_crash_fault ("fsync", "before", path, "", CRASH);
 
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
@@ -1351,7 +1378,7 @@ int LazyFS::lfs_fsync (const char* path, int isdatasync, struct fuse_file_info* 
                               : fsync (fi->fh);
 
 
-    this_ ()->trigger_crash_fault ("fsync", "after", path, "");
+    this_ ()->trigger_crash_fault ("fsync", "after", path, "", CRASH);
 
     return res;
 }
@@ -1448,7 +1475,7 @@ int LazyFS::lfs_recursive_rename (const char* from, const char* to, unsigned int
 
 int LazyFS::lfs_rename (const char* from, const char* to, unsigned int flags) {
 
-    this_ ()->trigger_crash_fault ("rename", "before", from, to);
+    this_ ()->trigger_crash_fault ("rename", "before", from, to, CRASH);
 
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
@@ -1481,7 +1508,7 @@ int LazyFS::lfs_rename (const char* from, const char* to, unsigned int flags) {
     if (res == -1)
         return -errno;
 
-    this_ ()->trigger_crash_fault ("rename", "after", from, to);
+    this_ ()->trigger_crash_fault ("rename", "after", from, to, CRASH);
 
     return 0;
 }
@@ -1489,7 +1516,7 @@ int LazyFS::lfs_rename (const char* from, const char* to, unsigned int flags) {
 int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_file_info* fi) {
     cout << ">> FTRUNCATE" << endl;
 
-    this_ ()->trigger_crash_fault ("truncate", "before", path, "");
+    this_ ()->trigger_crash_fault ("truncate", "before", path, "", CRASH);
 
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
@@ -1625,14 +1652,14 @@ int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_fil
     if (res == -1)
         return -errno;
 
-    this_ ()->trigger_crash_fault ("truncate", "after", path, "");
+    this_ ()->trigger_crash_fault ("truncate", "after", path, "", CRASH);
 
     return 0;
 }
 
 int LazyFS::lfs_symlink (const char* from, const char* to) {
 
-    this_ ()->trigger_crash_fault ("symlink", "before", from, to);
+    this_ ()->trigger_crash_fault ("symlink", "before", from, to, CRASH);
 
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
@@ -1646,14 +1673,14 @@ int LazyFS::lfs_symlink (const char* from, const char* to) {
     if (res == -1)
         return -errno;
 
-    this_ ()->trigger_crash_fault ("symlink", "after", from, to);
+    this_ ()->trigger_crash_fault ("symlink", "after", from, to, CRASH);
 
     return 0;
 }
 
 int LazyFS::lfs_access (const char* path, int mask) {
 
-    this_ ()->trigger_crash_fault ("access", "before", path, "");
+    this_ ()->trigger_crash_fault ("access", "before", path, "", CRASH);
 
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
@@ -1667,7 +1694,7 @@ int LazyFS::lfs_access (const char* path, int mask) {
     if (res == -1)
         return -errno;
 
-    this_ ()->trigger_crash_fault ("access", "after", path, "");
+    this_ ()->trigger_crash_fault ("access", "after", path, "", CRASH);
 
     return 0;
 }
@@ -1691,7 +1718,7 @@ int LazyFS::lfs_mkdir (const char* path, mode_t mode) {
 
 int LazyFS::lfs_link (const char* from, const char* to) {
 
-    this_ ()->trigger_crash_fault ("link", "before", from, to);
+    this_ ()->trigger_crash_fault ("link", "before", from, to, CRASH);
 
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
@@ -1710,7 +1737,7 @@ int LazyFS::lfs_link (const char* from, const char* to) {
     if (!inode.empty ())
         this_ ()->FSCache->insert_inode_mapping (to, inode, true);
 
-    this_ ()->trigger_crash_fault ("link", "after", from, to);
+    this_ ()->trigger_crash_fault ("link", "after", from, to, CRASH);
 
     return 0;
 }
@@ -1902,7 +1929,7 @@ off_t LazyFS::lfs_lseek (const char* path, off_t off, int whence, struct fuse_fi
 
 int LazyFS::lfs_unlink (const char* path) {
 
-    this_ ()->trigger_crash_fault ("unlink", "before", path, "");
+    this_ ()->trigger_crash_fault ("unlink", "before", path, "", CRASH);
 
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
@@ -1925,7 +1952,7 @@ int LazyFS::lfs_unlink (const char* path) {
     if (res == -1)
         return -errno;
 
-    this_ ()->trigger_crash_fault ("unlink", "after", path, "");
+    this_ ()->trigger_crash_fault ("unlink", "after", path, "", CRASH);
 
     return 0;
 }

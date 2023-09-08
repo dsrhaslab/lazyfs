@@ -185,8 +185,9 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      * @param buf Buffer with what is to be written
      * @param size Bytes to be written
      * @param offset Offset inside the file to start to write
+     * @return true if a crash point was added, false otherwise
      */
-    void persist_write(const char* path, const char* buf, size_t size, off_t offset);
+    bool persist_write(const char* path, const char* buf, size_t size, off_t offset);
 
     /**
      * @brief Restarts the counter for some operation of a certain path.
@@ -202,13 +203,14 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
     bool check_and_delete_pendingwrite(const char* path);
 
     /**
-     * @brief Splits and persists part of a write if a there is a programmed split_write fault for the given path and if the ocurrence matches the counter.
+     * @brief Splits and persists part of a write if a there is a programmed split_write fault for the given path and if the occurrence matches the counter.
      * @param path Path of the file
      * @param buf Buffer with what is to be written
      * @param size Bytes to be written
      * @param offset Offset inside the file to start to write
+     * @return true if a crash point was added, false otherwise
      */
-    void split_write(const char* path, const char* buf, size_t size, off_t offset);
+    bool split_write(const char* path, const char* buf, size_t size, off_t offset);
 
     /**
      * @brief Checks whether a directory is empty of not by counting the number of entries.

@@ -11,6 +11,7 @@
 #define CACHE_CONFIG_HPP
 #define SPLITWRITE "split_write"
 #define REORDER "reorder"
+#define CRASH "crash"
 
 #include <string>
 #include <vector>
@@ -57,9 +58,9 @@ class Fault {
 class SplitWriteF : public Fault {
   public:
     /**
-     * @brief Write ocurrence. For example, of this value is set to 3, on the third write for a certain path, a fault will be injected.
+     * @brief Write occurrence. For example, of this value is set to 3, on the third write for a certain path, a fault will be injected.
      */
-    int ocurrence;
+    int occurrence;
 
     /**
      * @brief Protected counter of writes for a certain path.
@@ -89,21 +90,21 @@ class SplitWriteF : public Fault {
     /**
      * @brief Contruct a new SplitWriteF object.
      */
-    SplitWriteF(int ocurrence, vector<int> persist, vector<int> parts_bytes);
+    SplitWriteF(int occurrence, vector<int> persist, vector<int> parts_bytes);
     
     /**
      * @brief Contruct a new SplitWriteF object.
      *
-     * @param ocurrence Write ocurrence.
+     * @param occurrence Write occurrence.
      * @param persist Which parts of the write to persist.
      * @param parts_bytes Division of the write in bytes.
      */
-    SplitWriteF(int ocurrence, vector<int> persist, int parts);
+    SplitWriteF(int occurrence, vector<int> persist, int parts);
 
     /**
      * @brief Default destructor for a SplitWriteF object.
      *
-     * @param ocurrence Write ocurrence.
+     * @param occurrence Write occurrence.
      * @param persist Which parts of the write to persist.
      * @param parts Number of same-sixed parts to divide the write.
      */
@@ -131,9 +132,9 @@ class ReorderF : public Fault {
     vector<int> persist;
 
     /**
-     * @brief Group of writes ocurrence. For example, of this value is set to 3, on the third group of consecutive writes for a certain path, a fault will be injected.
+     * @brief Group of writes occurrence. For example, of this value is set to 3, on the third group of consecutive writes for a certain path, a fault will be injected.
      */
-    int ocurrence;
+    int occurrence;
 
     /**
      * @brief Counter for the groups of writes.
@@ -146,9 +147,9 @@ class ReorderF : public Fault {
      *
      * @param op System call (i.e. "write", ...)
      * @param persist Vector with operations to persist
-     * @param ocurrence Ocurrence of the group of writes to persist
+     * @param occurrence occurrence of the group of writes to persist
      */
-    ReorderF(string op, vector<int> persist, int ocurrence);
+    ReorderF(string op, vector<int> persist, int occurrence);
 
     /**
      * @brief Default constructor for Fault.
