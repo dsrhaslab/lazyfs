@@ -120,6 +120,16 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
     */
     std::mutex write_lock;
 
+    /**
+     * @brief Path of the current fault being injected.
+    */
+    string path_injecting_fault;
+
+    /**
+     * @brief Lock for path of current injected fault.
+    */
+    std::mutex path_injecting_fault_lock;
+
   public:
     /**
      * @brief Construct a new LazyFS object.
@@ -148,6 +158,11 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
     ~LazyFS ();
 
     /**
+     * @brief Get path of the fault currently being injected.
+    */
+    string get_path_injecting_fault();
+
+    /**
      * @brief Fifo: (fault) Clear the cached contents
      *
      */
@@ -167,9 +182,10 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
 
     /**
      * @brief Fifo: Reports which files have unsynced data.
+     * @param path_to_exclude Path to be excluded from the report.
      *
      */
-    void command_unsynced_data_report ();
+    void command_unsynced_data_report (string path_to_exclude);
 
     /**
      * @brief Checks if a programmed reorder fault for the given path and operation exists. If so, updates the counter and returns the fault.
@@ -363,9 +379,10 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      * @param optiming one of 'allow_crash_fs_operations'
      * @param from_op_path source path specified in the operation
      * @param dest_op_path destination path specified in the operation
+     * @param fault_type type of fault that triggered the crash
      */
     void
-    trigger_crash_fault (string opname, string optiming, string from_op_path, string to_op_path);
+    trigger_crash_fault (string opname, string optiming, string from_op_path, string to_op_path, string fault_type);
 };
 
 } // namespace lazyfs

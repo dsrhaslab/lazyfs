@@ -199,8 +199,9 @@ void fht_worker (LazyFS* filesystem) {
             } else if (!strcmp (buffer, "lazyfs::unsynced-data-report")) {
 
                 spdlog::info ("[lazyfs.faults.worker]: received '{}'", string (buffer));
-                filesystem->command_unsynced_data_report ();
-
+                string path_injecting_fault = filesystem->get_path_injecting_fault();
+                filesystem->command_unsynced_data_report (path_injecting_fault);
+                
             } else if (!strcmp (buffer, "lazyfs::help")) {
 
                 spdlog::info ("[lazyfs.faults.worker]: <" + string (buffer) + ">");
