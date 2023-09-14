@@ -269,9 +269,9 @@ void LazyFS::command_unsynced_data_report (string path_to_exclude) {
                                     *it.base ());
                 }
             }
-
-            spdlog::info ("[lazyfs.cmds]: report: total number of bytes un-fsynced: {} bytes.\n",
-                        total_bytes_unsynced);
+            if (path_to_exclude == "none" || path_to_exclude == "" || path_to_exclude.empty())
+                spdlog::info ("[lazyfs.cmds]: report: total number of bytes un-fsynced: {} bytes.\n",
+                            total_bytes_unsynced);
         }
     }
 }
