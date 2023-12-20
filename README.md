@@ -87,12 +87,12 @@ type="reorder"
 op="write"
 file="output.txt"
 persist=[1,4]
-ocurrence=2
+occurrence=2
 
 [[injection]]
 type="split_write"
 file="output1.txt"
-ocurrence=5
+occurrence=5
 parts=3 #or parts_bytes=[4096,3600,1260]
 persist=[1,3]
 ```
