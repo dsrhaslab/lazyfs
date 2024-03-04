@@ -9,8 +9,8 @@
 
 #ifndef CACHE_CONFIG_HPP
 #define CACHE_CONFIG_HPP
-#define SPLITWRITE "split_write"
-#define REORDER "reorder"
+#define TORN_OP "torn-op"
+#define TORN_SEQ "torn-seq"
 #define CRASH "crash"
 
 #include <string>
@@ -53,7 +53,7 @@ class Fault {
 };
 
 /**
- * @brief Fault for splitting writes in smaller writes.
+ * @brief Fault for splitting writes in smaller writes and reordering them (torn-op fault).
 */
 class SplitWriteF : public Fault {
   public:
@@ -112,7 +112,7 @@ class SplitWriteF : public Fault {
 };
 
 /**
- * @brief Fault for reordering system calls.
+ * @brief Fault for reordering system calls (torn-seq fault).
 */
 class ReorderF : public Fault {
 
@@ -168,7 +168,7 @@ class Config {
 
   private:
     /**
-     * @brief Sets up cache paraments by specifying the total size in bytes and the number
+     * @brief Sets up cache parameters by specifying the total size in bytes and the number
      * of blocks per page. By using this version, a 4k block size is considered.
      *
      * @param prealloc_bytes The total size in bytes.
@@ -187,7 +187,7 @@ class Config {
 
   public:
     /**
-     * @brief Wheter to log filesystem operations to stdout
+     * @brief Whether to log filesystem operations to stdout
      *
      */
     bool log_all_operations = false;
