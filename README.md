@@ -19,7 +19,7 @@ A FUSE file system with an internal dedicated page cache that only flushes data 
 
 ## Installation
 
-LazyFS was tested with **ext4** (default mount options) as the underlying file system (FUSE backend), in both Debian 11 (bullseye) and Ubuntu 20.04 (focal) environment. It is C++17 compliant and requires the following packages to be installed:
+LazyFS was tested with ext4 (with the default mount options) as the underlying file system (FUSE backend), in both Debian 11 (bullseye) and Ubuntu 20.04 (focal) environment. It is C++17 compliant and requires the following packages to be installed:
 
 -   `CMake` and `g++`:
 
@@ -59,9 +59,7 @@ cd lazyfs && ./build.sh && cd -
 
 **LazyFS** uses a [toml](https://toml.io/en/) configuration file to set up the cache and a named pipe to append fault commands:
 
-```bash
-# file: lazyfs/config/default.toml
-
+```toml
 [faults]
 fifo_path="/tmp/faults.fifo"
 # fifo_path_completed="/tmp/faults_completed.fifo"
