@@ -30,7 +30,7 @@ Fault::Fault(string type) {
 
 Fault::~Fault(){}
 
-ReorderF::ReorderF(string op, vector<int> persist, int occurrence) : Fault(REORDER) {
+ReorderF::ReorderF(string op, vector<int> persist, int occurrence) : Fault(TORN_SEQ) {
     (this->counter).store(0);
     this->op = op;
     this->persist = persist;
@@ -39,7 +39,7 @@ ReorderF::ReorderF(string op, vector<int> persist, int occurrence) : Fault(REORD
 
 }
 
-ReorderF::ReorderF() : Fault(REORDER) {
+ReorderF::ReorderF() : Fault(TORN_SEQ) {
 	vector <int> v;
 	(this->counter).store(0);
     (this->group_counter).store(0);
@@ -50,14 +50,14 @@ ReorderF::ReorderF() : Fault(REORDER) {
 
 ReorderF::~ReorderF(){}
 
-SplitWriteF::SplitWriteF(int occurrence, vector<int> persist, int parts) : Fault(SPLITWRITE) {
+SplitWriteF::SplitWriteF(int occurrence, vector<int> persist, int parts) : Fault(TORN_OP) {
     (this->counter).store(0);
     this->occurrence = occurrence;
     this->persist = persist;
     this->parts = parts;
 }
 
-SplitWriteF::SplitWriteF(int occurrence, vector<int> persist, vector<int> parts_bytes) : Fault(SPLITWRITE) {
+SplitWriteF::SplitWriteF(int occurrence, vector<int> persist, vector<int> parts_bytes) : Fault(TORN_OP) {
     (this->counter).store(0);
     this->occurrence = occurrence;
     this->persist = persist;
@@ -65,7 +65,7 @@ SplitWriteF::SplitWriteF(int occurrence, vector<int> persist, vector<int> parts_
     this->parts_bytes = parts_bytes;
 }
 
-SplitWriteF::SplitWriteF() : Fault(SPLITWRITE) {
+SplitWriteF::SplitWriteF() : Fault(TORN_OP) {
 	vector <int> v;
     vector<int> p;
 	(this->counter).store(0);
@@ -213,26 +213,26 @@ unordered_map<string,vector<Fault*>> Config::load_config (string filename) {
             if (!injection.contains("type")) throw std::runtime_error("Key 'type' for some injection of is not defined in the configuration file.");
             string type = toml::find<string>(injection,"type");
 
-            if (type == REORDER) {
+            if (type == TORN_SEQ) {
                 //Checking the values of the parameters of the reordering fault 
 
-                if (!injection.contains("file")) throw std::runtime_error("Key 'file' for some injection of type \"reorder\" is not defined in the configuration file.");
+                if (!injection.contains("file")) throw std::runtime_error("Key 'file' for some injection of type \"torn-seq\" is not defined in the configuration file.");
                 string file = toml::find<string>(injection,"file");
 
-                if (!injection.contains("op")) throw std::runtime_error("Key 'op' for some injection of type \"reorder\" is not defined in the configuration file.");
+                if (!injection.contains("op")) throw std::runtime_error("Key 'op' for some injection of type \"torn-seq\" is not defined in the configuration file.");
                 string op = toml::find<string>(injection,"op");
 
-                if (!injection.contains("occurrence")) throw std::runtime_error("Key 'occurrence' for some injection of type \"reorder\" is not defined in the configuration file.");
+                if (!injection.contains("occurrence")) throw std::runtime_error("Key 'occurrence' for some injection of type \"torn-seq\" is not defined in the configuration file.");
                 int occurrence = toml::find<int>(injection,"occurrence");
-                if (occurrence <= 0) throw std::runtime_error("Key 'occurrence' for some injection of type \"split_write\" has an invalid value in the configuration file. It should be greater than 0.");
+                if (occurrence <= 0) throw std::runtime_error("Key 'occurrence' for some injection of type \"torn-op\" has an invalid value in the configuration file. It should be greater than 0.");
 
-                if (!injection.contains("persist") && op == "write") throw std::runtime_error("Key 'persist' for some injection of type \"reorder\" with \"write\" as op is not defined in the configuration file.");  
+                if (!injection.contains("persist") && op == "write") throw std::runtime_error("Key 'persist' for some injection of type \"torn-seq\" with \"write\" as op is not defined in the configuration file.");  
 
                 vector<int> persist = toml::find<vector<int>>(injection,"persist");
                 sort(persist.begin(), persist.end()); 
 
                 for (auto & p : persist) {
-                    if (p <= 0) throw std::runtime_error("Key 'persist' for some injection of type \"reorder\" has an invalid value in the configuration file. The array must contain values greater than 0.");
+                    if (p <= 0) throw std::runtime_error("Key 'persist' for some injection of type \"torn-seq\" has an invalid value in the configuration file. The array must contain values greater than 0.");
                 } 
             
                 cache::config::ReorderF * fault = new ReorderF(op,persist,occurrence);
@@ -243,30 +243,30 @@ unordered_map<string,vector<Fault*>> Config::load_config (string filename) {
                     v_faults.push_back(fault);
                     faults[file] = v_faults;
                 } else {
-                    //At the moment, only one reorder fault per file is acceptable.
+                    //At the moment, only one torn-seq fault per file is acceptable.
                     for (Fault* fault : it->second) {
                         ReorderF* reorder_fault = dynamic_cast<ReorderF*>(fault);
-                        if (reorder_fault && reorder_fault->op == op) throw std::runtime_error("It is only acceptable one reorder fault per type of operation for a given file.");
+                        if (reorder_fault && reorder_fault->op == op) throw std::runtime_error("It is only acceptable one torn-seq fault per type of operation for a given file.");
                     }
                     (it->second).push_back(fault);
                 }
 
-            } else if (type == SPLITWRITE) {
+            } else if (type == TORN_OP) {
                 //Checking the values of the parameters of the split write fault 
 
-                if (!injection.contains("file")) throw std::runtime_error("Key 'file' for some injection of type \"split_write\" is not defined in the configuration file.");
+                if (!injection.contains("file")) throw std::runtime_error("Key 'file' for some injection of type \"torn-op\" is not defined in the configuration file.");
                 string file = toml::find<string>(injection,"file");
 
-                if (!injection.contains("occurrence")) throw std::runtime_error("Key 'occurrence' for some injection of type \"split_write\" is not defined in the configuration file.");
+                if (!injection.contains("occurrence")) throw std::runtime_error("Key 'occurrence' for some injection of type \"torn-op\" is not defined in the configuration file.");
                 int occurrence = toml::find<int>(injection,"occurrence");
-                if (occurrence <= 0) throw std::runtime_error("Key 'occurrence' for some injection of type \"split_write\" has an invalid value in the configuration file. It should be greater than 0.");
+                if (occurrence <= 0) throw std::runtime_error("Key 'occurrence' for some injection of type \"torn-op\" has an invalid value in the configuration file. It should be greater than 0.");
 
-                if (!injection.contains("persist")) throw std::runtime_error("Key 'persist' for some injection of type \"split_write\" is not defined in the configuration file.");
+                if (!injection.contains("persist")) throw std::runtime_error("Key 'persist' for some injection of type \"torn-op\" is not defined in the configuration file.");
                 vector<int> persist = toml::find<vector<int>>(injection,"persist");
 
-                if (!injection.contains("parts") && !injection.contains("parts_bytes")) throw std::runtime_error("None of the keys 'parts' and 'key_parts' for some injection of type \"split_write\" is defined in the configuration file. Please define at most one of them.");     
+                if (!injection.contains("parts") && !injection.contains("parts_bytes")) throw std::runtime_error("None of the keys 'parts' and 'key_parts' for some injection of type \"torn-op\" is defined in the configuration file. Please define at most one of them.");     
 
-                if (injection.contains("parts") && injection.contains("parts_bytes")) throw std::runtime_error("Keys 'parts' and 'key_parts' for some injection of type \"split_write\" are exclusive in the configuration file. Please define at most one of them.");     
+                if (injection.contains("parts") && injection.contains("parts_bytes")) throw std::runtime_error("Keys 'parts' and 'key_parts' for some injection of type \"torn-op\" are exclusive in the configuration file. Please define at most one of them.");     
 
                 cache::config::SplitWriteF * fault = NULL;
 
@@ -274,10 +274,10 @@ unordered_map<string,vector<Fault*>> Config::load_config (string filename) {
                 if (injection.contains("parts")) {
                     int parts = toml::find<int>(injection,"parts");
                     
-                    if (parts <= 0) throw std::runtime_error("Key 'parts' for some injection of type \"split_write\" has an invalid value in the configuration file. It should be greater than 0.");
+                    if (parts <= 0) throw std::runtime_error("Key 'parts' for some injection of type \"torn-op\" has an invalid value in the configuration file. It should be greater than 0.");
 
                     for (auto & p : persist) {
-                        if (p <= 0 || p>parts) throw std::runtime_error("Key 'persist' for some injection of type \"split_write\" has an invalid value in the configuration file. The array must contain values greater than 0 and lesser than the number of parts.");
+                        if (p <= 0 || p>parts) throw std::runtime_error("Key 'persist' for some injection of type \"torn-op\" has an invalid value in the configuration file. The array must contain values greater than 0 and lesser than the number of parts.");
                     } 
                     fault = new SplitWriteF(occurrence,persist,parts);
                 }
@@ -286,10 +286,10 @@ unordered_map<string,vector<Fault*>> Config::load_config (string filename) {
                     vector<int> parts_bytes = toml::find<vector<int>>(injection,"parts_bytes");
                     
                     for (auto & part : parts_bytes) {
-                        if (part <= 0) throw std::runtime_error("Key 'parts_bytes' for some injection of type \"split_write\" has an invalid value in the configuration file. Every part should be greater than 0.");
+                        if (part <= 0) throw std::runtime_error("Key 'parts_bytes' for some injection of type \"torn-op\" has an invalid value in the configuration file. Every part should be greater than 0.");
                     } 
                     for (auto & p : persist) {
-                        if (p <= 0 || (size_t)p > parts_bytes.size()) throw std::runtime_error("Key 'persist' for some injection of type \"split_write\" has an invalid value in the configuration file. The array must contain values greater than 0 and lesser than the number of parts.");
+                        if (p <= 0 || (size_t)p > parts_bytes.size()) throw std::runtime_error("Key 'persist' for some injection of type \"torn-op\" has an invalid value in the configuration file. The array must contain values greater than 0 and lesser than the number of parts.");
                     }
                     fault = new SplitWriteF(occurrence,persist,parts_bytes);
                 }

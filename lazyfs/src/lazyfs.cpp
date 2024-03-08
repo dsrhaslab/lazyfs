@@ -158,9 +158,9 @@ void LazyFS::trigger_crash_fault (string opname,
 
                 if (fault_type == CRASH)
                     this_ ()->command_unsynced_data_report ("none");
-                else if (fault_type == SPLITWRITE) {
+                else if (fault_type == TORN_OP) {
                     this_ ()->command_unsynced_data_report (from_op_path);
-                } else if (fault_type == REORDER) {
+                } else if (fault_type == TORN_SEQ) {
                     this_ ()->command_unsynced_data_report (from_op_path);
                 }
 
@@ -1114,9 +1114,9 @@ int LazyFS::lfs_write (const char* path,
     bool crash_added = this_ () -> persist_write(path,buf,size,offset);
     if (!crash_added) { //At the moment only one fault type can be injected
         crash_added =  this_ () -> split_write(path,buf,size,offset);
-        fault_type = SPLITWRITE;
+        fault_type = TORN_OP;
     } else {
-        fault_type = REORDER; 
+        fault_type = TORN_SEQ; 
     }
 
     // res should be = actual bytes written as pwrite could fail...
