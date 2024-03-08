@@ -15,7 +15,7 @@
 
 A FUSE file system with an internal dedicated page cache that only flushes data if explicitly requested by the application. This is useful for simulating power failures and losing all unsynced data.
 
-> **Note**: The main branch is probably unstable and with not fully-tested features, so we recommend using one of [existing releases](https://github.com/dsrhaslab/lazyfs/releases) already created.
+<!--- > **Note**: The main branch is probably unstable and with not fully-tested features, so we recommend using one of [existing releases](https://github.com/dsrhaslab/lazyfs/releases) already created. -->
 
 ## Installation
 
@@ -106,7 +106,7 @@ I recommend following the `simple` cache configuration (indicating the cache siz
 **Optionally**, users can specify a set of predefined `injection` faults before LazyFS starts running. These faults are introduced as additional features, namely:
 
 -   **torn-seq**: This fault type is used when a sequence of system calls, targeting a single file, is executed consecutively without an intervening `fsync`. *In the example*, during the second group of consecutive writes (the group number is defined by the parameter `occurrence`), to the file "output.txt", the first and fourth writes will be persisted to disk (the writes to be persisted are defined by the parameter `persist`). After the fourth write (the last in the `persist` vector), LazyFS will crash itself.
--   **torn-op**: This fault type involves dividing a write system call into smaller portions, with some of these portions being persisted while others are not. In the example, the fifth write issued (the number of the write is defined by the parameter `occurrence`) to the file "output1.txt" will be divided into three equal parts if the `parts` parameter is used, or into customizable-sized parts if the `parts_bytes` parameter is defined. In the commented code, there's an example of using `parts_bytes`, where the write will be torn into three parts: the first with 4096 bytes, the second with 3600 bytes, and the last with 1200 bytes. The `persist` vector determines which parts will be persisted. After the persistence of these parts, LazyFS will crash.
+-   **torn-op**: This fault type involves dividing a write system call into smaller parts, with some of these parts being persisted while others are not. In the example, the fifth write issued (the number of the write is defined by the parameter `occurrence`) to the file "output1.txt" will be divided into three equal parts if the `parts` parameter is used, or into customizable-sized parts if the `parts_bytes` parameter is defined. In the commented code, there's an example of using `parts_bytes`, where the write will be torn into three parts: the first with 4096 bytes, the second with 3600 bytes, and the last with 1200 bytes. The `persist` vector determines which parts will be persisted. After the persistence of these parts, LazyFS will crash.
 
 Other parameters:
 
