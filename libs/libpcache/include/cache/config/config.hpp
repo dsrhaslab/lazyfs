@@ -109,6 +109,22 @@ class SplitWriteF : public Fault {
      * @param parts Number of same-sixed parts to divide the write.
      */
     ~SplitWriteF();
+
+    /**
+     * @brief Check if the parameters have correct values for the fault.
+     * 
+     * @param persist Which parts of the write to persist.
+     * @param parts_bytes Division of the write in bytes.
+     */
+    static bool check(vector<int> persist, vector<int> parts);
+
+    /**
+     * @brief Check if the parameters have correct values for the fault.
+     * 
+     * @param persist Which parts of the write to persist.
+     * @param parts Number of same-sixed parts to divide the write.
+    */
+    static bool check(vector<int> persist, int parts);
 };
 
 /**
@@ -157,6 +173,14 @@ class ReorderF : public Fault {
     ReorderF();
 
     ~ReorderF ();
+
+    /**
+     * @brief Check if the parameters have correct values for the fault.
+     * 
+     * @param persist Which parts of the write to persist.
+     * @param op System call (i.e. "write", ...).
+    */
+    static bool check(string op, vector<int> persist);
 };
 
 /**

@@ -373,6 +373,25 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
                           string crash_regex_to);
 
     /**
+     * @brief Adds a torn-seq fault to the faults map.
+     * 
+     * @param path path of the fault
+     * @param op system call 
+     * @param persist which parts of the write to persist
+    */
+    bool add_torn_seq_fault(string path, string op, string persist);
+
+    /**
+     * @brief Adds a torn-op fault to the faults map.
+     * 
+     * @param path path of the fault
+     * @param parts which parts of the write to persist
+     * @param parts_bytes division of the write in bytes
+     * @param persist which parts of the write to persist
+    */
+    bool add_torn_op_fault(string path, string parts, string parts_bytes, string persist);
+
+    /**
      * @brief kills lazyfs with SIGINT if any fault condition verifies
      *
      * @param opname operation to check

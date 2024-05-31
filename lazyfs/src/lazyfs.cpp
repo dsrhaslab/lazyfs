@@ -193,6 +193,88 @@ void LazyFS::add_crash_fault (string crash_timing,
     }
 }
 
+bool LazyFS::add_torn_op_fault(string path, string parts, string parts_bytes, string persist) {
+    regex number ("\\d+");
+    sregex_token_iterator iter(persist.begin(), persist.end(), number);
+    sregex_token_iterator end;
+    vector<int> persistv;
+
+    while (iter != end) {
+        persistv.push_back(std::stoi(*iter));
+        ++iter;
+    }
+
+    vector<int> parts_bytes_v;
+    if (parts_bytes != "none") {
+        sregex_token_iterator iter(parts_bytes.begin(), parts_bytes.end(), number);
+        sregex_token_iterator end;
+
+        while (iter != end) {
+            parts_bytes_v.push_back(std::stoi(*iter));
+            ++iter;
+        }   
+    }
+
+    int partsi = -1;
+    if (parts != "none") {
+        partsi = stoi(parts);
+    }
+    
+    bool VF = (partsi != -1) ? cache::config::SplitWriteF::check(persistv, partsi) : cache::config::SplitWriteF::check(persistv, parts_bytes_v);
+
+    if (VF) {
+        cache::config::SplitWriteF* fault;
+        if (partsi != -1) fault = new cache::config::SplitWriteF(1, persistv, partsi);
+        else fault = new cache::config::SplitWriteF(1, persistv, parts_bytes_v);
+
+        auto it = faults->find(path);
+        if (it == faults->end()) {
+            faults->insert({path, {fault}});
+        } else {
+            //Only allows one fault per file
+            for (auto fault : it->second) {
+                if (dynamic_cast<cache::config::SplitWriteF*>(fault) != nullptr) {
+                    return false;
+                }
+            }
+            it->second.push_back(fault);
+        }
+    }
+
+    return VF;
+}
+
+bool LazyFS::add_torn_seq_fault(string path, string op, string persist) {
+    regex number ("\\d+");
+    sregex_token_iterator iter(persist.begin(), persist.end(), number);
+    sregex_token_iterator end;
+    vector<int> persistv;
+
+    while (iter != end) {
+        persistv.push_back(std::stoi(*iter));
+        ++iter;
+    }
+
+    bool VF = cache::config::ReorderF::check(op, persistv);
+
+    if (VF) {
+        cache::config::ReorderF* fault = new cache::config::ReorderF(op, persistv, 1);
+        auto it = faults->find(path);
+        if (it == faults->end())
+            faults->insert({path, {fault}});
+        else {
+            for (auto fault : it->second) {
+                //Only allows one fault per file
+                if (dynamic_cast<cache::config::ReorderF*>(fault) != nullptr) {
+                    return false;
+                }
+            }
+            it->second.push_back(fault);
+        }
+    }
+    return VF;
+}
+
 void LazyFS::command_unsynced_data_report (string path_to_exclude) {
 
     spdlog::warn ("[lazyfs.cmds]: report request submitted...");
