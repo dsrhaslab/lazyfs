@@ -102,11 +102,13 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
     /**
      * @brief Faults programmed in the configuration file.
      */
-    unordered_map<string,vector<cache::config::Fault*>>* faults;
+    unordered_map<string,vector<faults::Fault*>>* faults;
+
 
     /**
      * @brief Faults of LazyFS crash injected during runtime.
      *
+     * obsolete!
      */
     std::unordered_map<string, unordered_set<string>> crash_faults;
 
@@ -131,6 +133,37 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
     std::mutex path_injecting_fault_lock;
 
   public:
+
+    /**
+     * @brief Map of faults associated with each filesystem operation
+     *
+     */
+    // operation -> [((from_rgx, to_rgx), ...]
+    std::unordered_map<string, vector<pair<std::regex, string>>> crash_faults_before_map;
+    std::unordered_map<string, vector<pair<std::regex, string>>> crash_faults_after_map;
+
+    /**
+     * @brief Map of allowed operations to have a crash fault
+     *
+     */
+    std::unordered_set<string> allow_crash_fs_operations = {"unlink",
+                                                            "truncate",
+                                                            "fsync",
+                                                            "write",
+                                                            "create",
+                                                            "access",
+                                                            "open",
+                                                            "read",
+                                                            "rename",
+                                                            "link",
+                                                            "symlink"};
+
+    /**
+     * @brief Map of operations that have two paths
+     *
+     */
+    std::unordered_set<string> fs_op_multi_path = {"rename", "link", "symlink"};
+
     /**
      * @brief Construct a new LazyFS object.
      *
@@ -144,12 +177,13 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      * @param config LazyFS configuration
      * @param faults_handler_thread A thread to handle fault requests
      * @param fht_worker The faults worker logic method
+
      */
     LazyFS (Cache* cache,
             cache::config::Config* config,
             std::thread* faults_handler_thread,
             void (*fht_worker) (LazyFS* filesystem),
-            unordered_map<string,vector<cache::config::Fault*>>* faults);
+            unordered_map<string,vector<faults::Fault*>>* faults);
 
     /**
      * @brief Destroy the LazyFS object
@@ -193,7 +227,7 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      * @param op Operation ('write','fsync',...)
      * @return Pointer to the ReorderF object
     */
-    cache::config::ReorderF* get_and_update_reorder_fault(string path, string op);
+    faults::ReorderF* get_and_update_reorder_fault(string path, string op);
 
     /**
      * @brief Persists a write if a there is a programmed reorder fault for write in the given path and if the counter matches one of the writes to persist.
@@ -287,7 +321,6 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
     static int lfs_removexattr (const char* path, const char* name);
 
     static int lfs_listxattr (const char* path, char* list, size_t size);
-
     static int lfs_getxattr (const char* path, const char* name, char* value, size_t size);
 
     static int
@@ -329,36 +362,6 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
     static int lfs_chown (const char*, uid_t, gid_t, fuse_file_info*);
 
     /**
-     * @brief Map of faults associated with each filesystem operation
-     *
-     */
-    // operation -> [((from_rgx, to_rgx), before?true:false), ...]
-    std::unordered_map<string, vector<pair<std::regex, string>>> crash_faults_before_map;
-    std::unordered_map<string, vector<pair<std::regex, string>>> crash_faults_after_map;
-
-    /**
-     * @brief Map of allowed operations to have a crash fault
-     *
-     */
-    std::unordered_set<string> allow_crash_fs_operations = {"unlink",
-                                                            "truncate",
-                                                            "fsync",
-                                                            "write",
-                                                            "create",
-                                                            "access",
-                                                            "open",
-                                                            "read",
-                                                            "rename",
-                                                            "link",
-                                                            "symlink"};
-
-    /**
-     * @brief Map of operations that have two paths
-     *
-     */
-    std::unordered_set<string> fs_op_multi_path = {"rename", "link", "symlink"};
-
-    /**
      * @brief Adds a crash fault to the faults map
      *
      * @param crash_timing 'before' or 'after'
@@ -392,16 +395,25 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
     bool add_torn_op_fault(string path, string parts, string parts_bytes, string persist);
 
     /**
-     * @brief kills lazyfs with SIGINT if any fault condition verifies
+     * @brief kills lazyfs with SIGKILL if any fault condition verifies
      *
-     * @param opname operation to check
-     * @param optiming one of 'allow_crash_fs_operations'
+     * @param opname one of 'allow_crash_fs_operations'
+     * @param optiming timing for triggering fault operation ()'before' or 'after')
      * @param from_op_path source path specified in the operation
      * @param dest_op_path destination path specified in the operation
      * @param fault_type type of fault that triggered the crash
      */
-    void
-    trigger_crash_fault (string opname, string optiming, string from_op_path, string to_op_path, string fault_type);
+    void trigger_crash_fault (string opname, string optiming, string from_op_path, string to_op_path, string fault_type);
+
+    /**
+     * @brief Triggers a clear fault if condition is verified.
+     *
+     * @param opname operation name
+     * @param optiming timing for triggering fault operation ('before' or 'after')
+     * @param from_op_path source path specified in the operation
+     * @param dest_op_path destination path specified in the operation
+     */
+    void trigger_configured_clear_fault (string opname, string optiming, string from_path, string to_path);
 };
 
 } // namespace lazyfs

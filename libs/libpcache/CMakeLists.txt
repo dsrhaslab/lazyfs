@@ -58,6 +58,7 @@ target_sources(
     ${PROJECT_SOURCE_DIR}/include/cache/item/data.hpp
     ${PROJECT_SOURCE_DIR}/include/cache/item/block_info.hpp
     ${PROJECT_SOURCE_DIR}/include/cache/config/config.hpp
+    ${PROJECT_SOURCE_DIR}/include/faults/faults.hpp
 )
 
 target_sources(
@@ -72,6 +73,7 @@ target_sources(
     src/item/data.cpp
     src/item/item.cpp
     src/config/config.cpp
+    src/faults.cpp
 )
 
 target_link_libraries(pcache toml11::toml11 spdlog)

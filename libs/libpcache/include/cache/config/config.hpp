@@ -9,9 +9,6 @@
 
 #ifndef CACHE_CONFIG_HPP
 #define CACHE_CONFIG_HPP
-#define TORN_OP "torn-op"
-#define TORN_SEQ "torn-seq"
-#define CRASH "crash"
 
 #include <string>
 #include <vector>
@@ -19,174 +16,12 @@
 #include <sys/types.h>
 #include <atomic>
 
+#include <faults/faults.hpp>
+
+
 using namespace std;
 
 namespace cache::config {
-
-/**
- * @brief Stores a generic fault programmed in the configuration file.
- */
-
-class Fault {
-  public:
-    /**
-     * @brief Type of fault. 
-     */
-    string type;
-
-    /**
-      * @brief Default constructor of a new Fault object.
-      */
-    Fault();
-
-    /**
-     * @brief Construct a new Fault object.
-     *
-     * @param type Type of fault.
-     */
-    Fault(string type);
-
-    /**
-     * @brief Default destructor for a Fault object.
-     */
-    virtual ~Fault();
-};
-
-/**
- * @brief Fault for splitting writes in smaller writes and reordering them (torn-op fault).
-*/
-class SplitWriteF : public Fault {
-  public:
-    /**
-     * @brief Write occurrence. For example, of this value is set to 3, on the third write for a certain path, a fault will be injected.
-     */
-    int occurrence;
-
-    /**
-     * @brief Protected counter of writes for a certain path.
-     */
-    std::atomic_int counter;
-
-    /**
-     * @brief Which parts of the write to persist.
-     */
-    vector<int> persist;
-
-    /**
-     * @brief Number of parts to divide the write. For example, if this value is set to 3, the write will be divided into 3 same sized writes.
-     */
-    int parts;
-
-    /**
-     * @brief Specify the bytes that each part of the write will have. 
-     */
-    vector<int> parts_bytes;
-
-    /**
-     * @brief Default constructor of a new SplitWriteF object.
-     */
-    SplitWriteF();
-
-    /**
-     * @brief Contruct a new SplitWriteF object.
-     */
-    SplitWriteF(int occurrence, vector<int> persist, vector<int> parts_bytes);
-    
-    /**
-     * @brief Contruct a new SplitWriteF object.
-     *
-     * @param occurrence Write occurrence.
-     * @param persist Which parts of the write to persist.
-     * @param parts_bytes Division of the write in bytes.
-     */
-    SplitWriteF(int occurrence, vector<int> persist, int parts);
-
-    /**
-     * @brief Default destructor for a SplitWriteF object.
-     *
-     * @param occurrence Write occurrence.
-     * @param persist Which parts of the write to persist.
-     * @param parts Number of same-sixed parts to divide the write.
-     */
-    ~SplitWriteF();
-
-    /**
-     * @brief Check if the parameters have correct values for the fault.
-     * 
-     * @param persist Which parts of the write to persist.
-     * @param parts_bytes Division of the write in bytes.
-     */
-    static bool check(vector<int> persist, vector<int> parts);
-
-    /**
-     * @brief Check if the parameters have correct values for the fault.
-     * 
-     * @param persist Which parts of the write to persist.
-     * @param parts Number of same-sixed parts to divide the write.
-    */
-    static bool check(vector<int> persist, int parts);
-};
-
-/**
- * @brief Fault for reordering system calls (torn-seq fault).
-*/
-class ReorderF : public Fault {
-
-  public:
-
-    /**
-     * @brief Operation related to the fault. 
-     */
-    string op;
-    /**
-     * @brief When op is called sequentially for a certain path, count the number of calls. When the sequence is broken, counter is set to 0.
-     */
-    std::atomic_int counter;
-    /**
-     * @brief If op is a write and the vector is [3,4] it means that if op is called for a certain path sequentially, the 3th and 4th write will be persisted.
-     */
-    vector<int> persist;
-
-    /**
-     * @brief Group of writes occurrence. For example, of this value is set to 3, on the third group of consecutive writes for a certain path, a fault will be injected.
-     */
-    int occurrence;
-
-    /**
-     * @brief Counter for the groups of writes.
-     */
-    std::atomic_int group_counter;
-
-  
-    /**
-     * @brief Construct a new Fault object.
-     *
-     * @param op System call (i.e. "write", ...)
-     * @param persist Vector with operations to persist
-     * @param occurrence occurrence of the group of writes to persist
-     */
-    ReorderF(string op, vector<int> persist, int occurrence);
-
-    /**
-     * @brief Default constructor for Fault.
-     */    
-    ReorderF();
-
-    ~ReorderF ();
-
-    /**
-     * @brief Check if the parameters have correct values for the fault.
-     * 
-     * @param persist Which parts of the write to persist.
-     * @param op System call (i.e. "write", ...).
-    */
-    static bool check(string op, vector<int> persist);
-};
-
-/**
- * @brief Stores the cache configuration parameters.
- *
- */
 
 class Config {
 
@@ -305,7 +140,7 @@ class Config {
      * @param filename Filename to read the config from
      * @return Map from files to programmed faults for those files
      */
-    unordered_map<string,vector<Fault*>> load_config (string filename);
+    unordered_map<string,vector<faults::Fault*>> load_config (string filename);
 };
 
 } // namespace cache::config
