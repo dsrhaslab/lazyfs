@@ -474,62 +474,44 @@ bool LazyFS::persist_write(const char* path, const char* buf, size_t size, off_t
     int pw,fd;
     bool res = false;
     faults::ReorderF* fault = get_and_update_reorder_fault(path_str,"write");
-
-    bool inject = true;
-    (this->path_injecting_fault_lock).lock();
-
-    if (path_injecting_fault != "none") {
-        inject = false;
-        (this->path_injecting_fault_lock).unlock();
-    }
-
-    if (inject && fault) { //Fault for path found
+    
+    if (fault) { //Fault for path found
         (this->write_lock).lock();
-        this->path_injecting_fault = path;
-        (this->path_injecting_fault_lock).unlock();
 
         if (fault->counter.load()==2) {
+            path_injecting_fault_lock.lock();
+            path_injecting_fault = path;
+            path_injecting_fault_lock.unlock();
+
             fault->group_counter.fetch_add(1);
         }
 
         if (this->pending_write!=NULL) {
-            if (this->pending_write->path == path_str) {
-                //Update group counter
-                if (fault->group_counter.load() == fault->occurrence) {
-                    fd = open (this->pending_write->path, O_CREAT|O_WRONLY, 0666);
-                    pw = pwrite(fd,this->pending_write->buf,this->pending_write->size,this->pending_write->offset);
-                    spdlog::warn ("[lazyfs.faults]: Going to persist the write 1 for the path {}",path_str);
-                    close(fd);
+            //Update group counter
+            if (fault->group_counter.load() == fault->occurrence) {
+                fd = open (this->pending_write->path, O_CREAT|O_WRONLY, 0666);
+                pw = pwrite(fd,this->pending_write->buf,this->pending_write->size,this->pending_write->offset);
+                spdlog::warn ("[lazyfs.faults]: Going to persist the write 1 for the path {}",path_str);
+                close(fd);
 
-                    if (pw==this->pending_write->size) {
-                        if ((fault->persist).size()==1) {
-                            this_ ()->add_crash_fault ("after", "write", path_str, "none");            
-                            spdlog::critical ("[lazyfs.faults]: Added crash fault ");
-                            (this->write_lock).unlock();
-                            (this->path_injecting_fault_lock).unlock();
-                            return res;
-                        }
-                    } else {
-                        spdlog::warn ("[lazyfs.faults]: Something went wrong when trying to persist the 1st write for path {} (pwrite failed).", path);
+                if (pw==this->pending_write->size) {
+                    if ((fault->persist).size()==1) {
+                        this_ ()->add_crash_fault ("after", "write", path_str, "none");            
+                        spdlog::critical ("[lazyfs.faults]: Added crash fault ");
+                        (this->write_lock).unlock();
+                        return res;
                     }
+                } else {
+                    spdlog::warn ("[lazyfs.faults]: Something went wrong when trying to persist the 1st write for path {} (pwrite failed).", path);
                 }
-                delete(this->pending_write); this->pending_write = NULL;
-
-            } else { 
-                spdlog::warn ("[lazyfs.faults]: Groups of writes are being counted for file {} ", this->pending_write->path);
-
-                (this->write_lock).unlock();
-                return res;
             }
+            delete(this->pending_write); this->pending_write = NULL;
         }
-
         (this->write_lock).unlock();
-        (this->path_injecting_fault_lock).unlock();
         
         if (find((fault->persist).begin(), (fault->persist).end(), fault->counter.load()) != (fault->persist).end()) {  //If count is in vector persist
             if (fault->counter==1) { //If array persist has 1st write, we need to store this write until we know another write will happen
                 (this->write_lock).lock();
-                //should we check if there is already a pending write?
                 this->pending_write = new Write(path,buf,size,offset);
                 (this->write_lock).unlock();
                 
@@ -558,6 +540,7 @@ bool LazyFS::persist_write(const char* path, const char* buf, size_t size, off_t
     } 
     return res;
 }
+
 
 bool LazyFS::split_write(const char* path, const char* buf, size_t size, off_t offset) {
     string path_s(path);
