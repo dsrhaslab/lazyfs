@@ -223,11 +223,11 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                 if (injection.contains("parts")) {
                     int parts = toml::find<int>(injection,"parts");
                     
-                    vector<string> errors = faults::SplitWriteF::check_with_errors(occurrence,persist,parts,nullopt);
+                    vector<string> errors = faults::SplitWriteF::check_with_errors(occurrence,persist,parts,std::nullopt);
                     if (errors.size() > 0) {
                         string error_msg = "The following errors were found in the configuration file for the injection of type \"torn-op\": ";
                         for (string error : errors) {
-                            error_msg += error + " ";
+                            error_msg += "\n\t" + error;
                         }
                         throw std::runtime_error(error_msg);
                     }
@@ -242,7 +242,7 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                     if (errors.size() > 0) {
                         string error_msg = "The following errors were found in the configuration file for the injection of type \"torn-op\": ";
                         for (string error : errors) {
-                            error_msg += error + " ";
+                            error_msg += "\n\t" + error;
                         }
                         throw std::runtime_error(error_msg);
                     }

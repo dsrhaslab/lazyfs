@@ -11,5 +11,19 @@ blocks_per_page=1
 # page_size=4096
 # no_pages=10
 [filesystem]
-log_all_operations=false
+log_all_operations=true
 logfile=""
+
+#[[injection]]
+#type="torn-seq"
+#op="write"
+#file="/home/gsd/lfs-test/data-r/f1.txt"
+#persist=[2]
+#occurrence=1
+
+[[injection]]
+type="torn-op"
+file="/home/gsd/lfs-test/data-r/f1.txt"
+persist=[2]
+parts=2
+occurrence=1

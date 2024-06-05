@@ -128,12 +128,13 @@ vector<string> SplitWriteF::check_with_errors(int occurrence, vector<int> persis
     if (occurrence <= 0) {
         errors.push_back("occurrence must be greater than 0");
     }
-    if (parts && parts <= 0) {
+
+    if (parts.has_value() && parts.value() <= 0) {
         errors.push_back("parts must be greater than 0");
     }
 
     if (parts_bytes.has_value()) {
-        for (auto & p : *parts_bytes) {
+        for (auto & p : parts_bytes.value()) {
             if (p <= 0) {
                 errors.push_back("parts_bytes must be greater than 0");
                 break;
@@ -141,9 +142,13 @@ vector<string> SplitWriteF::check_with_errors(int occurrence, vector<int> persis
         }
     }
 
-    int nr_parts = parts.value_or(parts_bytes.value().size());
+    int nr_parts = 1;
+    if (parts.has_value()) nr_parts = parts.value();
+    else if (parts_bytes.has_value()) nr_parts = parts_bytes.value().size();
+    else errors.push_back("parts or parts_bytes must be set");
+
     for (auto & p : persist) {
-        if (p <= 0 || p>nr_parts) {
+        if (p <= 0 || p > nr_parts) {
             errors.push_back("persist must be greater than 0 and less than parts");
             break;
         }
