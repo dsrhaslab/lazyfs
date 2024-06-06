@@ -24,6 +24,8 @@
 #include <tuple>
 #include <unistd.h>
 #include <vector>
+#include<algorithm> 
+
 
 // LazyFS specific imports
 #include <cache/cache.hpp>
@@ -78,7 +80,6 @@ LazyFS::LazyFS (Cache* cache,
     this->fht_worker            = fht_worker;
     this->faults                = faults;
     this->pending_write         = NULL;
-    this->path_injecting_fault  = "none";   
 
     for (auto const& it : this->allow_crash_fs_operations) {
         this->crash_faults_before_map.insert ({it, {}});
@@ -88,13 +89,9 @@ LazyFS::LazyFS (Cache* cache,
 
 LazyFS::~LazyFS () {}
 
-string LazyFS::get_path_injecting_fault() {
-    string res;
-    path_injecting_fault_lock.lock();
-    res = path_injecting_fault;
-    path_injecting_fault_lock.unlock();
-
-    return res;
+vector<string> LazyFS::get_injecting_fault() {
+    lock_guard<mutex> guard(this->injecting_fault_lock);
+    return injecting_fault;
 }
 
 void LazyFS::trigger_crash_fault (string opname,
@@ -156,14 +153,10 @@ void LazyFS::trigger_crash_fault (string opname,
 
                 spdlog::critical ("Triggered fault condition (op={},timing={})", opname, optiming);
 
-                if (fault_type == CLEAR)
-                    this_ ()->command_unsynced_data_report ("none");
-                else if (fault_type == TORN_OP) {
-                    this_ ()->command_unsynced_data_report (from_op_path);
-                } else if (fault_type == TORN_SEQ) {
-                    this_ ()->command_unsynced_data_report (from_op_path);
-                }
-
+                this->injecting_fault_lock.lock();
+                this_ ()->command_unsynced_data_report (this->injecting_fault);
+                this->injecting_fault_lock.unlock();
+                
                 pid_t lazyfs_pid = getpid ();
 
                 spdlog::critical ("Killing LazyFS pid {}!", lazyfs_pid);
@@ -187,28 +180,37 @@ void LazyFS::trigger_configured_clear_fault (string opname,
         for (auto fault : v_faults) {
             faults::ClearF* clear_fault = dynamic_cast<faults::ClearF*>(fault);
 
-            if (clear_fault && clear_fault->op == opname && clear_fault->timing == optiming) {
+            if (clear_fault && clear_fault->op == opname) {
 
                 bool is_multi_path = this_ ()->fs_op_multi_path.find (opname) != this_ ()->fs_op_multi_path.end ();
 
                 if ((is_multi_path && to_path == clear_fault->to) || !is_multi_path) {
+                    
+                    int current_count = clear_fault->counter.load();
+                    if (optiming == "before") {
+                        current_count = clear_fault->counter.fetch_add(1);
+                    }
+            
+                    if (clear_fault->timing == optiming) {
 
-                    clear_fault->counter.fetch_add(1);
+                        if (current_count == clear_fault->occurrence) {
 
-                    if (clear_fault->counter.load() == clear_fault->occurrence) {
+                            spdlog::critical ("Triggered fault condition (op={},timing={})", opname, optiming);
 
-                        spdlog::critical ("Triggered fault condition (op={},timing={})", opname, optiming);
-                        this_ ()->command_unsynced_data_report ("none");
+                            this->injecting_fault_lock.lock();
+                            this_ ()->command_unsynced_data_report (this->injecting_fault);
+                            this->injecting_fault_lock.unlock();
 
-                        if (clear_fault->crash) {
+                            if (clear_fault->crash) {
 
-                            pid_t lazyfs_pid = getpid ();
-                            spdlog::critical ("Killing LazyFS pid {}!", lazyfs_pid);
-                            kill (lazyfs_pid, SIGKILL);  
+                                pid_t lazyfs_pid = getpid ();
+                                spdlog::critical ("Killing LazyFS pid {}!", lazyfs_pid);
+                                kill (lazyfs_pid, SIGKILL);  
 
-                        } else {
-                            this_ ()->command_fault_clear_cache ();
-                        }   
+                            } else {
+                                this_ ()->command_fault_clear_cache ();
+                            }   
+                        }
                     }
                 }
             }
@@ -317,7 +319,7 @@ bool LazyFS::add_torn_seq_fault(string path, string op, string persist) {
     return VF;
 }
 
-void LazyFS::command_unsynced_data_report (string path_to_exclude) {
+void LazyFS::command_unsynced_data_report (vector<string> paths_to_exclude) {
 
     spdlog::warn ("[lazyfs.cmds]: report request submitted...");
 
@@ -338,11 +340,10 @@ void LazyFS::command_unsynced_data_report (string path_to_exclude) {
             auto files_mapped = FSCache->find_files_mapped_to_inode (ino);
             
             bool report = true;
-            if (path_to_exclude!="none") {
-                vector<string>::iterator it_ino;
-                it_ino = std::find(files_mapped.begin(), files_mapped.end(), path_to_exclude);
-                if(it_ino != files_mapped.end()) report = false;
+            if (paths_to_exclude.size() > 0) {
+                report = find_first_of (files_mapped.begin(), files_mapped.end(), paths_to_exclude.begin(), paths_to_exclude.end()) != files_mapped.end();
             }
+
             if(report) {
 
                 if (std::get<2> (it).size () > 0 && files_mapped.size () > 0) {
@@ -393,10 +394,12 @@ void LazyFS::command_unsynced_data_report (string path_to_exclude) {
                                     *it.base ());
                 }
             }
-            if (path_to_exclude == "none" || path_to_exclude == "" || path_to_exclude.empty())
-                spdlog::info ("[lazyfs.cmds]: report: total number of bytes un-fsynced: {} bytes.\n",
-                            total_bytes_unsynced);
+            
         }
+        spdlog::info ("[lazyfs.cmds]: report: total number of bytes un-fsynced: {} bytes.\n",total_bytes_unsynced);
+
+        if (paths_to_exclude.size() > 0)
+            spdlog::info ("[lazyfs.cmds]: report: info about un-fsynced bytes from some files was excluded.\n");
     }
 }
 
@@ -450,6 +453,11 @@ bool LazyFS::check_and_delete_pendingwrite(const char* path) {
         this->pending_write = NULL;
     }
     (this->write_lock).unlock();
+
+    (this->injecting_fault_lock).lock();
+    (this->injecting_fault).erase(std::remove((this->injecting_fault).begin(), (this->injecting_fault).end(), path), (this->injecting_fault).end());
+    (this->injecting_fault_lock).unlock();
+
     return res;
 }
 
@@ -479,9 +487,9 @@ bool LazyFS::persist_write(const char* path, const char* buf, size_t size, off_t
         (this->write_lock).lock();
 
         if (fault->counter.load()==2) {
-            path_injecting_fault_lock.lock();
-            path_injecting_fault = path;
-            path_injecting_fault_lock.unlock();
+            injecting_fault_lock.lock();
+            injecting_fault.push_back(path);
+            injecting_fault_lock.unlock();
 
             fault->group_counter.fetch_add(1);
         }
@@ -554,9 +562,9 @@ bool LazyFS::split_write(const char* path, const char* buf, size_t size, off_t o
             faults::SplitWriteF* split_fault = dynamic_cast<faults::SplitWriteF*>(fault);
             if (split_fault) {
 
-                path_injecting_fault_lock.lock();
-                path_injecting_fault = path;
-                path_injecting_fault_lock.unlock();
+                injecting_fault_lock.lock();
+                injecting_fault.push_back(path);
+                injecting_fault_lock.unlock();
 
                 split_fault->counter.fetch_add(1);
 
@@ -917,7 +925,7 @@ int LazyFS::lfs_write (const char* path,
                        struct fuse_file_info* fi) {
 
     this_ ()->trigger_crash_fault ("write", "before", path, "", CLEAR);
-    this_ ()->trigger_configured_clear_fault ("write", "after", path, "");
+    this_ ()->trigger_configured_clear_fault ("write", "before", path, "");
 
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 

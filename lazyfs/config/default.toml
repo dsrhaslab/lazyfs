@@ -19,11 +19,19 @@ logfile=""
 #op="write"
 #file="/home/gsd/lfs-test/data-r/f1.txt"
 #persist=[2]
-#occurrence=1
+#occurrence=2
+
+#[[injection]]
+#type="torn-op"
+#file="/home/gsd/lfs-test/data-r/f1.txt"
+#persist=[2]
+#parts=2
+#occurrence=4
 
 [[injection]]
-type="torn-op"
-file="/home/gsd/lfs-test/data-r/f1.txt"
-persist=[2]
-parts=2
-occurrence=1
+type="clear"
+from="/home/gsd/lfs-test/data-r/f1.txt"
+timing="after"
+op="write"
+occurrence=6
+crash=true

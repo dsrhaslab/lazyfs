@@ -123,14 +123,14 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
     std::mutex write_lock;
 
     /**
-     * @brief Path of the current fault being injected.
+     * @brief Current faults being injected.
     */
-    string path_injecting_fault;
+    vector<string> injecting_fault;
 
     /**
-     * @brief Lock for path of current injected fault.
+     * @brief Lock for current injected faults.
     */
-    std::mutex path_injecting_fault_lock;
+    std::mutex injecting_fault_lock;
 
   public:
 
@@ -192,9 +192,9 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
     ~LazyFS ();
 
     /**
-     * @brief Get path of the fault currently being injected.
+     * @brief Get faults currently being injected.
     */
-    string get_path_injecting_fault();
+    vector<string> get_injecting_fault();
 
     /**
      * @brief Fifo: (fault) Clear the cached contents
@@ -216,10 +216,10 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
 
     /**
      * @brief Fifo: Reports which files have unsynced data.
-     * @param path_to_exclude Path to be excluded from the report.
+     * @param paths_to_exclude Paths to be excluded from the report.
      *
      */
-    void command_unsynced_data_report (string path_to_exclude);
+    void command_unsynced_data_report (vector<string> paths_to_exclude);
 
     /**
      * @brief Checks if a programmed reorder fault for the given path and operation exists. If so, updates the counter and returns the fault.
