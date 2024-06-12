@@ -218,9 +218,9 @@ Finally, one can control LazyFS by echoing the following commands to the configu
 
     > Kills LazyFS before executing a link operation to the file pattern 'fileabd'.
 
--   **Kill the filesystem,** after injecting `torn-op` or `torn-seq`faults:
+-   **Kill the filesystem** after injecting `torn-op` or `torn-seq`faults:
 
-    The parameters are the same as the ones presented in the above configuration file.
+    The parameters are the same as the ones presented in the above configuration file. Parameters that have multiple values, must be specified without the parenthesis (e.g., `persist=1,2` ).
 
     -   ```bash
         echo "lazyfs::torn-op::file=...::persist=...::parts=...::occurrence=..." > /my/path/faults.fifo
