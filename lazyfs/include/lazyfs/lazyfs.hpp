@@ -177,7 +177,6 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      * @param config LazyFS configuration
      * @param faults_handler_thread A thread to handle fault requests
      * @param fht_worker The faults worker logic method
-
      */
     LazyFS (Cache* cache,
             cache::config::Config* config,
@@ -321,7 +320,7 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
     static int lfs_removexattr (const char* path, const char* name);
 
     static int lfs_listxattr (const char* path, char* list, size_t size);
-    
+
     static int lfs_getxattr (const char* path, const char* name, char* value, size_t size);
 
     static int
@@ -396,10 +395,10 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
     bool add_torn_op_fault(string path, string parts, string parts_bytes, string persist);
 
     /**
-     * @brief kills lazyfs with SIGKILL if any fault condition verifies
+     * @brief Kills lazyfs with SIGKILL if any fault condition verifies
      *
      * @param opname one of 'allow_crash_fs_operations'
-     * @param optiming timing for triggering fault operation ()'before' or 'after')
+     * @param optiming timing for triggering fault operation ('before' or 'after' a given system call)
      * @param from_op_path source path specified in the operation
      * @param dest_op_path destination path specified in the operation
      * @param fault_type type of fault that triggered the crash
