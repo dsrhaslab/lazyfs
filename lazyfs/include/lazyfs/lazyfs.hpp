@@ -321,6 +321,7 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
     static int lfs_removexattr (const char* path, const char* name);
 
     static int lfs_listxattr (const char* path, char* list, size_t size);
+    
     static int lfs_getxattr (const char* path, const char* name, char* value, size_t size);
 
     static int

@@ -45,17 +45,17 @@ bool ReorderF::check(string op, vector<int> persist) {
     return check;
 }
 
-vector<string> ReorderF::check_with_errors() {
+vector<string> ReorderF::validate() {
     vector<string> errors;
     if (this->op != "write") {
-        errors.push_back("operation must be write");
+        errors.push_back("Operation must be \"write\".");
     }
     if (this->occurrence <= 0) {
-        errors.push_back("occurrence must be greater than 0");
+        errors.push_back("Occurrence must be greater than 0.");
     }
     for (auto & p : this->persist) {
         if (p <= 0) {
-            errors.push_back("persist must be greater than 0");
+            errors.push_back("Persist must be greater than 0.");
             break;
         }
     }
@@ -123,20 +123,20 @@ bool SplitWriteF::check(vector<int> persist, vector<int> parts_bytes) {
     return check;
 }
 
-vector<string> SplitWriteF::check_with_errors(int occurrence, vector<int> persist, optional<int> parts, optional<vector<int>> parts_bytes) {
+vector<string> SplitWriteF::validate(int occurrence, vector<int> persist, optional<int> parts, optional<vector<int>> parts_bytes) {
     vector<string> errors;
     if (occurrence <= 0) {
-        errors.push_back("occurrence must be greater than 0");
+        errors.push_back("Occurrence must be greater than 0.");
     }
 
     if (parts.has_value() && parts.value() <= 0) {
-        errors.push_back("parts must be greater than 0");
+        errors.push_back("Parts must be greater than 0.");
     }
 
     if (parts_bytes.has_value()) {
         for (auto & p : parts_bytes.value()) {
             if (p <= 0) {
-                errors.push_back("parts_bytes must be greater than 0");
+                errors.push_back("Parts_bytes values must be greater than 0.");
                 break;
             }
         }
@@ -145,11 +145,11 @@ vector<string> SplitWriteF::check_with_errors(int occurrence, vector<int> persis
     int nr_parts = 1;
     if (parts.has_value()) nr_parts = parts.value();
     else if (parts_bytes.has_value()) nr_parts = parts_bytes.value().size();
-    else errors.push_back("parts or parts_bytes must be set");
+    else errors.push_back("Parts or parts_bytes must be defined.");
 
     for (auto & p : persist) {
         if (p <= 0 || p > nr_parts) {
-            errors.push_back("persist must be greater than 0 and less than parts");
+            errors.push_back("Persist must be greater than 0 and less than parts.");
             break;
         }
     }
@@ -184,27 +184,27 @@ ClearF::ClearF (string timing, string op, string from, string to, int occurrence
 
 ClearF::~ClearF(){}
 
-vector<string> ClearF::check_with_errors() {
+vector<string> ClearF::validate() {
     vector<string> errors;
     if (this->occurrence <= 0) {
-        errors.push_back("occurrence must be greater than 0");
+        errors.push_back("Occurrence must be greater than 0.");
     }
 
     if (ClearF::allow_crash_fs_operations.find(this->op) == ClearF::allow_crash_fs_operations.end()) {
-        errors.push_back("operation not available");
+        errors.push_back("Operation not available.");
     }
 
     if (this->timing != "before" && this->timing != "after") {
-        errors.push_back("timing must be 'before' or 'after'");
+        errors.push_back("Timing must be \"before\" or \"after\".");
     }
 
     if (ClearF::fs_op_multi_path.find (this->op) != ClearF::fs_op_multi_path.end ()) {
         if (this->from == "none" || this->to == "none") {
-            errors.push_back("'from' and 'to' must be set for operations with two paths");
+            errors.push_back("\"from\" and \"to\" must be set defined operations with two paths.");
         }
     } else {
         if (this->from == "none" || this->to != "none") {
-            errors.push_back ("should specify 'from' (and not 'to')");
+            errors.push_back ("Should specify \"from\" (and not \"to\")");
         }
     }
 

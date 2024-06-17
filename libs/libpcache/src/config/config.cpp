@@ -159,119 +159,194 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
             if (!injection.contains("type")) throw std::runtime_error("Key 'type' for some injection of is not defined in the configuration file.");
             string type = toml::find<string>(injection,"type");
 
+            bool valid_fault = true;
+            string error_msg{};
+
             if (type == TORN_SEQ) {
                 //Checking the values of the parameters of the reordering fault 
+                valid_fault = true;
+                error_msg = "The following errors were found in the configuration file for a fault of type \"torn-seq\": \n";
 
-                if (!injection.contains("file")) throw std::runtime_error("Key 'file' for some injection of type \"torn-seq\" is not defined in the configuration file.");
-                string file = toml::find<string>(injection,"file");
+                string file{};
+                if (!injection.contains("file")) {
+                    valid_fault = false;
+                    error_msg += "\tKey 'file' for some injection of type \"torn-seq\" is not defined in the configuration file.\n";
+                } else 
+                    file = toml::find<string>(injection,"file");
 
-                if (!injection.contains("op")) throw std::runtime_error("Key 'op' for some injection of type \"torn-seq\" is not defined in the configuration file.");
-                string op = toml::find<string>(injection,"op");
+                string op{};
+                if (!injection.contains("op")) {
+                    valid_fault = false;
+                    error_msg += "\tKey 'op' for some injection of type \"torn-seq\" is not defined in the configuration file.\n";
+                } else 
+                    op = toml::find<string>(injection,"op");
 
-                if (!injection.contains("occurrence")) throw std::runtime_error("Key 'occurrence' for some injection of type \"torn-seq\" is not defined in the configuration file.");
-                int occurrence = toml::find<int>(injection,"occurrence");
+                int occurrence = 0;
+                if (!injection.contains("occurrence")) {
+                    valid_fault = false;
+                    error_msg += "\tKey 'occurrence' for some injection of type \"torn-seq\" is not defined in the configuration file.\n";
+                } else 
+                    occurrence = toml::find<int>(injection,"occurrence");
 
-                if (!injection.contains("persist")) throw std::runtime_error("Key 'persist' for some injection of type \"torn-seq\" is not defined in the configuration file.");  
-                vector<int> persist = toml::find<vector<int>>(injection,"persist");
-                sort(persist.begin(), persist.end()); 
-
-                faults::ReorderF * fault = new faults::ReorderF(op,persist,occurrence);
-                vector<string> errors = fault->check_with_errors();
-
-                if (errors.size() > 0) {
-                    string error_msg = "The following errors were found in the configuration file for the injection of type \"torn-seq\": ";
-                    for (string error : errors) {
-                        error_msg += error + " ";
-                    }
-                    throw std::runtime_error(error_msg);
-                }
-            
-                auto it = faults.find(file);
-
-                if (it == faults.end()) {
-                    vector<faults::Fault*> v_faults;
-                    v_faults.push_back(fault);
-                    faults[file] = v_faults;
+                vector<int> persist;
+                if (!injection.contains("persist")) {
+                    valid_fault = false;
+                    error_msg += "\tKey 'persist' for some injection of type \"torn-seq\" is not defined in the configuration file.\n";  
                 } else {
-                    //At the moment, only one torn-seq fault per file is acceptable.
-                    for (faults::Fault* f : it->second) {
-                        faults::ReorderF* reorder_fault = dynamic_cast<faults::ReorderF*>(f);
-                        if (reorder_fault && reorder_fault->op == op) throw std::runtime_error("It is only acceptable one torn-seq fault per type of operation for a given file.");
+                    persist = toml::find<vector<int>>(injection,"persist");
+                    //Sorting the persist vector is necessary for injecting this fault
+                    sort(persist.begin(), persist.end());
+                }
+
+                faults::ReorderF * fault = NULL;
+                vector<string> errors;
+                if (valid_fault) {
+                    fault = new faults::ReorderF(op,persist,occurrence);
+                    vector<string> errors = fault->validate();
+                }
+
+                if (!valid_fault || errors.size() > 0) {
+                    for (string error : errors) {
+                        error_msg += "\t" + error + "\n";
                     }
-                    (it->second).push_back(fault);
+                    spdlog::error(error_msg);
+                    
+                } else {
+            
+                    auto it = faults.find(file);
+
+                    if (it == faults.end()) {
+                        vector<faults::Fault*> v_faults;
+                        v_faults.push_back(fault);
+                        faults[file] = v_faults;
+                    } else {
+                        //At the moment, only one torn-seq fault per file is acceptable.
+                        for (faults::Fault* f : it->second) {
+                            faults::ReorderF* reorder_fault = dynamic_cast<faults::ReorderF*>(f);
+
+                            if (reorder_fault && reorder_fault->op == op) {
+                                valid_fault = false;
+                                spdlog::error("It is only acceptable one torn-seq fault per type of operation for a given file.");
+                            }
+                        }
+                        if (valid_fault) (it->second).push_back(fault);
+                    }
+
                 }
 
             } else if (type == TORN_OP) {
                 //Checking the values of the parameters of the split write fault 
 
-                if (!injection.contains("file")) throw std::runtime_error("Key 'file' for some injection of type \"torn-op\" is not defined in the configuration file.");
-                string file = toml::find<string>(injection,"file");
+                valid_fault = true;
+                error_msg = "The following errors were found in the configuration file for a fault of type \"torn-op\": \n";
 
-                if (!injection.contains("occurrence")) throw std::runtime_error("Key 'occurrence' for some injection of type \"torn-op\" is not defined in the configuration file.");
-                int occurrence = toml::find<int>(injection,"occurrence");
+                string file{};
+                if (!injection.contains("file")) {
+                    valid_fault = false;
+                    error_msg += "\tKey 'file' for some injection of type \"torn-op\" is not defined in the configuration file.\n";
+                } else 
+                    file = toml::find<string>(injection,"file");
 
-                if (!injection.contains("persist")) throw std::runtime_error("Key 'persist' for some injection of type \"torn-op\" is not defined in the configuration file.");
-                vector<int> persist = toml::find<vector<int>>(injection,"persist");
+                int occurrence = 0;
+                if (!injection.contains("occurrence")) {
+                    valid_fault = false;
+                    error_msg += "\tKey 'occurrence' for some injection of type \"torn-op\" is not defined in the configuration file.\n";
+                } else
+                    occurrence = toml::find<int>(injection,"occurrence");
 
-                if (!injection.contains("parts") && !injection.contains("parts_bytes")) throw std::runtime_error("None of the keys 'parts' and 'key_parts' for some injection of type \"torn-op\" is defined in the configuration file. Please define at most one of them.");     
+                vector<int> persist;
+                if (!injection.contains("persist")) {
+                    valid_fault = false;
+                    error_msg += "\tKey 'persist' for some injection of type \"torn-op\" is not defined in the configuration file.\n";
+                } else
+                    persist = toml::find<vector<int>>(injection,"persist");
 
-                if (injection.contains("parts") && injection.contains("parts_bytes")) throw std::runtime_error("Keys 'parts' and 'key_parts' for some injection of type \"torn-op\" are exclusive in the configuration file. Please define at most one of them.");     
+                if (!injection.contains("parts") && !injection.contains("parts_bytes")) {
+                    valid_fault = false;
+                    error_msg += "\tNone of the keys 'parts' and 'key_parts' for some injection of type \"torn-op\" is defined in the configuration file. Please define at most one of them.\n";  
+                }   
+
+                if (injection.contains("parts") && injection.contains("parts_bytes")) {
+                    valid_fault = false;
+                    error_msg += "\tKeys 'parts' and 'key_parts' for some injection of type \"torn-op\" are exclusive in the configuration file. Please define at most one of them.\n";     
+                }
 
                 faults::SplitWriteF * fault = NULL;
+                vector<string> errors;
 
                 //A split write fault either contains the parameter "parts" or the "pats_bytes"
-                if (injection.contains("parts")) {
+                if (valid_fault && injection.contains("parts")) {
                     int parts = toml::find<int>(injection,"parts");
                     
-                    vector<string> errors = faults::SplitWriteF::check_with_errors(occurrence,persist,parts,std::nullopt);
-                    if (errors.size() > 0) {
-                        string error_msg = "The following errors were found in the configuration file for the injection of type \"torn-op\": ";
-                        for (string error : errors) {
-                            error_msg += "\n\t" + error;
-                        }
-                        throw std::runtime_error(error_msg);
-                    }
+                    errors = faults::SplitWriteF::validate(occurrence,persist,parts,std::nullopt);
 
-                    fault = new faults::SplitWriteF(occurrence,persist,parts);
+                    if (errors.size() <= 0) 
+                        fault = new faults::SplitWriteF(occurrence,persist,parts);
+                    else 
+                        valid_fault = false;
                 }
 
-                if (injection.contains("parts_bytes")) {
+                if (valid_fault && injection.contains("parts_bytes")) {
                     vector<int> parts_bytes = toml::find<vector<int>>(injection,"parts_bytes");
                     
-                    vector<string> errors = faults::SplitWriteF::check_with_errors(occurrence,persist,nullopt,parts_bytes);
-                    if (errors.size() > 0) {
-                        string error_msg = "The following errors were found in the configuration file for the injection of type \"torn-op\": ";
-                        for (string error : errors) {
-                            error_msg += "\n\t" + error;
-                        }
-                        throw std::runtime_error(error_msg);
-                    }
+                    errors = faults::SplitWriteF::validate(occurrence,persist,std::nullopt,parts_bytes);
 
-                    fault = new faults::SplitWriteF(occurrence,persist,parts_bytes);
+                    if (errors.size() <= 0) 
+                        fault = new faults::SplitWriteF(occurrence,persist,parts_bytes);
+                    else 
+                        valid_fault = false;
                 }
 
-                auto it = faults.find(file);
-                if (it == faults.end()) {
-                    vector<faults::Fault*> v_faults;
-                    v_faults.push_back(fault);
-                    faults[file] = v_faults;
+                if (!valid_fault) {
+                    for (string error : errors) {
+                        error_msg += "\t" + error + "\n";
+                    }
+                    spdlog::error(error_msg);
+
                 } else {
-                    //At the moment, only one split write fault per file is acceptable.
-                    for (faults::Fault* f : it->second) {
-                        faults::SplitWriteF* splitwrite_fault = dynamic_cast<faults::SplitWriteF*>(f);
-                        if (splitwrite_fault) throw std::runtime_error("It is only acceptable one split write fault per file.");
+
+                    auto it = faults.find(file);
+                    if (it == faults.end()) {
+                        vector<faults::Fault*> v_faults;
+                        v_faults.push_back(fault);
+                        faults[file] = v_faults;
+                    } else {
+                        //At the moment, only one split write fault per file is acceptable.
+                        for (faults::Fault* f : it->second) {
+                            faults::SplitWriteF* splitwrite_fault = dynamic_cast<faults::SplitWriteF*>(f);
+                            if (splitwrite_fault) {
+                                valid_fault = false;
+                                spdlog::error("It is only acceptable one torn-op write fault per file.");
+                            }
+                        }
+                        if (valid_fault) (it->second).push_back(fault);
                     }
-                    (it->second).push_back(fault);
                 }
+
             } else if (type == CLEAR) {
-                if (!injection.contains("occurrence")) throw std::runtime_error("Key 'occurrence' for some injection of type \"clear\" is not defined in the configuration file.");
-                int occurrence = toml::find<int>(injection,"occurrence");
+                valid_fault = true;
+                error_msg = "The following errors were found in the configuration file for a fault of type \"clear-cache\": \n";
 
-                if (!injection.contains("timing")) throw std::runtime_error("Key 'timing' for some injection of type \"clear\" is not defined in the configuration file.");
-                string timing = toml::find<string>(injection,"timing");
+                int occurrence = 0;
+                if (!injection.contains("occurrence")) {
+                    valid_fault = false;
+                    error_msg += "\tKey 'occurrence' for some injection of type \"clear\" is not defined in the configuration file.\n";
+                } else 
+                    occurrence = toml::find<int>(injection,"occurrence");
 
-                if (!injection.contains("op")) throw std::runtime_error("Key 'op' for some injection of type \"clear\" is not defined in the configuration file.");
-                string op = toml::find<string>(injection,"op");
+                string timing{};
+                if (!injection.contains("timing")) {
+                    valid_fault = false;
+                    error_msg += "\tKey 'timing' for some injection of type \"clear\" is not defined in the configuration file.\n";
+                } else 
+                    timing = toml::find<string>(injection,"timing");
+
+                string op{};
+                if (!injection.contains("op")) {
+                    valid_fault = false;
+                    error_msg += "\tKey 'op' for some injection of type \"clear\" is not defined in the configuration file.\n";
+                } else 
+                    op = toml::find<string>(injection,"op");
 
                 string from = "none";
                 if (injection.contains("from")) 
@@ -281,43 +356,48 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                 if (injection.contains("to")) 
                     to = toml::find<string>(injection,"to");
 
-                if (!injection.contains("crash")) throw std::runtime_error("Key 'crash' for some injection of type \"clear\" is not defined in the configuration file.");
-                bool crash = toml::find<bool>(injection,"crash");
+                bool crash = false;
+                if (!injection.contains("crash")) {
+                    valid_fault = false;
+                    error_msg += "\tKey 'crash' for some injection of type \"clear\" is not defined in the configuration file.\n";
+                } else 
+                    crash = toml::find<bool>(injection,"crash");
 
-                cout << "timing: " << timing << endl;
-                cout << "op: " << op << endl;
-                cout << "from: " << from << endl;
-                cout << "to: " << to << endl;
-                cout << "occurrence: " << occurrence << endl;
-                cout << "crash: " << crash << endl;
 
-                faults::ClearF * fault = new faults::ClearF(timing,op,from,to,occurrence,crash);
-                vector<string> errors = fault->check_with_errors();
-
-                if (errors.size() > 0) {
-                    string error_msg = "The following errors were found in the configuration file for the injection of type \"clear\": ";
-                    for (string error : errors) {
-                        error_msg +=  "\n\t" + error ;
-                    }
-                    throw std::runtime_error(error_msg);
+                faults::ClearF * fault = NULL;
+                vector<string> errors;
+                if (valid_fault) {
+                    fault = new faults::ClearF(timing,op,from,to,occurrence,crash);
+                    errors = fault->validate();
                 }
 
-                auto it = faults.find(from);
-                if (it == faults.end()) {
-                    vector<faults::Fault*> v_faults;
-                    v_faults.push_back(fault);
-                    faults[from] = v_faults;
-                } else {
-                    //At the moment, only one clear fault per file is acceptable.
-                    for (faults::Fault* f : it->second) {
-                        faults::ClearF* clear_fault = dynamic_cast<faults::ClearF*>(f);
-                        if (clear_fault) throw std::runtime_error("It is only acceptable one clear fault per file.");
+                if (!valid_fault || errors.size() > 0) {
+                    for (string error : errors) {
+                        error_msg +=  "\t" + error + "\n";
                     }
-                    (it->second).push_back(fault);
+                    spdlog::error(error_msg);
+                } else {
+
+                    auto it = faults.find(from);
+                    if (it == faults.end()) {
+                        vector<faults::Fault*> v_faults;
+                        v_faults.push_back(fault);
+                        faults[from] = v_faults;
+                    } else {
+                        //At the moment, only one clear fault per file is acceptable.
+                        for (faults::Fault* f : it->second) {
+                            faults::ClearF* clear_fault = dynamic_cast<faults::ClearF*>(f);
+                            if (clear_fault) {
+                                valid_fault = false;
+                                spdlog::error("It is only acceptable one clear fault per file.");
+                            }
+                        }
+                        if (valid_fault) (it->second).push_back(fault);
+                    }
                 }
             
             } else {
-                throw std::runtime_error("Key 'type' for some injection has an unknown value in the configuration file.");
+                spdlog::error("Key 'type' for some injection has an unknown value in the configuration file.");
             }
         }
 	

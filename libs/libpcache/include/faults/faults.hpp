@@ -126,7 +126,7 @@ class SplitWriteF : public Fault {
      * @param parts_bytes Division of the write in bytes.
      * @return Vector with errors.
     */
-    static vector<string> check_with_errors(int occurrence, vector<int> persist, optional<int> parts, optional<vector<int>> parts_bytes);
+    static vector<string> validate(int occurrence, vector<int> persist, optional<int> parts, optional<vector<int>> parts_bytes);
 
 };
 
@@ -195,7 +195,7 @@ class ReorderF : public Fault {
      * @param persist Vector with operations to persist.
      * @return Vector with errors.
     */
-    vector<string> check_with_errors();
+    vector<string> validate();
 };
 
 /*********************************************************************************************/
@@ -271,7 +271,7 @@ class ClearF : public Fault {
      * 
      * @return Vector with errors.
     */
-    vector<string> check_with_errors();
+    vector<string> validate();
 
 };
 // namespace faults
