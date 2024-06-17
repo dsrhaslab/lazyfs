@@ -219,43 +219,43 @@ void fht_worker (LazyFS* filesystem) {
                             file = tmp_file;
                         else {
                             VF = false;
-                            errors.push_back ("bad file specification");
+                            errors.push_back ("file not specified");
                         }
 
                     } else if (current.rfind ("parts=", 0) == 0) {
 
-                        string tmp_part = current.erase (0, current.find ("=") + 1);
+                        string tmp_parts = current.erase (0, current.find ("=") + 1);
                         std::regex pattern(R"(\d+)");
 
-                        if (!std::regex_match(tmp_part, pattern)) {
+                        if (!std::regex_match(tmp_parts, pattern)) {
                             errors.push_back ("parts should be a number");
                             VF = false;
                         } else 
-                            parts = tmp_part;
+                            parts = tmp_parts;
                         
                     
                     } else if (current.rfind ("parts_bytes=", 0) == 0) {
                         
-                        string tmp_partb = current.erase (0, current.find ("=") + 1);
+                        string tmp_parts_bytes = current.erase (0, current.find ("=") + 1);
                         std::regex pattern(R"((\d+,)*\d+)");
 
-                        if (!std::regex_match(tmp_partb, pattern)) {
+                        if (!std::regex_match(tmp_parts_bytes, pattern)) {
                             errors.push_back ("parts_bytes should be a list of numbers separated by commas");
                             VF = false;
                         } else 
-                            parts_bytes = tmp_partb;
+                            parts_bytes = tmp_parts_bytes;
                         
 
                     } else if (current.rfind ("persist=", 0) == 0) {
 
-                        string tmp_per = current.erase (0, current.find ("=") + 1);
+                        string tmp_persist = current.erase (0, current.find ("=") + 1);
                         std::regex pattern(R"((\d+,)*\d+)");
 
-                        if (!std::regex_match(tmp_per, pattern)) {
+                        if (!std::regex_match(tmp_persist, pattern)) {
                             errors.push_back ("persist should be a list of numbers separated by commas");
                             VF = false;
                         } else 
-                            persist = tmp_per;
+                            persist = tmp_persist;
                         
                     } else if (current != "lazyfs" && current != "torn-op") {
                         errors.push_back ("unknown attribute");
@@ -279,7 +279,7 @@ void fht_worker (LazyFS* filesystem) {
                     spdlog::warn ("[lazyfs.faults.worker]: received: INVALID torn-op fault:");
 
                     for (auto const err : errors) {
-                        spdlog::warn ("[lazyfs.faults.worker]: torn-op fault error: {}", err);
+                        spdlog::warn ("[lazyfs.faults.worker]: {}", err);
                     }
                 }
                 
@@ -354,7 +354,7 @@ void fht_worker (LazyFS* filesystem) {
                     spdlog::warn ("[lazyfs.faults.worker]: received: INVALID torn-seq fault:");
 
                     for (auto const err : errors) {
-                        spdlog::warn ("[lazyfs.faults.worker]: torn-seq fault error: {}", err);
+                        spdlog::warn ("[lazyfs.faults.worker]: {}", err);
                     }
                 }          
             
