@@ -7,7 +7,7 @@
 
 #define TORN_OP "torn-op"
 #define TORN_SEQ "torn-seq"
-#define CLEAR "clear"
+#define CLEAR "clear-cache"
 
 using namespace std;
 
@@ -201,7 +201,7 @@ class ReorderF : public Fault {
 /*********************************************************************************************/
 
 /**
- * @brief Fault for crashing LazyFS in a specific point of execution.
+ * @brief Fault for clearing LazyFS's cache in a specific point of execution and, optionally, crash the process.
 */
 class ClearF : public Fault {
   public:
