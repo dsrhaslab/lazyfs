@@ -210,6 +210,7 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                         error_msg += "\t" + error + "\n";
                     }
                     spdlog::error(error_msg);
+                    delete fault;
                     
                 } else {
             
@@ -271,7 +272,7 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                     error_msg += "\tKeys 'parts' and 'key_parts' for some injection of type \"torn-op\" are exclusive in the configuration file. Please define at most one of them.\n";     
                 }
 
-                faults::SplitWriteF * fault = NULL;
+                faults::SplitWriteF * fault = nullptr;
                 vector<string> errors;
 
                 //A split write fault either contains the parameter "parts" or the "pats_bytes"
@@ -302,6 +303,7 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                         error_msg += "\t" + error + "\n";
                     }
                     spdlog::error(error_msg);
+                    delete fault;
 
                 } else {
 
@@ -376,6 +378,8 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                         error_msg +=  "\t" + error + "\n";
                     }
                     spdlog::error(error_msg);
+                    delete fault;
+
                 } else {
 
                     auto it = faults.find(from);

@@ -237,7 +237,7 @@ void LazyFS::add_crash_fault (string crash_timing,
     }
 }
 
-bool LazyFS::add_torn_op_fault(string path, string parts, string parts_bytes, string persist) {
+vector<string> LazyFS::add_torn_op_fault(string path, string parts, string parts_bytes, string persist) {
     regex number ("\\d+");
     sregex_token_iterator iter(persist.begin(), persist.end(), number);
     sregex_token_iterator end;
@@ -263,13 +263,22 @@ bool LazyFS::add_torn_op_fault(string path, string parts, string parts_bytes, st
     if (parts != "none") {
         partsi = stoi(parts);
     }
-    
-    bool VF = (partsi != -1) ? faults::SplitWriteF::check(persistv, partsi) : faults::SplitWriteF::check(persistv, parts_bytes_v);
 
-    if (VF) {
-        faults::SplitWriteF* fault;
-        if (partsi != -1) fault = new faults::SplitWriteF(1, persistv, partsi);
-        else fault = new faults::SplitWriteF(1, persistv, parts_bytes_v);
+    int occurrence=1;
+
+    faults::SplitWriteF* fault;
+    vector<string> errors;
+
+    if (partsi != -1) {
+        fault = new faults::SplitWriteF(occurrence, persistv, partsi);
+        errors = faults::SplitWriteF::validate(occurrence, persistv, partsi, std::nullopt);
+    } else {
+        fault = new faults::SplitWriteF(occurrence, persistv, parts_bytes_v);
+        errors = faults::SplitWriteF::validate(occurrence, persistv, std::nullopt, parts_bytes_v);
+    }
+    
+    bool valid_fault = true;
+    if (errors.size() == 0) {
 
         auto it = faults->find(path);
         if (it == faults->end()) {
@@ -278,17 +287,20 @@ bool LazyFS::add_torn_op_fault(string path, string parts, string parts_bytes, st
             //Only allows one fault per file
             for (auto fault : it->second) {
                 if (dynamic_cast<faults::SplitWriteF*>(fault) != nullptr) {
-                    return false;
+                    errors.push_back("Only one torn-op fault per file is allowed.");
+                    valid_fault = false;
                 }
             }
-            it->second.push_back(fault);
+            if (valid_fault) it->second.push_back(fault);
         }
-    }
+    } 
+ 
+    if (!valid_fault) delete fault;
 
-    return VF;
+    return errors;
 }
 
-bool LazyFS::add_torn_seq_fault(string path, string op, string persist) {
+vector<string> LazyFS::add_torn_seq_fault(string path, string op, string persist) {
     regex number ("\\d+");
     sregex_token_iterator iter(persist.begin(), persist.end(), number);
     sregex_token_iterator end;
@@ -299,10 +311,11 @@ bool LazyFS::add_torn_seq_fault(string path, string op, string persist) {
         ++iter;
     }
 
-    bool VF = faults::ReorderF::check(op, persistv);
+    faults::ReorderF* fault = new faults::ReorderF(op, persistv, 1);
+    vector<string> errors = fault->validate();
 
-    if (VF) {
-        faults::ReorderF* fault = new faults::ReorderF(op, persistv, 1);
+    bool valid_fault = true;
+    if (errors.size() == 0) {
         auto it = faults->find(path);
         if (it == faults->end())
             faults->insert({path, {fault}});
@@ -310,13 +323,17 @@ bool LazyFS::add_torn_seq_fault(string path, string op, string persist) {
             for (auto fault : it->second) {
                 //Only allows one fault per file
                 if (dynamic_cast<faults::ReorderF*>(fault) != nullptr) {
-                    return false;
+                    errors.push_back("Only one torn-seq fault per file is allowed.");
+                    valid_fault = false;
                 }
             }
-            it->second.push_back(fault);
+            if (valid_fault) it->second.push_back(fault);
         }
     }
-    return VF;
+    
+    if (!valid_fault) delete fault;
+
+    return errors;
 }
 
 void LazyFS::command_unsynced_data_report (vector<string> paths_to_exclude) {

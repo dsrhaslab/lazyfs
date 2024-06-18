@@ -32,19 +32,6 @@ ReorderF::ReorderF() : Fault(TORN_SEQ) {
 
 ReorderF::~ReorderF(){}
 
-bool ReorderF::check(string op, vector<int> persist) {
-    if (op != "write") return false;
-
-    bool check = true;
-    for (auto & p : persist) {
-        if (p <= 0) {
-            check = false;
-            break;
-        }
-    }
-    return check;
-}
-
 vector<string> ReorderF::validate() {
     vector<string> errors;
     if (this->op != "write") {
@@ -90,38 +77,7 @@ SplitWriteF::SplitWriteF() : Fault(TORN_OP) {
     this->parts = 0;
 }
 
-SplitWriteF::~SplitWriteF(){}
- 
-bool SplitWriteF::check(vector<int> persist, int parts) {
-    bool check = true;
-    if (parts >= 0) {
-        for (auto & p : persist) {
-            if (p <= 0 || p>parts) {
-                check = false;
-                break;
-            }
-        }
-    } else check = false;
-    return check;
-}
-
-
-bool SplitWriteF::check(vector<int> persist, vector<int> parts_bytes) {
-    bool check = true;
-    int parts = parts_bytes.size();
-    for (auto & p : parts_bytes) {
-        if (p <= 0) {
-            return false;
-        }
-    }
-    for (auto & p : persist) {
-        if (p <= 0 || p>parts) {
-            check = false;
-            break;
-        }
-    }
-    return check;
-}
+SplitWriteF::~SplitWriteF() {}
 
 vector<string> SplitWriteF::validate(int occurrence, vector<int> persist, optional<int> parts, optional<vector<int>> parts_bytes) {
     vector<string> errors;
