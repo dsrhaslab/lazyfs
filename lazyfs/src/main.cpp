@@ -186,6 +186,181 @@ void fht_worker (LazyFS* filesystem) {
                     fifo_lock.unlock();
                 }
 
+            } else if (command_str.rfind ("lazyfs::torn-op", 0) == 0) {
+                spdlog::info ("[lazyfs.faults.worker]: received '{}'", string (buffer));
+                
+                std::regex rgx_global ("::");
+                std::regex rgx_attrib ("=");
+                std::sregex_token_iterator iter_glob (command_str.begin (),
+                                                      command_str.end (),
+                                                      rgx_global,
+                                                      -1);
+                std::sregex_token_iterator end;
+
+                string file = "none";
+                string parts = "none";
+                string parts_bytes = "none";
+                string persist = "none";
+
+                bool valid_fault = true;
+                vector<string> errors;
+
+                for (; iter_glob != end; ++iter_glob) {
+
+                    string current = string (*iter_glob);
+
+                    spdlog::info ("[lazyfs.faults.worker]: {}",current);
+
+                    if (current.rfind ("file=", 0) == 0) {
+
+                        string tmp_file = current.erase (0, current.find ("=") + 1);
+
+                        if (tmp_file.length () != 0)
+                            file = tmp_file;
+                        else {
+                            errors.push_back ("file not specified");
+                            valid_fault = false;
+                        }
+
+                    } else if (current.rfind ("parts=", 0) == 0) {
+
+                        string tmp_parts = current.erase (0, current.find ("=") + 1);
+                        std::regex pattern(R"(\d+)");
+
+                        if (!std::regex_match(tmp_parts, pattern)) {
+                            errors.push_back ("parts should be a number");
+                            valid_fault = false;
+                        } else 
+                            parts = tmp_parts;
+                        
+                    
+                    } else if (current.rfind ("parts_bytes=", 0) == 0) {
+                        
+                        string tmp_parts_bytes = current.erase (0, current.find ("=") + 1);
+                        std::regex pattern(R"((\d+,)*\d+)");
+
+                        if (!std::regex_match(tmp_parts_bytes, pattern)) {
+                            errors.push_back ("parts_bytes should be a list of numbers separated by commas");
+                            valid_fault = false;
+                        } else 
+                            parts_bytes = tmp_parts_bytes;
+                        
+
+                    } else if (current.rfind ("persist=", 0) == 0) {
+
+                        string tmp_persist = current.erase (0, current.find ("=") + 1);
+                        std::regex pattern(R"((\d+,)*\d+)");
+
+                        if (!std::regex_match(tmp_persist, pattern)) {
+                            errors.push_back ("persist should be a list of numbers separated by commas");
+                            valid_fault = false;
+                        } else 
+                            persist = tmp_persist;
+                        
+                    } else if (current != "lazyfs" && current != "torn-op") {
+                        errors.push_back ("unknown attribute");
+                        valid_fault = false;
+                    }
+                }
+
+                if (parts=="none" && parts_bytes=="none") {
+                    errors.push_back ("should specify 'parts' or 'parts_bytes', not both");
+                    valid_fault = false;
+                }
+                
+                vector<string> errors_add_torn_op;
+                if (valid_fault) 
+                    errors_add_torn_op = filesystem->add_torn_op_fault (file, parts, parts_bytes, persist);
+
+                if (errors_add_torn_op.size() == 0) 
+                        spdlog::info ("[lazyfs.faults.worker]: configured successfully '{}'", string (buffer));
+                else {
+                    spdlog::warn ("[lazyfs.faults.worker]: received: INVALID torn-op fault:");
+
+                    errors.insert(errors.end(), errors_add_torn_op.begin(), errors_add_torn_op.end());
+
+                    for (auto const err : errors) {
+                        spdlog::warn ("[lazyfs.faults.worker]: {}", err);
+                    }
+                    
+                }
+                
+            } else if (command_str.rfind ("lazyfs::torn-seq", 0) == 0) {
+                spdlog::info ("[lazyfs.faults.worker]: received '{}'", string (buffer));
+                
+                std::regex rgx_global ("::");
+                std::regex rgx_attrib ("=");
+                std::sregex_token_iterator iter_glob (command_str.begin (),
+                                                      command_str.end (),
+                                                      rgx_global,
+                                                      -1);
+                std::sregex_token_iterator end;
+
+                string file = "none";
+                string op = "none";
+                string persist = "none";
+
+                bool valid_fault = true;
+                vector<string> errors;
+
+                for (; iter_glob != end; ++iter_glob) {
+
+                    string current = string (*iter_glob);
+
+                    if (current.rfind ("file=", 0) == 0) {
+
+                        string tmp_file = current.erase (0, current.find ("=") + 1);
+
+                        if (tmp_file.length () != 0)
+                            file = tmp_file;
+                        else {
+                            errors.push_back ("bad file specification");
+                            valid_fault = false;
+                        }
+
+                    } else if(current.rfind ("op=", 0) == 0) {
+
+                        string tmp_op = current.erase (0, current.find ("=") + 1);
+
+                        if (tmp_op.length () != 0)
+                            op = tmp_op;
+                        else {
+                            errors.push_back ("operation not available");
+                            valid_fault = false;
+                        }
+                    } else if (current.rfind ("persist=", 0) == 0) {
+
+                        string tmp_per = current.erase (0, current.find ("=") + 1);
+                        std::regex pattern(R"((\d+,)*\d+)");
+
+                        if (!std::regex_match(tmp_per, pattern)) {
+                            errors.push_back ("persist should be a list of numbers separated by commas");
+                            valid_fault = false;
+                        } else 
+                            persist = tmp_per;
+                        
+                    } else if (current != "lazyfs" && current != "torn-seq") {
+                        errors.push_back ("unknown attribute");
+                        valid_fault = false;
+                    }
+                }
+
+                vector<string> errors_add_torn_seq;
+                if (valid_fault) 
+                    errors_add_torn_seq = filesystem->add_torn_seq_fault(file, op, persist);
+
+                if (errors_add_torn_seq.size() == 0)
+                        spdlog::info ("[lazyfs.faults.worker]: configured successfully '{}'", string (buffer));
+                else {  
+                        errors.insert(errors.end(), errors_add_torn_seq.begin(), errors_add_torn_seq.end());
+
+                        spdlog::warn ("[lazyfs.faults.worker]: received: INVALID torn-seq fault:");
+                        
+                        for (auto const err : errors) {
+                            spdlog::warn ("[lazyfs.faults.worker]: {}", err);
+                        }
+                }      
+            
             } else if (!strcmp (buffer, "lazyfs::display-cache-usage")) {
 
                 spdlog::info ("[lazyfs.faults.worker]: received '{}'", string (buffer));
@@ -199,8 +374,8 @@ void fht_worker (LazyFS* filesystem) {
             } else if (!strcmp (buffer, "lazyfs::unsynced-data-report")) {
 
                 spdlog::info ("[lazyfs.faults.worker]: received '{}'", string (buffer));
-                string path_injecting_fault = filesystem->get_path_injecting_fault();
-                filesystem->command_unsynced_data_report (path_injecting_fault);
+                vector<string> injecting_fault = filesystem->get_injecting_fault ();
+                filesystem->command_unsynced_data_report (injecting_fault);
                 
             } else if (!strcmp (buffer, "lazyfs::help")) {
 
@@ -270,7 +445,7 @@ int main (int argc, char* argv[]) {
 
     // Load LazyFS's config
 
-    unordered_map<string,vector<cache::config::Fault*>> faults = std_config.load_config (config_path);
+    unordered_map<string,vector<faults::Fault*>> faults = std_config.load_config (config_path);
 
     // Setup logger
 

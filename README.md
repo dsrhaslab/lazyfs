@@ -93,6 +93,14 @@ file="output1.txt"
 occurrence=5
 parts=3 #or parts_bytes=[4096,3600,1260]
 persist=[1,3]
+
+[[injection]]
+type="clear"
+from="f1.txt"
+timing="before"
+op="fsync"
+occurrence=6
+crash=true
 ```
 
 I recommend following the `simple` cache configuration (indicating the cache size and using a similar configuration file as `default.toml`), since it's currently the most tested schema in our experiments. Additionally, for the section **[cache]**, you can specify the following:
@@ -105,6 +113,7 @@ I recommend following the `simple` cache configuration (indicating the cache siz
 
 -   **torn-seq**: This fault type is used when a sequence of system calls, targeting a single file, is executed consecutively without an intervening `fsync`. *In the example*, during the second group of consecutive writes (the group number is defined by the parameter `occurrence`), to the file "output.txt", the first and fourth writes will be persisted to disk (the writes to be persisted are defined by the parameter `persist`). After the fourth write (the last in the `persist` vector), LazyFS will crash itself.
 -   **torn-op**: This fault type involves dividing a write system call into smaller parts, with some of these parts being persisted while others are not. In the example, the fifth write issued (the number of the write is defined by the parameter `occurrence`) to the file "output1.txt" will be divided into three equal parts if the `parts` parameter is used, or into customizable-sized parts if the `parts_bytes` parameter is defined. In the commented code, there's an example of using `parts_bytes`, where the write will be torn into three parts: the first with 4096 bytes, the second with 3600 bytes, and the last with 1200 bytes. The `persist` vector determines which parts will be persisted. After the persistence of these parts, LazyFS will crash.
+-   **clear-cache**: Clears unsynced data in a certain point of the execution. In the example above, this fault will be injected after (`timing`) the sixth (`occurrence`) `fsync` (`op`) to the file "f1.txt" (`from`). The `op` parameter must be a system call, and if it involves two paths (such as `rename`), the `to` parameter should also be specified. The `crash` parameter determines whether LazyFS should crash after the fault injection.
 
 Other parameters:
 
@@ -208,6 +217,19 @@ Finally, one can control LazyFS by echoing the following commands to the configu
     ```
 
     > Kills LazyFS before executing a link operation to the file pattern 'fileabd'.
+
+-   **Kill the filesystem** after injecting `torn-op` or `torn-seq`faults:
+
+    The parameters are the same as the ones presented in the above configuration file. Parameters that have multiple values, must be specified without the parenthesis (e.g., `persist=1,2` ).
+
+    -   ```bash
+        echo "lazyfs::torn-op::file=...::persist=...::parts=...::occurrence=..." > /my/path/faults.fifo
+        ```
+
+    -   ```bash
+        echo "lazyfs::torn-seq::op=...::file=...::persist=...::occurrence=..." > /my/path/faults.fifo
+        ```
+
 
 LazyFS expects that every buffer written to the FIFO file terminates with a new line character (**echo** does this by default). Thus, if using `pwrite`, for example, make sure you end the buffer with `\n`.
 
