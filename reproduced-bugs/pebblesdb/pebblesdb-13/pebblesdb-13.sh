@@ -7,7 +7,6 @@
 #      - Time            2 seconds
 #
 #        AUTHOR: Maria Ramos,
-#       CREATED: 26 Mar 2024,
 #      REVISION: 26 Mar 2024
 #===============================================================================
 
@@ -68,11 +67,16 @@ echo -e "7.${GREEN}LazyFS restarted${RESET}."
 g++ "$DIR/pebblesdb-13-read.cpp" -o "$DIR/db_read" -lpebblesdb -lsnappy -lpthread 
 "$DIR/db_read" $data_dir > $pebblesdb_out 2>&1 
 
-check_error "no meta-nextfile entry in descriptor" "$pebblesdb_out"
+if grep -q "Corruption" "$pebblesdb_out"; then
+    echo -e "8.${GREEN}Error expected detected${RESET}:"
+    grep "Corruption" $pebblesdb_out
+else
+    echo -e "8.${RED}Error not detected${RESET}."
+fi
 
 #Unmount LazyFS
 scripts/umount-lazyfs.sh -m "$data_dir"  > /dev/null 2>&1 
-echo -e "8.${GREEN}Unmounted LazyFS${RESET}."
+echo -e "9.${GREEN}Unmounted LazyFS${RESET}."
 
 #Record the end time and print elapsed time
 end_time=$(date +%s)

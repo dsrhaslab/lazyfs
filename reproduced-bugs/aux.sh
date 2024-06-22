@@ -4,8 +4,7 @@
 #   DESCRIPTION: This script contains useful functions for reproducing LazyFS bugs.
 #
 #        AUTHOR: Maria Ramos,
-#       CREATED: 7 Mar 2024,
-#      REVISION: [Date of Last Revision]
+#      REVISION: 7 Mar 2024
 #
 #
 #===============================================================================

@@ -8,7 +8,6 @@
 #      - Time            6 seconds
 #
 #        AUTHOR: Maria Ramos,
-#       CREATED: 27 Mar 2024,
 #      REVISION: 31 Mar 2024
 #===============================================================================
 
@@ -118,11 +117,10 @@ wait $pid
 
 #Check for errors
 if grep -E -q "Unable to load database on disk|No snapshot found" $zk_out; then
-    # Code to execute if one of the strings is found
-    echo -e "${GREEN}Error expected found${RESET}!"
+    echo -e "10.${GREEN}Error expected found${RESET}:"
+    grep -E "Unable to load database on disk|No snapshot found" $zk_out
 else
-    # Code to execute if neither string is found
-    echo -e "${RED}Error expected not found${RESET}!"
+    echo -e "10.${RED}Error expected not found${RESET}!"
 fi
 
 #Kill ZooKeeper processes
@@ -135,7 +133,7 @@ done
 
 #Unmount LazyFS
 scripts/umount-lazyfs.sh -m "$data_dir"  > /dev/null 2>&1 
-echo -e "10.${GREEN}Unmounted LazyFS${RESET}."
+echo -e "11.${GREEN}Unmounted LazyFS${RESET}."
 
 #Record the end time and print elapsed time
 end_time=$(date +%s)

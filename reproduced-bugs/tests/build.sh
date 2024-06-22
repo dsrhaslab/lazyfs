@@ -121,4 +121,3 @@ docker build -t postgres-1-image --build-arg application=postgres --build-arg te
 
 ## PostgreSQL VCC
 docker build -t postgres-vcc-image --build-arg application=postgres --build-arg test_id=postgres-vcc --build-arg app_version=15.2 -f Dockerfile ..
-

@@ -7,7 +7,6 @@
 #      - Time            2 seconds
 #
 #        AUTHOR: Maria Ramos,
-#       CREATED: 27 Mar 2024,
 #      REVISION: 27 Mar 2024
 #===============================================================================
 
@@ -64,25 +63,35 @@ echo -e "6.${GREEN}LazyFS restarted${RESET}."
 g++ "$DIR/pebblesdb-15-read.cpp" -o "$DIR/db_read" -lpebblesdb -lsnappy -lpthread 
 "$DIR/db_read" $data_dir $pebblesdb_pairs > $pebblesdb_out 2>&1 
 
-if grep -q "Corruption: checksum mismatch" "$pebblesdb_out"; then
+i=7
+if grep "Corruption: checksum mismatch" "$pebblesdb_out"; then
     #Repair DB
     echo -e "7.${YELLOW}Repairing PebblesDB data${RESET}."
     g++ "$DIR/pebblesdb-15-repair.cpp" -o "$DIR/db_repair" -lpebblesdb -lsnappy -lpthread 
     "$DIR/db_repair" $data_dir > $pebblesdb_out 2>&1 
 
+    i=$((i+1))
+
     #Read DB
     "$DIR/db_read" $data_dir $pebblesdb_pairs >> $pebblesdb_out 2>&1 
 
     # We expect to k3 to be corrupted
-    check_error "k3 does not correspond to expectation" $pebblesdb_out
+    if grep -q "k3 does not correspond to expectation" $pebblesdb_out; then 
+        echo -e "$i.${GREEN}Corruption expected detected${RESET}:"
+        echo -e "${RED}k3 does not correspond to expectation${RESET}!"
+    else 
+        echo -e "$i.${RED}Corruption expected not detected${RESET}!"
+    fi
 
 else 
-    echo -e "7.${YELLOW}No need to repair pebblesdb data${RESET}."
+    echo -e "$i.${YELLOW}No need to repair pebblesdb data${RESET}."
 fi 
+
+i=$((i+1))
 
 #Unmount LazyFS
 scripts/umount-lazyfs.sh -m "$data_dir"  > /dev/null 2>&1 
-echo -e "8.${GREEN}Unmounted LazyFS${RESET}."
+echo -e "$i.${GREEN}Unmounted LazyFS${RESET}."
 
 #Record the end time and print elapsed time
 end_time=$(date +%s)

@@ -63,26 +63,35 @@ echo -e "6.${GREEN}LazyFS restarted${RESET}."
 g++ "$DIR/leveldb-6-read.cpp" -o "$DIR/db_read" -lleveldb -lsnappy -lpthread 
 "$DIR/db_read" $data_dir $leveldb_pairs > $leveldb_out 2>&1 
 
-if grep -q "Corruption: checksum mismatch" "$leveldb_out"; then
+i=7
+if grep "Corruption: checksum mismatch" "$leveldb_out"; then
     #Repair DB
-    echo -e "7.${YELLOW}Repairing LevelDB data${RESET}."
+    echo -e "$i.${YELLOW}Repairing LevelDB data${RESET}."
     g++ "$DIR/leveldb-6-repair.cpp" -o "$DIR/db_repair" -lleveldb -lsnappy -lpthread 
     "$DIR/db_repair" $data_dir > $leveldb_out 2>&1 
+
+    i=$((i+1))
 
     #Read DB
     "$DIR/db_read" $data_dir $leveldb_pairs >> $leveldb_out 2>&1 
 
     # We expect to k3 to be corrupted
-    check_error "k3 does not correspond to expectation" $leveldb_out
+    if grep -q "k3 does not correspond to expectation" $leveldb_out; then 
+        echo -e "$i.${GREEN}Corruption expected detected${RESET}:"
+        echo -e "${RED}k3 does not correspond to expectation${RESET}!"
+    else 
+        echo -e "$i.${RED}Corruption expected not detected${RESET}!"
+    fi
 
 else 
-    echo -e "7.${YELLOW}No need to repair LevelDB data${RESET}."
+    echo -e "$i.${YELLOW}No need to repair LevelDB data${RESET}."
 fi 
 
-echo -e "8.${GREEN}Test finished${RESET}."
+i=$((i+1))
+
 #Unmount LazyFS
 scripts/umount-lazyfs.sh -m "$data_dir"  > /dev/null 2>&1 
-echo -e "8.${GREEN}Unmounted LazyFS${RESET}."
+echo -e "$i.${GREEN}Unmounted LazyFS${RESET}."
 
 #Record the end time and print elapsed time
 end_time=$(date +%s)

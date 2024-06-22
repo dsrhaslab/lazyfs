@@ -7,7 +7,6 @@
 #      - Time           84 seconds
 #
 #        AUTHOR: Maria Ramos,
-#       CREATED: 1 Apr 2024,
 #      REVISION: 1 Apr 2024
 #===============================================================================
 persistw=$1

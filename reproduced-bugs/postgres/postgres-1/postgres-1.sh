@@ -7,7 +7,6 @@
 #      - Time           11 seconds
 #
 #        AUTHOR: Maria Ramos,
-#       CREATED: 2 Apr 2024,
 #      REVISION: 2 Apr 2024
 #===============================================================================
 
@@ -51,39 +50,43 @@ wait_action "server started" $postgres_out
 echo -e "4.${GREEN}PostgreSQL started${RESET}."
 
 #Execute queries
-echo -e "4.${GREEN}Execute queries${RESET}."
+echo -e "5.${GREEN}Execute queries${RESET}."
 su - postgres -c "create table t1(a int);" > /dev/null 2>&1  
 su - postgres -c "insert into t1 values(1);" > /dev/null 2>&1  
 su - postgres -c "insert into t1 values(2);" > /dev/null 2>&1  
 su - postgres -c "insert into t1 values(3);" > /dev/null 2>&1  
 
 #Stop PostgreSQL
-echo -e "5.${YELLOW}Stopping PostgreSQL${RESET}."
+echo -e "6.${YELLOW}Stopping PostgreSQL${RESET}."
 su - postgres -c "/usr/local/pgsql/bin/pg_ctl -D $data_dir -l $logfile stop" > $postgres_out 2>&1
 wait_action "server stopped" $postgres_out
-echo -e "6.${green}PostgreSQL stopped${RESET}."
+echo -e "7.${green}PostgreSQL stopped${RESET}."
 truncate -s 0 $postgres_out
 
 #Inject fault
 echo "$fault" > "$faults_fifo"
 wait_action "cache" $lfs_log
-echo -e "7.${RED}Injected fault${RESET}."
+echo -e "8.${RED}Injected fault${RESET}."
 
 #Start PostgreSQL and check log
-echo -e "8.${YELLOW}Start PostgreSQL${RESET}."
+echo -e "9.${YELLOW}Start PostgreSQL${RESET}."
 su - postgres -c "/usr/local/pgsql/bin/pg_ctl -D /usr/local/pgsql/data -l $logfile start" > $postgres_out 2>&1
 wait_action "server started" $postgres_out
-echo -e "9.${GREEN}PostgreSQL started${RESET}."
-check_error "corrupted statistics file" $logfile
-echo -e "> PostgreSQL server:"
-tail -1 $logfile
+echo -e "10.${GREEN}PostgreSQL started${RESET}."
+
+if grep -q "corrupted statistics file" $logfile; then
+    echo -e "11.${GREEN}Error expected detected${RESET}:"
+    grep "corrupted statistics file" $logfile
+else
+    echo -e "11.${RED}Error not detected${RESET}."
+fi
 
 #Stop PostgreSQL
 su - postgres -c "/usr/local/pgsql/bin/pg_ctl -D $data_dir -l $logfile stop" > $postgres_out 2>&1
 
 #Unmount LazyFS
 scripts/umount-lazyfs.sh -m "$data_dir"  > /dev/null 2>&1 
-echo -e "9.${GREEN}Unmounted Lazyfs${RESET}."
+echo -e "11.${GREEN}Unmounted Lazyfs${RESET}."
 
 #Record end time
 end_time=$(date +%s)

@@ -7,7 +7,6 @@
 #      - Time            2 seconds
 #
 #        AUTHOR: Maria Ramos,
-#       CREATED: 22 Mar 2024,
 #      REVISION: 22 Mar 2024
 #===============================================================================
 
@@ -57,12 +56,12 @@ g++ "$DIR/pebblesdb-14-read.cpp" -o "$DIR/db_read" -lpebblesdb -lsnappy -lpthrea
 "$DIR/db_read" $data_dir 98001 > $pebblesdb_out 2>&1 
 
 #Check result
-if grep -q "Corruption" $pebblesdb_out; then
-    echo -e "6.${RED}Corruption detected${RESET}."
-else 
-    result=$(cat $pebblesdb_out)
-    echo -e "6.${RED}$result${RESET}."
+if grep -q "There are 28190 pairs in the database from 98001 inserted" $pebblesdb_out; then 
+    echo -e "6.${GREEN}Corruption expected detected${RESET}:"
+        result=$(cat $pebblesdb_out)
+    echo -e "${RED}$result${RESET}."
 fi
+
 
 #Unmount LazyFS
 scripts/umount-lazyfs.sh -m "$data_dir"  > /dev/null 2>&1 

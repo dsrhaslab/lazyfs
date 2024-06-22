@@ -9,7 +9,6 @@
 #      - Time            fault 2: 3 seconds 
 #
 #        AUTHOR: Maria Ramos,
-#       CREATED: 4 Apr 2024,
 #      REVISION: 30 Apr 2024
 #===============================================================================
 
@@ -76,19 +75,22 @@ truncate -s 0 $redis_out
 "$redis_dir/redis-server" $redis_conf > $redis_out 2>&1 &
 redis_pid=$!
 
+i=10
 #Check error
 if [ "$fault_nr" -eq 2 ]; then
     wait_action "Bad file format" $redis_out
-    echo -e "10.${GREEN}Error expected detected${RESET}:"
-    sed -n 14p $redis_out
+    grep "Bad file format" $redis_out    
+    echo -e "$i.${GREEN}Error expected detected${RESET}!"
+    i=$((i+1))
 
     #Repair
-    echo -e "11.${YELLOW}Repairing Redis data${RESET}"
+    echo -e "$i.${YELLOW}Repairing Redis data${RESET}"
     echo "yes" | "$redis_dir/redis-check-aof" --fix "$data_dir/appendonlydir/appendonly.aof.1.incr.aof"  > $redis_out &
+    i=$((i+1))
 
     #Wair Redis repairing
     wait_action "Successfully truncated AOF" $redis_out
-    echo -e "12.${GREEN}Successfully repaired Redis${RESET}."
+    echo -e "$i.${GREEN}Successfully repaired Redis${RESET}."
 
     #"$redis_dir/redis-server" $redis_conf > $redis_out 2>&1 &
     #redis_pid=$! 
@@ -101,16 +103,19 @@ else
     wait_action "Truncating the AOF" $redis_out
     echo -e "\n>> Redis log:"
     sed -n 15,20p $redis_out
-    echo -e "\n10.${GREEN}Redis repaired itself${RESET}."
+    echo -e "\n$i.${GREEN}Redis repaired itself${RESET}."
+    i=$((i+1))
+
     wait_action "Ready to accept connections tcp" $redis_out
-    echo -e "11.${GREEN}Redis started${RESET}."
+    echo -e "$i.${GREEN}Redis started${RESET}."
 fi 
 
 pkill -TERM -P $redis_pid > /dev/null 2>&1
+i=$((i+1))
 
 #Unmount LazyFS
 scripts/umount-lazyfs.sh -m "$data_dir"  > /dev/null 2>&1 
-echo -e "${GREEN}Unmounted LazyFS${RESET}"
+echo -e "$i.${GREEN}Unmounted LazyFS${RESET}."
 
 #Record the end time and print elapsed time
 end_time=$(date +%s)

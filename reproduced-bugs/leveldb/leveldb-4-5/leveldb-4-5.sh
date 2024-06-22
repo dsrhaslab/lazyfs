@@ -10,6 +10,8 @@
 #      REVISION: 22 Mar 2024
 #===============================================================================
 
+version=$1
+
 DIR="$PWD"
 . "$DIR/aux.sh"
 . "$DIR/leveldb-4-5-vars.sh" #File to configure with paths important for the tests
@@ -56,8 +58,20 @@ g++ "$DIR/leveldb-4-5-read.cpp" -o "$DIR/db_read" -lleveldb -lsnappy -lpthread
 "$DIR/db_read" $data_dir 98001 > $leveldb_out 2>&1 
 
 #Check result
-grep "CURRENT file does not end with newline" $leveldb_out
-check_error "CURRENT file does not end with newline" $leveldb_out
+if [[ "$version" == "1.12" ]]; then
+    if grep -q "CURRENT file does not end with newline" $leveldb_out; then
+        echo -e "6.${GREEN}Error expected detected${RESET}:"
+        grep "CURRENT file does not end with newline" $leveldb_out
+    else 
+        echo -e "6.${RED}Error expected not detected${RESET}!"
+    fi
+else 
+    if grep -q "There are 120 pairs in the database from 98001 inserted" $leveldb_out; then 
+        echo -e "6.${GREEN}Corruption expected detected${RESET}:"
+        result=$(cat $leveldb_out)
+        echo -e "${RED}$result${RESET}."
+    fi
+fi
 
 #Unmount LazyFS
 scripts/umount-lazyfs.sh -m "$data_dir"  > /dev/null 2>&1 

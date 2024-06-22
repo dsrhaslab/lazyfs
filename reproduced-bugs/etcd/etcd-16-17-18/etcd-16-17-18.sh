@@ -83,20 +83,23 @@ wait $etcd_pid
 echo -e "9.${RED}etcd crashed${RESET}."
 
 if [ "$1" == "16" ]; then
-    if grep -e "bus error" "$etcd_out"; then
-        echo -e "10.${GREEN}Expected error detected${RESET}!"
+    if grep -q "bus error" "$etcd_out"; then
+        echo -e "10.${GREEN}Expected error detected${RESET}:"
+        grep "bus error" "$etcd_out"
     else 
         echo -e "10.${RED}Expected error not detected${RESET}!"
     fi
 elif [ "$1" == "17" ]; then
-    if grep -e "invalid database" "$etcd_out"; then
-        echo -e "10.${GREEN}Expected error detected${RESET}!"
+    if grep -q "invalid database" "$etcd_out"; then
+        echo -e "10.${GREEN}Expected error detected${RESET}:"
+        grep "invalid database" "$etcd_out"
     else 
         echo -e "10.${RED}Expected error not detected${RESET}!"
     fi
 elif [ "$1" == "18" ]; then
-    if grep -e "file size too small" "$etcd_out"; then
-        echo -e "10.${GREEN}Expected error detected${RESET}!"
+    if grep -q "file size too small" "$etcd_out"; then
+        echo -e "10.${GREEN}Expected error detected${RESET}:"
+        grep "file size too small" "$etcd_out"
     else 
         echo -e "10.${RED}Expected error not detected${RESET}!"
     fi

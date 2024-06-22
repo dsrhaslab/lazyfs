@@ -5,7 +5,6 @@
 #                Receives the number of a server as argument.
 #
 #        AUTHOR: Maria Ramos,
-#       CREATED: 28 Mar 2024,
 #      REVISION: 1 Apr 2024
 #===============================================================================
 

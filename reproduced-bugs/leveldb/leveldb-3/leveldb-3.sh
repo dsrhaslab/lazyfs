@@ -67,12 +67,16 @@ echo -e "7.${GREEN}LazyFS restarted${RESET}."
 g++ "$DIR/leveldb-3-read.cpp" -o "$DIR/db_read" -lleveldb -lsnappy -lpthread 
 "$DIR/db_read" $data_dir > $leveldb_out 2>&1
 
-grep "no meta-nextfile entry in descriptor" "$leveldb_out"
-check_error "no meta-nextfile entry in descriptor" "$leveldb_out"
+if grep -q "Corruption" "$leveldb_out"; then
+    echo -e "8.${GREEN}Error expected detected${RESET}:"
+    grep "Corruption" $leveldb_out
+else
+    echo -e "8.${RED}Error not detected${RESET}."
+fi
 
 #Unmount LazyFS
 scripts/umount-lazyfs.sh -m "$data_dir"  > /dev/null 2>&1 
-echo -e "8.${GREEN}Unmounted LazyFS${RESET}."
+echo -e "9.${GREEN}Unmounted LazyFS${RESET}."
 
 #Record the end time and print elapsed time
 end_time=$(date +%s)

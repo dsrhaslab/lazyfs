@@ -7,7 +7,6 @@
 #      - Time           12 seconds 
 #
 #        AUTHOR: Maria Ramos,
-#       CREATED: 7 Apr 2024,
 #      REVISION: 7 Apr 2024
 #===============================================================================
 export GOPATH=/usr/lib/go-1.18
@@ -83,14 +82,14 @@ lncli --network testnet --macaroonpath $data_dir/chain/bitcoin/testnet/admin.mac
 wait_action "empty macaroon data" $lnd_out_cli
 echo -e "> LND client: "
 cat $lnd_out_cli
-echo -e "${GREEN}Error expected detected${RESET}!"
+echo -e "12.${GREEN}Error expected detected${RESET}!"
 
 #Stop LND
 kill -SIGINT $lnd_pid > /dev/null 2>&1
 
 #Unmount LazyFS
 scripts/umount-lazyfs.sh -m "$data_dir"  > /dev/null 2>&1 
-echo -e "12.${GREEN}Unmounted LazyFS${RESET}."
+echo -e "13.${GREEN}Unmounted LazyFS${RESET}."
 
 #Record the end time and print elapsed time
 end_time=$(date +%s)

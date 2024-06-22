@@ -74,12 +74,16 @@ etcd_pid=$!
 wait $etcd_pid 
 echo -e "10.${RED}etcd crashed${RESET}."
 
-grep "crc mismatch" "$etcd_out"
-check_error "crc mismatch" "$etcd_out"
+if grep -q "crc mismatch" "$etcd_out"; then
+    echo -e "11.${GREEN}Error expected detected${RESET}:"
+    grep "crc mismatch" $etcd_out
+else 
+    echo -e "11.${RED}Error expected not detected${RESET}!"
+fi
 
 #Unmount LazyFS
 scripts/umount-lazyfs.sh -m "$data_dir"  > /dev/null 2>&1 
-echo -e "11.${GREEN}Unmounted Lazyfs${RESET}."
+echo -e "12.${GREEN}Unmounted Lazyfs${RESET}."
 
 #Record the end time and print elapsed time
 end_time=$(date +%s)

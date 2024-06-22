@@ -7,7 +7,6 @@
 #      - Time            6 seconds
 #
 #        AUTHOR: Maria Ramos,
-#       CREATED: 1 Apr 2024,
 #      REVISION: 1 Apr 2024
 #===============================================================================
 
@@ -112,7 +111,14 @@ echo -e "8.${GREEN}LazyFS restarted${RESET}."
 "$zk_dir$serverscript" start-foreground $zk_dir$config_file > $zk_out 2>&1 & 
 pid=$!
 wait $pid
-check_error "CRC check failed" $zk_out 
+
+#Check error
+if grep -q "CRC check failed" $zk_out; then
+    echo -e "9.${GREEN}Error expected detected${RESET}:"
+    grep "CRC check failed" $zk_out
+else 
+    echo -e "9.${RED}Error expected not detected${RESET}!"
+fi
 
 #Kill ZooKeeper processes
 for i in "${servers[@]}"; do
@@ -124,7 +130,7 @@ done
 
 #Unmount LazyFS
 scripts/umount-lazyfs.sh -m "$data_dir"  > /dev/null 2>&1 
-echo -e "9.${GREEN}Unmounted LazyFS${RESET}."
+echo -e "10.${GREEN}Unmounted LazyFS${RESET}."
 
 #Record the end time and print elapsed time
 end_time=$(date +%s)
