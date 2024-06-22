@@ -1,0 +1,13 @@
+[faults]
+fifo_path="/test/faults.fifo"
+
+[cache]
+apply_eviction=false
+
+[cache.simple]
+custom_size="3gb"
+blocks_per_page=1
+
+[filesystem]
+log_all_operations=true
+logfile="/test/lazyfs.log"
