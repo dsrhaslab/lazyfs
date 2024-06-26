@@ -76,14 +76,16 @@ echo "acl users" | "$redis_dir/redis-cli" -h 127.0.0.1 -p 6379 > $redis_out_cli 
 
 #Check result
 if ! grep -q "joe" "$redis_out_cli"; then
-    echo -e "${RED}User joe not found${RESET}."
+    echo -e "9.${GREEN}Corruption expected detected${RESET}: ${RED}User joe not found${RESET}."
+else
+    echo -e "9.${RED}Error expected not detected${RESET}."
 fi
 
 pkill -TERM -P $redis_pid /dev/null
 
 #Unmount LazyFS
 scripts/umount-lazyfs.sh -m "$data_dir"  > /dev/null 2>&1 
-echo -e "9.${GREEN}Unmounted LazyFS${RESET}."
+echo -e "10.${GREEN}Unmounted LazyFS${RESET}."
 
 #Record the end time and print elapsed time
 end_time=$(date +%s)

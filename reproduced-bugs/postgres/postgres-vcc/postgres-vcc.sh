@@ -131,17 +131,24 @@ echo -e "19.${GREEN}PostgreSQL restarted${RESET}."
 #amcheck
 echo -e "20.${YELLOW}Using amcheck${RESET}."
 su - postgres -c "$postgres_bin/psql -c \"CREATE EXTENSION amcheck; SELECT bt_index_parent_check('pgbench_accounts_pkey', TRUE,TRUE);\"" > $postgres_out 2>&1 
-grep "lacks matching index tuple" $postgres_out
+
+#Check error
+if grep -q "lacks matching index tuple" $postgres_out; then
+    echo -e "21.${GREEN}Error expected detected${RESET}:"
+    grep "lacks matching index tuple" $postgres_out
+else
+    echo -e "21.${RED}Error not detected${RESET}."
+fi
 
 #Terminate PostgreSQL
-echo -e "21.${YELLOW}Stopping PostgreSQL${RESET}."
+echo -e "22.${YELLOW}Stopping PostgreSQL${RESET}."
 su - postgres -c "$postgres_bin/pg_ctl -D $data_dir -l $logfile stop" > $postgres_out 2>&1
 wait_action "server stopped" $postgres_out
-echo -e "22.${green}PostgreSQL stopped${RESET}."
+echo -e "23.${GREEN}PostgreSQL stopped${RESET}."
 
 #Unmount LazyFS
 scripts/umount-lazyfs.sh -m "$data_dir"  > /dev/null 2>&1 
-echo -e "23.${GREEN}Unmounted Lazyfs${RESET}."
+echo -e "24.${GREEN}Unmounted Lazyfs${RESET}."
 
 #Record end time
 end_time=$(date +%s)
