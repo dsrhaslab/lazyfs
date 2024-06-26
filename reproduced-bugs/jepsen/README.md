@@ -9,10 +9,12 @@ Execute the following commands to run this test:
 ```shell
 chmod +x jepsen-setup.sh
 ./jepsen-setup.sh
+```
 
+When each node displays the message "Debian GNU/Linux 11 console", execute the following command to copy the `jepsen-control-node.sh` and enter the control node:
+
+```shell
 docker cp jepsen-control-node.sh jepsen-control:/jepsen/jepsen-control-node.sh
-
-#Enter Jepsen container of the control node
 docker exec -it jepsen-control bash
 ```
 

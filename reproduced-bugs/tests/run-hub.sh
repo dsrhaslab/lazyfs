@@ -195,5 +195,5 @@ docker run -it  --name postgres-1 --privileged  "$rep:postgres-1"
 ## PostgreSQL VCC
 echo -e  "\n\n>>>>>  PostgreSQL test for checking crash consistency mechanisms  <<<<<"
 
-docker run -it  --name postgres-vcc --env script_arguments="1 100 60 2 5" --privileged  "$rep:postgres-vcc"
+docker run -it  --name postgres-vcc --env script_arguments="1 100 60 2" --privileged  "$rep:postgres-vcc"
 

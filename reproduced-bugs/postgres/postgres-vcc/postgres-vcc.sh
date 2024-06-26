@@ -1,19 +1,25 @@
 #!/bin/bash
 
-#===============================================================================
+#==================================================================================================
 #   DESCRIPTION: This script tests the crach consistency mechanisms of PostgreSQL v15.2 
+#   ARGUMENTS: This script requires the following arguments:
+#           - persistw: write to persist
+#           - transactions: number of transactions for pgbench
+#           - scale: scale factor for pgbench
+#           - seed: random seed for pgbench
 #       
 #      - Error          heap tuple .. from table .. lacks matching index tuple within index ..
 #      - Time           84 seconds
 #
 #        AUTHOR: Maria Ramos,
 #      REVISION: 1 Apr 2024
-#===============================================================================
+#==================================================================================================
+
+#Arguments
 persistw=$1
 transactions=$2
 scale=$3
 seed=$4
-clients=$5
 
 DIR="$PWD"
 . "$DIR/aux.sh"

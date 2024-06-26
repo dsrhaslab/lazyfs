@@ -2,6 +2,7 @@
 
 #===============================================================================
 #   DESCRIPTION: This script tests bugs #4#5 of LevelDB v1.12, v1.15 and v1.23
+#   ARGUMENTS: This script receives the version of the application as argument.
 #       
 #      - Error           (v1.12) Corruption: CURRENT file does not end with newline; (v1.15,v1.23) .
 #      - Time            (v1.12) 1 second; (v1.15,v1.23) 9 seconds
