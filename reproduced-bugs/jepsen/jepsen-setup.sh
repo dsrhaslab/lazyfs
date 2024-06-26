@@ -1,11 +1,11 @@
-#############################################
-#  Jepsen configurations and cluster setup  #
-#############################################
+#===============================================================================
+#  Jepsen configurations and cluster setup       
+#  ------------------------------------------------------                    
+#  This script requires Docker to be installed previously
+#===============================================================================
 
 #Jepsen dependencies
 apt-get install leiningen
-#Install Docker
-
 
 #Download Jepsen repository
 git clone https://github.com/jepsen-io/jepsen.git

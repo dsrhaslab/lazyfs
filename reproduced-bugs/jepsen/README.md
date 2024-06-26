@@ -4,7 +4,27 @@ Script `jepsen-setup.sh` installs Jepsen, changes the necessary configurations a
   
 Script `jepsen-control-node.sh` includes the steps to be executed inside the control node (the node that will control the test).
 
-**Disclaimer**: This bug is not always reproducible. 
+Execute the following commands to run this test:
+
+```shell
+chmod +x jepsen-setup.sh
+./jepsen-setup.sh
+
+docker cp jepsen-control-node.sh jepsen-control:/jepsen/jepsen-control-node.sh
+
+#Enter Jepsen container of the control node
+docker exec -it jepsen-control bash
+```
+
+Once you are inside the control node container, execute the following commands:
+
+```shell
+chmod +x jepsen-control-node.sh
+./jepsen-control-node.sh
+```
+
+
+**Disclaimer**: This bug is not deterministic. It may take more than one run to find it. 
 
 ### Note
 This test will require some space from disk, so make sure you have enough space available.

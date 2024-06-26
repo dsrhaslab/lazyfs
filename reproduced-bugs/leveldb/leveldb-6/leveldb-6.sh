@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #===============================================================================
-#   DESCRIPTION: This script tests bug #6 of LevelDB. 
+#   DESCRIPTION: This script tests bug #6 of LevelDB v1.15 
 #       
 #      - Error           Corruption: checksum mismatch (before repair)
 #      - Time            2 seconds

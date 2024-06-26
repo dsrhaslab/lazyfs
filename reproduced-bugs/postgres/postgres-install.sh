@@ -1,5 +1,12 @@
 #!/bin/bash
 
+#===============================================================================
+#  Installs PostgreSQL         
+#                      
+#  Parameters:
+#    - version: The version of PostgreSQL to install
+#===============================================================================
+
 version=$1
 
 wget https://ftp.postgresql.org/pub/source/v$version/postgresql-$version.tar.gz -O "postgresql.tar.gz"

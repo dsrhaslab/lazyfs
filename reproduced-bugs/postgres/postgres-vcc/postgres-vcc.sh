@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #===============================================================================
-#   DESCRIPTION: This script tests the crach consistency mechanisms of PostgreSQL 
+#   DESCRIPTION: This script tests the crach consistency mechanisms of PostgreSQL v15.2 
 #       
 #      - Error          heap tuple .. from table .. lacks matching index tuple within index ..
 #      - Time           84 seconds
