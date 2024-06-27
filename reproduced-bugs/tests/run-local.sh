@@ -19,7 +19,7 @@ docker run -it --name etcd-16-v3.4.25 --env script_arguments=16 --privileged etc
 
 echo -e  "\n\n>>>>>  etcd v3.4.25 bug #17  <<<<<"
 
-docker run -it --name etcd-17-v3-4-25 --env script_arguments=17 --privileged etcd-16-17-18-v3.4.25 
+docker run -it --name etcd-17-v3.4.25 --env script_arguments=17 --privileged etcd-16-17-18-v3.4.25 
 
 echo -e  "\n\n>>>>>  etcd v3.4.25 bug #18  <<<<<"
 

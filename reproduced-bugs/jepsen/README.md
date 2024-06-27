@@ -11,7 +11,7 @@ chmod +x jepsen-setup.sh
 ./jepsen-setup.sh
 ```
 
-When each node displays the message "Debian GNU/Linux 11 console", execute the following command to copy the `jepsen-control-node.sh` and enter the control node:
+When each node displays the message "Debian GNU/Linux 11 console", execute the following commands to copy the `jepsen-control-node.sh` to the control node and enter it:
 
 ```shell
 docker cp jepsen-control-node.sh jepsen-control:/jepsen/jepsen-control-node.sh
@@ -24,7 +24,7 @@ Once you are inside the control node container, execute the following commands:
 chmod +x jepsen-control-node.sh
 ./jepsen-control-node.sh
 ```
-
+If Jepsen finds any inconsistency in the SUT, it displays the message "Analysis invalid! (ﾉಥ益ಥ）ﾉ ┻━┻".
 
 **Disclaimer**: This bug is not deterministic. It may take more than one run to find it. 
 
