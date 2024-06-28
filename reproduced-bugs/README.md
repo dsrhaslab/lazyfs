@@ -40,11 +40,11 @@ The `jepsen` directory includes steps for running a Jepsen test that uses LazyFS
 ## Reproduce manually 
 If you do not want to use Docker to reproduce the bugs, you can run yourself each bug. 
 
-The scripts for each test are organized into directories by SUT. Inside each SUT directory, you will find a directory for each bug and crash consistency validation test. For instance, if we want run bug 6 of LevelDB, we should go to the directory `leveldb/leveldb-6`. In this directory, we will encounter the main script for this test, named `leveldb-6.sh`, along with other files that contain workloads and additional information. You will probably need to change all the scripts that end with `var.sh`, since these contain important paths for the experiments. 
+The scripts for each test are organized into directories by SUT. Inside each SUT directory, you will find a directory for each bug and crash consistency validation test. For instance, if we want run bug 6 of LevelDB, we should go to the directory `leveldb/leveldb-6`. In this directory, we will encounter the main script for this test, named `leveldb-6.sh`, along with other files that contain workloads and additional information. You will probably need to change the script that ends with `var.sh` since this contains important paths for the experiments. 
 
 Additionally, inside each SUT folder you will find a script for installing the SUT. In some cases, it is necessary to provide a version as argument for this script. You can find the version in the header of the desired script file of the bug or crash consistency validation test script. 
 
-Certain test scripts require arguments. Read the header of the desired script to understand what is needed.
+Certain test scripts also require arguments. Read the header of the desired script to understand what is needed.
 
 In summary, follow these steps to reproduce manually the bugs:
 1. Follow the instructions to install LazyFS.
