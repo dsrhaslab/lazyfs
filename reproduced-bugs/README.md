@@ -5,8 +5,9 @@ All bugs reproduced with LazyFS can be found here. You also can find here some t
 Execute the following commands to run all the tests:
 
 ```shell
-chmod +x tests/run-hub.sh
-tests/run-hub.sh
+cd tests
+chmod +x ./run-hub.sh
+./run-hub.sh
 ```
 
 This script **pulls** images from Docker Hub and **runs** those images.
@@ -20,7 +21,6 @@ Each container corresponds to a different bug. While running, the current state 
 Additionally, if you desire to build locally these images, execute the following commands:
 
 ```shell
-cd tests
 chmod +x build.sh
 ./build.sh
 ```
