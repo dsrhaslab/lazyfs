@@ -64,11 +64,16 @@ echo -e "4.${GREEN}PostgreSQL started${RESET}."
 #Import data 
 echo -e "5.${YELLOW}Importing data${RESET}."
 echo -e "> pgbench: "
+
 su - postgres -c "$postgres_bin/pgbench -q -i -s $scale"
+
 su - postgres -c "$postgres_bin/pgbench -c 5 -T $transactions --random-seed=$seed" #> /dev/null 2>&1 -c 5
+
 su - postgres -c "$postgres_bin/psql -c 'SELECT current_database();'"
+
 #su - postgres -c "$postgres_bin/pgbench -c $clients -t $transactions --random-seed=$seed -n" #> /dev/null 2>&1 
 #su - postgres -c "$postgres_bin/pgbench -c 1 -t 20000 --random-seed=2 -n" #> /dev/null 2>&1 
+
 output=$(su - postgres -c "$postgres_bin/psql -c \"SELECT pg_relation_filepath('pgbench_accounts');\"")
 db_file=$(echo "$output" | awk '/pg_relation_filepath/ {getline; getline; print $1}')
 

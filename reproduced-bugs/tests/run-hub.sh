@@ -120,7 +120,7 @@ docker run --name leveldb-4-5-v1.23 --env script_arguments="1.23" --privileged  
 ## LevelDB 6
 echo -e  "\n\n>>>>>  LevelDB v1.15 bug #6  <<<<<"
 
-docker run --name leveldb-6-v1.15 --privileged  "$rep:leveldb-6-v1.15" 
+docker run --name leveldb-6 --privileged  "$rep:leveldb-6" 
 
 #--------------------------------------------
 
@@ -222,5 +222,5 @@ docker run -it  --name postgres-1 --privileged  "$rep:postgres-1"
 ## PostgreSQL VCC
 echo -e  "\n\n>>>>>  PostgreSQL test for checking crash consistency mechanisms  <<<<<"
 
-docker run -it  --name postgres-vcc --env script_arguments="1 100 60 2" --privileged  "$rep:postgres-vcc"
+docker run -it  --name postgres-vcc --env script_arguments="1 100 70 2" --privileged  "$rep:postgres-vcc"
 
