@@ -11,7 +11,7 @@ tests/run-hub.sh
 
 This script **pulls** images from Docker Hub and **runs** those images.
 
-After executing this script, it is expected to have 23 images and 26 containers. 
+After executing this script, it is expected to have 23 images and 29 containers. 
 
 Each container corresponds to a different bug. While running, the current state of the test is outputted (e.g., LazyFS is starting, a fault was injected) along with information on whether the error or impact on the System Under Test (SUT) is as expected. If you see "Error expected detected", the bug was successfully reproduced. 
 
@@ -48,5 +48,5 @@ Certain test scripts require arguments. Read the header of the desired script to
 
 In summary, follow these steps to reproduce manually the bugs:
 1. Follow the instructions to install LazyFS.
-2. Install the SUT (i.e., LevelDB, ZooKeeper). 
+2. Install the SUT (e.g., LevelDB, ZooKeeper). 
 3. Execute the script of the corresponding test.

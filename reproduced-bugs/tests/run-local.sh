@@ -1,3 +1,11 @@
+#--------------------------------------------------------------------------
+#
+# DESCRIPTION: This script runs the tests for the reproduced bugs with LazyFS.
+#              The images used are built with the script build.sh.
+#
+#--------------------------------------------------------------------------
+
+
 # etcd
 
 ## etcd 9 and 10
@@ -77,7 +85,7 @@ docker run -it --name leveldb-4-5-v1.23 --env script_arguments="1.23" --privileg
 ## LevelDB 6
 echo -e  "\n\n>>>>>  LevelDB v1.15 bug #6  <<<<<"
 
-docker run -it --name leveldb-6-v1.15 --privileged leveldb-6-v1.15 
+docker run -it --name leveldb-6-v1.15 --privileged leveldb-6
 
 #--------------------------------------------
 

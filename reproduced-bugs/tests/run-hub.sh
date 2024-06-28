@@ -1,32 +1,43 @@
-# Description: This script runs the tests for the reproduced bugs with LazyFS.
-
-#--------------------------------------------
+#--------------------------------------------------------------------------
+#
+# DESCRIPTION: This script runs the tests for the reproduced bugs with LazyFS.
+#              The images are pulled from Docker Hub and the tests are executed.
+#
+#--------------------------------------------------------------------------
 # Pulling the images from Docker Hub
 
-docker image pull mariajcr/lazyfs-reproduced-bugs:etcd-9-10
-docker image pull mariajcr/lazyfs-reproduced-bugs:etcd-16-17-18
-docker image pull mariajcr/lazyfs-reproduced-bugs:etcd-19
-docker image pull mariajcr/lazyfs-reproduced-bugs:zookeeper-2-v3.7.1
-docker image pull mariajcr/lazyfs-reproduced-bugs:zookeeper-2-v3.4.8
-docker image pull mariajcr/lazyfs-reproduced-bugs:zookeeper-7-v3.7.1
-docker image pull mariajcr/lazyfs-reproduced-bugs:zookeeper-7-v3.4.8
-docker image pull mariajcr/lazyfs-reproduced-bugs:zookeeper-8-v3.7.1
-docker image pull mariajcr/lazyfs-reproduced-bugs:zookeeper-8-v3.4.8
-docker image pull mariajcr/lazyfs-reproduced-bugs:pebblesdb-13
-docker image pull mariajcr/lazyfs-reproduced-bugs:pebblesdb-14
-docker image pull mariajcr/lazyfs-reproduced-bugs:pebblesdb-15
-docker image pull mariajcr/lazyfs-reproduced-bugs:leveldb-3
-docker image pull mariajcr/lazyfs-reproduced-bugs:leveldb-4-5-v1.23
-docker image pull mariajcr/lazyfs-reproduced-bugs:leveldb-4-5-v1.15
-docker image pull mariajcr/lazyfs-reproduced-bugs:leveldb-4-5-v1.12
-docker image pull mariajcr/lazyfs-reproduced-bugs:leveldb-6-v1.15
-docker image pull mariajcr/lazyfs-reproduced-bugs:postgres-1
-docker image pull mariajcr/lazyfs-reproduced-bugs:postgres-vcc
-docker image pull mariajcr/lazyfs-reproduced-bugs:redis-11
-docker image pull mariajcr/lazyfs-reproduced-bugs:redis-vcc
-docker image pull mariajcr/lazyfs-reproduced-bugs:lnd-12
+images=(
+    "postgres-1"
+    "postgres-vcc"
+    "lnd-12"
+    "redis-11"
+    "redis-vcc"
+    "zookeeper-2-v3.4.8"
+    "zookeeper-2-v3.7.1"
+    "zookeeper-7-v3.7.1"
+    "zookeeper-7-v3.4.8"
+    "zookeeper-8-v3.7.1"
+    "zookeeper-8-v3.4.8"
+    "pebblesdb-13"
+    "pebblesdb-14"
+    "pebblesdb-15"
+    "leveldb-3"
+    "leveldb-4-5-v1.23"
+    "leveldb-4-5-v1.15"
+    "leveldb-4-5-v1.12"
+    "leveldb-6"
+    "etcd-9-10"
+    "etcd-16-17-18-v3.5"
+    "etcd-16-17-18-v3.4.25"
+    "etcd-19"
+)
 
 rep="mariajcr/lazyfs-reproduced-bugs"
+
+for image in "${images[@]}"; do
+    docker image pull "$rep:$image"
+done
+
 
 #--------------------------------------------
 # etcd
@@ -44,16 +55,32 @@ docker run --name etcd-9-10-torn-seq --env script=/test/etcd-9-10-torn-seq.sh --
 
 ## etcd 16,17 and 18
 
-echo -e  "\n\n>>>>>  etcd bug #16  <<<<<"
+### v3.4.25
+echo -e  "\n\n>>>>>  etcd v3.4.25 bug #16  <<<<<"
 
-docker run --name etcd-16 --env script_arguments=16 --privileged  "$rep:etcd-16-17-18" 
+docker run --name etcd-16-v3.4.25 --env script_arguments=16 --privileged  "$rep:etcd-16-17-18-v3.4.25" 
 
-echo -e  "\n\n>>>>>  etcd bug #17  <<<<<"
+echo -e  "\n\n>>>>>  etcd v3.4.25 bug #17  <<<<<"
 
-docker run --name etcd-17 --env script_arguments=17 --privileged  "$rep:etcd-16-17-18" 
+docker run --name etcd-17-v3.4.25 --env script_arguments=17 --privileged  "$rep:etcd-16-17-18-v3.4.25" 
 
-echo -e  "\n\n>>>>>  etcd bug #18  <<<<<"
-docker run --name etcd-18 --env script_arguments=18 --privileged  "$rep:etcd-16-17-18" 
+echo -e  "\n\n>>>>>  etcd v3.4.25 bug #18  <<<<<"
+
+docker run --name etcd-18-v3.4.25 --env script_arguments=18 --privileged  "$rep:etcd-16-17-18-v3.4.25" 
+
+### v3.5.0
+
+echo -e  "\n\n>>>>>  etcd v3.5 bug #16  <<<<<"
+
+docker run --name etcd-16-v3.5 --env script_arguments=16 --privileged  "$rep:etcd-16-17-18-v3.5" 
+
+echo -e  "\n\n>>>>>  etcd v3.5 bug #17  <<<<<"
+
+docker run --name etcd-17-v3.5 --env script_arguments=17 --privileged  "$rep:etcd-16-17-18-v3.5" 
+
+echo -e  "\n\n>>>>>  etcd v3.5 bug #18  <<<<<"
+
+docker run --name etcd-18-v3.5 --env script_arguments=18 --privileged  "$rep:etcd-16-17-18-v3.5" 
 
 
 ## etcd 19

@@ -1,3 +1,9 @@
+#--------------------------------------------------------------------------
+#
+# DESCRIPTION: This script build images with the reproduced bugs wilt LazyFS.
+#
+#--------------------------------------------------------------------------
+
 # etcd
 
 ## etcd 9 and 10
@@ -10,22 +16,22 @@ docker build -t etcd-9-10 --build-arg application=etcd --build-arg test_id=etcd-
 docker build -t etcd-16-17-18-v3.4.25 --build-arg application=etcd --build-arg test_id=etcd-16-17-18 --build-arg app_version=3.4.25 -f ../dockerfiles/Dockerfile ..
 
 ### v3.5.0
-docker build -t etcd-16-17-18-v3.5 --build-arg application=etcd --build-arg test_id=etcd-16-17-18 --build-arg app_version=3.5.0 -f ../../dockerfiles/Dockerfiles/../dockerfiles/Dockerfile ..
+docker build -t etcd-16-17-18-v3.5 --build-arg application=etcd --build-arg test_id=etcd-16-17-18 --build-arg app_version=3.5.0 -f ../dockerfiles/Dockerfile ..
 
 ## etcd 19
-docker build -t etcd-19 --build-arg application=etcd --build-arg test_id=etcd-19 --build-arg app_version=2.3.0 -f ../../dockerfiles/Dockerfiles/../dockerfiles/Dockerfile ..
+docker build -t etcd-19 --build-arg application=etcd --build-arg test_id=etcd-19 --build-arg app_version=2.3.0 -f ../dockerfiles/Dockerfile ..
 
 #--------------------------------------------
 # LevelDB
 
 ## LevelDB 3
-docker build -t leveldb-3 --build-arg application=leveldb --build-arg test_id=leveldb-3 --build-arg app_version=1.15 -f ../../dockerfiles/Dockerfiles/../dockerfiles/Dockerfile ..
+docker build -t leveldb-3 --build-arg application=leveldb --build-arg test_id=leveldb-3 --build-arg app_version=1.15 -f ../dockerfiles/Dockerfile ..
 
 
 ## LevelDB 4 and 5
 
 ### v1.12
-docker build -t leveldb-4-5-v1.12 --build-arg application=leveldb --build-arg test_id=leveldb-4-5 --build-arg app_version=1.12 -f ../../dockerfiles/Dockerfiles/../dockerfiles/Dockerfile ..
+docker build -t leveldb-4-5-v1.12 --build-arg application=leveldb --build-arg test_id=leveldb-4-5 --build-arg app_version=1.12 -f ../dockerfiles/Dockerfiles ..
 
 
 ### v1.15

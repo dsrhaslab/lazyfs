@@ -1,5 +1,12 @@
 #!/bin/bash
 
+#--------------------------------------------------------------------------
+#
+# DESCRIPTION: This script pushes images built with the script build.sh to Docker Hub.
+#
+#--------------------------------------------------------------------------
+
+
 images=(
     "postgres-1"
     "postgres-vcc"
@@ -23,6 +30,7 @@ images=(
     "etcd-9-10"
     "etcd-16-17-18-v3.5"
     "etcd-16-17-18-v3.4.25"
+    "etcd-19"
 )
 
 for image in "${images[@]}"; do
