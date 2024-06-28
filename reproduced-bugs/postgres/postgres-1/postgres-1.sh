@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #===============================================================================
-#   DESCRIPTION: This script tests bug #1 of PostgreSQL 
+#   DESCRIPTION: This script tests bug #1 of PostgreSQL v12.11
 #       
 #      - Error          corrupted statistics file
 #      - Time           11 seconds

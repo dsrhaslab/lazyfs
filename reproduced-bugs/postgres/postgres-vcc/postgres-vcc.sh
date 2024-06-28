@@ -1,19 +1,25 @@
 #!/bin/bash
 
-#===============================================================================
-#   DESCRIPTION: This script tests the crach consistency mechanisms of PostgreSQL 
+#==================================================================================================
+#   DESCRIPTION: This script tests the crach consistency mechanisms of PostgreSQL v15.2 
+#   ARGUMENTS: This script requires the following arguments:
+#           - persistw: write to persist
+#           - transactions: number of transactions for pgbench
+#           - scale: scale factor for pgbench
+#           - seed: random seed for pgbench
 #       
 #      - Error          heap tuple .. from table .. lacks matching index tuple within index ..
 #      - Time           84 seconds
 #
 #        AUTHOR: Maria Ramos,
 #      REVISION: 1 Apr 2024
-#===============================================================================
+#==================================================================================================
+
+#Arguments
 persistw=$1
 transactions=$2
 scale=$3
 seed=$4
-clients=$5
 
 DIR="$PWD"
 . "$DIR/aux.sh"
@@ -58,11 +64,16 @@ echo -e "4.${GREEN}PostgreSQL started${RESET}."
 #Import data 
 echo -e "5.${YELLOW}Importing data${RESET}."
 echo -e "> pgbench: "
+
 su - postgres -c "$postgres_bin/pgbench -q -i -s $scale"
+
 su - postgres -c "$postgres_bin/pgbench -c 5 -T $transactions --random-seed=$seed" #> /dev/null 2>&1 -c 5
+
 su - postgres -c "$postgres_bin/psql -c 'SELECT current_database();'"
+
 #su - postgres -c "$postgres_bin/pgbench -c $clients -t $transactions --random-seed=$seed -n" #> /dev/null 2>&1 
 #su - postgres -c "$postgres_bin/pgbench -c 1 -t 20000 --random-seed=2 -n" #> /dev/null 2>&1 
+
 output=$(su - postgres -c "$postgres_bin/psql -c \"SELECT pg_relation_filepath('pgbench_accounts');\"")
 db_file=$(echo "$output" | awk '/pg_relation_filepath/ {getline; getline; print $1}')
 
@@ -131,17 +142,24 @@ echo -e "19.${GREEN}PostgreSQL restarted${RESET}."
 #amcheck
 echo -e "20.${YELLOW}Using amcheck${RESET}."
 su - postgres -c "$postgres_bin/psql -c \"CREATE EXTENSION amcheck; SELECT bt_index_parent_check('pgbench_accounts_pkey', TRUE,TRUE);\"" > $postgres_out 2>&1 
-grep "lacks matching index tuple" $postgres_out
+
+#Check error
+if grep -q "lacks matching index tuple" $postgres_out; then
+    echo -e "21.${GREEN}Error expected detected${RESET}:"
+    grep "lacks matching index tuple" $postgres_out
+else
+    echo -e "21.${RED}Error not detected${RESET}."
+fi
 
 #Terminate PostgreSQL
-echo -e "21.${YELLOW}Stopping PostgreSQL${RESET}."
+echo -e "22.${YELLOW}Stopping PostgreSQL${RESET}."
 su - postgres -c "$postgres_bin/pg_ctl -D $data_dir -l $logfile stop" > $postgres_out 2>&1
 wait_action "server stopped" $postgres_out
-echo -e "22.${green}PostgreSQL stopped${RESET}."
+echo -e "23.${GREEN}PostgreSQL stopped${RESET}."
 
 #Unmount LazyFS
 scripts/umount-lazyfs.sh -m "$data_dir"  > /dev/null 2>&1 
-echo -e "23.${GREEN}Unmounted Lazyfs${RESET}."
+echo -e "24.${GREEN}Unmounted Lazyfs${RESET}."
 
 #Record end time
 end_time=$(date +%s)

@@ -127,7 +127,7 @@ done
 
 #Unmount LazyFS
 scripts/umount-lazyfs.sh -m "$data_dir"  > /dev/null 2>&1 
-echo -e "9.${GREEN}Unmounted LazyFS${RESET}."
+echo -e "10.${GREEN}Unmounted LazyFS${RESET}."
 
 #Record the end time and print elapsed time
 end_time=$(date +%s)

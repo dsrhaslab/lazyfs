@@ -1,5 +1,12 @@
 #!/bin/bash
 
+#===============================================================================
+#  Installs ZooKeeper         
+#                      
+#  Parameters:
+#    - version: The version of ZooKeeper to install
+#===============================================================================
+
 version=$1
 
 apt-get update #without this, the next command will fail

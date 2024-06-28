@@ -76,11 +76,12 @@ truncate -s 0 $redis_out
 redis_pid=$!
 
 i=10
+
 #Check error
 if [ "$fault_nr" -eq 2 ]; then
     wait_action "Bad file format" $redis_out
+    echo -e "$i.${GREEN}Error expected detected${RESET}:"
     grep "Bad file format" $redis_out    
-    echo -e "$i.${GREEN}Error expected detected${RESET}!"
     i=$((i+1))
 
     #Repair
@@ -88,7 +89,7 @@ if [ "$fault_nr" -eq 2 ]; then
     echo "yes" | "$redis_dir/redis-check-aof" --fix "$data_dir/appendonlydir/appendonly.aof.1.incr.aof"  > $redis_out &
     i=$((i+1))
 
-    #Wair Redis repairing
+    #Wait Redis repairing
     wait_action "Successfully truncated AOF" $redis_out
     echo -e "$i.${GREEN}Successfully repaired Redis${RESET}."
 
@@ -101,7 +102,8 @@ if [ "$fault_nr" -eq 2 ]; then
     #echo "GET data" | "$redisdir/redis-cli" -h 127.0.0.1 -p 6379
 else 
     wait_action "Truncating the AOF" $redis_out
-    echo -e "\n>> Redis log:"
+    echo -e "$i.${GREEN}Error expected detected${RESET}:"
+    i=$((i+1))
     sed -n 15,20p $redis_out
     echo -e "\n$i.${GREEN}Redis repaired itself${RESET}."
     i=$((i+1))

@@ -1,5 +1,13 @@
 #!/bin/bash
 
+#===============================================================================
+#  Installs LevelDB         
+#                      
+#  Parameters:
+#    - version: The version of LevelDB to install
+#===============================================================================
+
+
 version=$1
 
 #Dependencies
