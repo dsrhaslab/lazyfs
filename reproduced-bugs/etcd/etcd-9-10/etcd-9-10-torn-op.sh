@@ -32,7 +32,7 @@ start_time=$(date +%s)
 #Mount LazyFS
 cd $lfs_dir
 echo -e "$fault" >> "$lfs_config"
-./scripts/mount-lazyfs.sh -c "$lfs_config" -m "$data_dir" -r "$data_root_dir" > /dev/null 2>&1 
+./scripts/mount-lazyfs.sh -c "$lfs_config" -m "$data_dir" -r "$data_root_dir" #> /dev/null 2>&1 
 
 #Wait for LazyFS to start
 echo -e "1.${YELLOW}Wait for LazyFS to start${RESET}."

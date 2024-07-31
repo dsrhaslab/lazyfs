@@ -74,30 +74,37 @@ class SplitWriteF : public Fault {
     vector<int> parts_bytes;
 
     /**
+     * @brief True if LazyFS crashes only after completing the current system call. False if otherwise.
+     */
+    bool ret;
+
+    /**
      * @brief Default constructor of a new SplitWriteF object.
      */
     SplitWriteF();
 
     /**
      * @brief Contruct a new SplitWriteF object.
-     */
-    SplitWriteF(int occurrence, vector<int> persist, vector<int> parts_bytes);
-    
-    /**
-     * @brief Contruct a new SplitWriteF object.
      *
      * @param occurrence Write occurrence.
      * @param persist Which parts of the write to persist.
      * @param parts_bytes Division of the write in bytes.
+     * @param ret If the current system call is finished before crashing.
      */
-    SplitWriteF(int occurrence, vector<int> persist, int parts);
-
+    SplitWriteF(int occurrence, vector<int> persist, vector<int> parts_bytes, bool ret);
+    
     /**
      * @brief Default destructor for a SplitWriteF object.
      *
      * @param occurrence Write occurrence.
      * @param persist Which parts of the write to persist.
      * @param parts Number of same-sixed parts to divide the write.
+     * @param ret If the current system call is finished before crashing.
+     */
+    SplitWriteF(int occurrence, vector<int> persist, int parts, bool ret);
+
+    /**
+     * @brief Default destructor for a SplitWriteF object.
      */
     ~SplitWriteF();
 
@@ -146,6 +153,13 @@ class ReorderF : public Fault {
      */
     std::atomic_int group_counter;
 
+    /**
+     * @brief True if LazyFS crashes only after completing the current system call. False if otherwise.
+     */
+    bool ret;
+
+
+
   
     /**
      * @brief Construct a new Fault object.
@@ -153,8 +167,9 @@ class ReorderF : public Fault {
      * @param op System call (i.e. "write", ...)
      * @param persist Vector with operations to persist
      * @param occurrence occurrence of the group of writes to persist
+     * @param ret If the current system call is finished before crashing.
      */
-    ReorderF(string op, vector<int> persist, int occurrence);
+    ReorderF(string op, vector<int> persist, int occurrence, bool ret);
 
     /**
      * @brief Default constructor for Fault.
@@ -217,6 +232,11 @@ class ClearF : public Fault {
     bool crash;
 
     /**
+     * @brief True if LazyFS crashes only after completing the current system call. False if otherwise.
+     */
+    bool ret;
+
+    /**
      * @brief Map of allowed operations to have a crash fault
      *
      */
@@ -237,8 +257,9 @@ class ClearF : public Fault {
      * @param to Path when op requires two paths (e.g., rename system call).
      * @param occurrence Occurrence of the op.
      * @param crash If the fault is a crash fault.
+     * @param ret If the current system call is finished before crashing.
     */
-    ClearF(string timing, string op, string from, string to, int occurrence, bool crash);
+    ClearF(string timing, string op, string from, string to, int occurrence, bool crash, bool ret);
     
     ~ClearF ();
 

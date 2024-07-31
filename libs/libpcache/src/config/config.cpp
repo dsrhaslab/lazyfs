@@ -198,10 +198,17 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                     sort(persist.begin(), persist.end());
                 }
 
+                bool ret;
+                if (injection.contains("return")) {
+                    ret = toml::find<bool>(injection,"return");
+                } else {
+                    ret = true;
+                }
+
                 faults::ReorderF * fault = NULL;
                 vector<string> errors;
                 if (valid_fault) {
-                    fault = new faults::ReorderF(op,persist,occurrence);
+                    fault = new faults::ReorderF(op,persist,occurrence,ret);
                     vector<string> errors = fault->validate();
                 }
 
@@ -272,6 +279,13 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                     error_msg += "\tKeys 'parts' and 'key_parts' for some injection of type \"torn-op\" are exclusive in the configuration file. Please define at most one of them.\n";     
                 }
 
+                bool ret;
+                if (injection.contains("return")) {
+                    ret = toml::find<bool>(injection,"return");
+                } else {
+                    ret = true;
+                }
+
                 faults::SplitWriteF * fault = nullptr;
                 vector<string> errors;
 
@@ -282,7 +296,7 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                     errors = faults::SplitWriteF::validate(occurrence,persist,parts,std::nullopt);
 
                     if (errors.size() <= 0) 
-                        fault = new faults::SplitWriteF(occurrence,persist,parts);
+                        fault = new faults::SplitWriteF(occurrence,persist,parts,ret);
                     else 
                         valid_fault = false;
                 }
@@ -293,7 +307,7 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                     errors = faults::SplitWriteF::validate(occurrence,persist,std::nullopt,parts_bytes);
 
                     if (errors.size() <= 0) 
-                        fault = new faults::SplitWriteF(occurrence,persist,parts_bytes);
+                        fault = new faults::SplitWriteF(occurrence,persist,parts_bytes,ret);
                     else 
                         valid_fault = false;
                 }
@@ -364,12 +378,18 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                     error_msg += "\tKey 'crash' for some injection of type \"clear\" is not defined in the configuration file.\n";
                 } else 
                     crash = toml::find<bool>(injection,"crash");
-
+                
+                bool ret;
+                if (injection.contains("return")) {
+                    ret = toml::find<bool>(injection,"return");
+                } else {
+                    ret = true;
+                }
 
                 faults::ClearF * fault = NULL;
                 vector<string> errors;
                 if (valid_fault) {
-                    fault = new faults::ClearF(timing,op,from,to,occurrence,crash);
+                    fault = new faults::ClearF(timing,op,from,to,occurrence,crash,ret);
                     errors = fault->validate();
                 }
 

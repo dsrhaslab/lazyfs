@@ -12,12 +12,13 @@ Fault::~Fault(){}
 
 
 // Torn seq fault
-ReorderF::ReorderF(string op, vector<int> persist, int occurrence) : Fault(TORN_SEQ) {
+ReorderF::ReorderF(string op, vector<int> persist, int occurrence, bool ret) : Fault(TORN_SEQ) {
     (this->counter).store(0);
     this->op = op;
     this->persist = persist;
     this->occurrence = occurrence;
     (this->group_counter).store(0);
+    this->ret = ret;
 
 }
 
@@ -28,6 +29,7 @@ ReorderF::ReorderF() : Fault(TORN_SEQ) {
     this->op = "";
 	this->persist = v;
     this->occurrence = 0;
+    this->ret = true;
 }
 
 ReorderF::~ReorderF(){}
@@ -52,19 +54,21 @@ vector<string> ReorderF::validate() {
 
 //Torn op fault
 
-SplitWriteF::SplitWriteF(int occurrence, vector<int> persist, int parts) : Fault(TORN_OP) {
+SplitWriteF::SplitWriteF(int occurrence, vector<int> persist, int parts, bool ret) : Fault(TORN_OP) {
     (this->counter).store(0);
     this->occurrence = occurrence;
     this->persist = persist;
     this->parts = parts;
+    this->ret = ret;
 }
 
-SplitWriteF::SplitWriteF(int occurrence, vector<int> persist, vector<int> parts_bytes) : Fault(TORN_OP) {
+SplitWriteF::SplitWriteF(int occurrence, vector<int> persist, vector<int> parts_bytes, bool ret) : Fault(TORN_OP) {
     (this->counter).store(0);
     this->occurrence = occurrence;
     this->persist = persist;
     this->parts = -1;
     this->parts_bytes = parts_bytes;
+    this->ret = ret;
 }
 
 SplitWriteF::SplitWriteF() : Fault(TORN_OP) {
@@ -75,6 +79,7 @@ SplitWriteF::SplitWriteF() : Fault(TORN_OP) {
 	this->persist = p;
     this->parts_bytes = v;
     this->parts = 0;
+    this->ret = true;
 }
 
 SplitWriteF::~SplitWriteF() {}
@@ -128,7 +133,7 @@ const unordered_set<string> ClearF::allow_crash_fs_operations = {"unlink",
 
 const unordered_set<string> ClearF::fs_op_multi_path = {"rename", "link", "symlink"};
 
-ClearF::ClearF (string timing, string op, string from, string to, int occurrence, bool crash) : Fault(CLEAR) {
+ClearF::ClearF (string timing, string op, string from, string to, int occurrence, bool crash, bool ret) : Fault(CLEAR) {
     this->timing = timing;
     this->op = op;
     this->from = from;
@@ -136,6 +141,7 @@ ClearF::ClearF (string timing, string op, string from, string to, int occurrence
     this->occurrence = occurrence;
     this->crash = crash;
     (this->counter).store(0);
+    this->ret = ret;
 }
 
 ClearF::~ClearF(){}
