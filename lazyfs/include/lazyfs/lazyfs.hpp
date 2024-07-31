@@ -381,9 +381,10 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      * @param path path of the fault
      * @param op system call 
      * @param persist which parts of the write to persist
+     * @param ret_ if the current system call is finished before crashing
      * @return errors
     */
-    vector<string> add_torn_seq_fault(string path, string op, string persist);
+    vector<string> add_torn_seq_fault(string path, string op, string persist, string ret_);
 
     /**
      * @brief Adds a torn-op fault to the faults map. Returns a vector with errors if any.
@@ -392,9 +393,10 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      * @param parts which parts of the write to persist
      * @param parts_bytes division of the write in bytes
      * @param persist which parts of the write to persist
+     * @param ret_ if the current system call is finished before crashing
      * @return errors
     */
-    vector<string> add_torn_op_fault(string path, string parts, string parts_bytes, string persist);
+    vector<string> add_torn_op_fault(string path, string parts, string parts_bytes, string persist, string ret_);
 
     /**
      * @brief Kills lazyfs with SIGKILL if any fault condition verifies
@@ -405,7 +407,7 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      * @param dest_op_path destination path specified in the operation
      * @param fault_type type of fault that triggered the crash
      */
-    void trigger_crash_fault (string opname, string optiming, string from_op_path, string to_op_path, string fault_type);
+    bool trigger_crash_fault (string opname, string optiming, string from_op_path, string to_op_path, string fault_type);
 
     /**
      * @brief Triggers a clear fault if condition is verified.
@@ -415,7 +417,7 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      * @param from_op_path source path specified in the operation
      * @param dest_op_path destination path specified in the operation
      */
-    void trigger_configured_clear_fault (string opname, string optiming, string from_path, string to_path);
+    bool trigger_configured_clear_fault (string opname, string optiming, string from_path, string to_path);
 };
 
 } // namespace lazyfs
