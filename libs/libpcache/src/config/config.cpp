@@ -202,7 +202,7 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                 if (injection.contains("return")) {
                     ret = toml::find<bool>(injection,"return");
                 } else {
-                    ret = true;
+                    ret = false;
                 }
 
                 faults::ReorderF * fault = NULL;
@@ -283,7 +283,7 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                 if (injection.contains("return")) {
                     ret = toml::find<bool>(injection,"return");
                 } else {
-                    ret = true;
+                    ret = false;
                 }
 
                 faults::SplitWriteF * fault = nullptr;
@@ -383,7 +383,7 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                 if (injection.contains("return")) {
                     ret = toml::find<bool>(injection,"return");
                 } else {
-                    ret = true;
+                    ret = false;
                 }
 
                 faults::ClearF * fault = NULL;

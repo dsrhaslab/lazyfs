@@ -29,7 +29,7 @@ ReorderF::ReorderF() : Fault(TORN_SEQ) {
     this->op = "";
 	this->persist = v;
     this->occurrence = 0;
-    this->ret = true;
+    this->ret = false;
 }
 
 ReorderF::~ReorderF(){}
@@ -79,7 +79,7 @@ SplitWriteF::SplitWriteF() : Fault(TORN_OP) {
 	this->persist = p;
     this->parts_bytes = v;
     this->parts = 0;
-    this->ret = true;
+    this->ret = false;
 }
 
 SplitWriteF::~SplitWriteF() {}
