@@ -29,7 +29,7 @@ ReorderF::ReorderF() : Fault(TORN_SEQ) {
     this->op = "";
 	this->persist = v;
     this->occurrence = 0;
-    this->ret = false;
+    this->ret = true;
 }
 
 ReorderF::~ReorderF(){}
@@ -79,7 +79,7 @@ SplitWriteF::SplitWriteF() : Fault(TORN_OP) {
 	this->persist = p;
     this->parts_bytes = v;
     this->parts = 0;
-    this->ret = false;
+    this->ret = true;
 }
 
 SplitWriteF::~SplitWriteF() {}
@@ -161,6 +161,67 @@ vector<string> ClearF::validate() {
     }
 
     if (ClearF::fs_op_multi_path.find (this->op) != ClearF::fs_op_multi_path.end ()) {
+        if (this->from == "none" || this->to == "none") {
+            errors.push_back("\"from\" and \"to\" must be set defined operations with two paths.");
+        }
+    } else {
+        if (this->from == "none" || this->to != "none") {
+            errors.push_back ("Should specify \"from\" (and not \"to\")");
+        }
+    }
+
+    return errors;
+}
+
+// clear page fault
+
+const unordered_set<string> ClearP::allow_crash_fs_operations = {"unlink", 
+                                                                "truncate", 
+                                                                "fsync", 
+                                                                "write", 
+                                                                "create", 
+                                                                "access", 
+                                                                "open", 
+                                                                "read", 
+                                                                "rename", 
+                                                                "link", 
+                                                                "symlink"};
+
+const unordered_set<string> ClearP::fs_op_multi_path = {"rename", "link", "symlink"};
+
+ClearP::ClearP (string timing, string op, string from, string to, int occurrence, bool crash, string pages, bool ret) : Fault(CLEAR) {
+    this->timing = timing;
+    this->op = op;
+    this->from = from;
+    this->to = to;
+    this->occurrence = occurrence;
+    this->crash = crash;
+    this->pages = pages;
+    (this->counter).store(0);
+    this->ret = ret;
+}
+
+ClearP::~ClearP(){}
+
+vector<string> ClearP::validate() {
+    vector<string> errors;
+    if (this->occurrence <= 0) {
+        errors.push_back("Occurrence must be greater than 0.");
+    }
+
+    if (ClearP::allow_crash_fs_operations.find(this->op) == ClearP::allow_crash_fs_operations.end()) {
+        errors.push_back("Operation not available.");
+    }
+
+    if (this->timing != "before" && this->timing != "after") {
+        errors.push_back("Timing must be \"before\" or \"after\".");
+    }
+
+    if (this->pages != "first" && this->pages != "last" && this->pages != "first-half" && this->pages != "last-half" && this->pages != "random") {
+        errors.push_back("Pages must be \"first\", \"last\", \"first-half\", \"last-half\" or \"random\".");
+    }
+
+    if (ClearP::fs_op_multi_path.find (this->op) != ClearP::fs_op_multi_path.end ()) {
         if (this->from == "none" || this->to == "none") {
             errors.push_back("\"from\" and \"to\" must be set defined operations with two paths.");
         }

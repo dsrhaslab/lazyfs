@@ -8,6 +8,7 @@
 #define TORN_OP "torn-op"
 #define TORN_SEQ "torn-seq"
 #define CLEAR "clear-cache"
+#define CLEAR_PAGE "clear-page"
 
 using namespace std;
 
@@ -271,5 +272,95 @@ class ClearF : public Fault {
     vector<string> validate();
 
 };
+
+/*********************************************************************************************/
+
+/**
+ * @brief Fault for clearing certain pages in LazyFS's cache in a specific point of execution, persist the others and, optionally, crash the process.
+*/
+class ClearP : public Fault {
+  public:
+    /**
+     * @brief Timing of the fault ("before","after").
+    */
+    string timing;
+
+    /**
+     * @brief System call (i.e. "write", ...).
+    */
+    string op;
+
+    /**
+     * @brief Path of the system call.
+    */
+    string from;
+
+    /**
+     * @brief Path when op requires two paths (e.g., rename system call).
+    */
+    string to;
+
+    /**
+     * @brief Occurrence of the op.
+    */
+    int occurrence;
+
+    /**
+     * @brief Counter of the op.
+    */
+    std::atomic_int counter;
+
+    /**
+     * @brief If the fault is a crash fault.
+    */
+    bool crash;
+
+    /**
+     * @brief Pages that will be cleared.
+    */
+    string pages;
+
+    /**
+     * @brief True if LazyFS crashes only after completing the current system call. False if otherwise.
+     */
+    bool ret;
+
+    /**
+     * @brief Map of allowed operations to have a crash fault
+     *
+     */
+    static const unordered_set<string> allow_crash_fs_operations;
+
+    /**
+     * @brief Map of operations that have two paths
+     *
+     */
+    static const unordered_set<string> fs_op_multi_path;
+
+    /**
+     * @brief Constructor for Fault.
+     * 
+     * @param timing Timing of the fault ("before","after").
+     * @param op System call (i.e. "write", ...).
+     * @param from Path of the system call.
+     * @param to Path when op requires two paths (e.g., rename system call).
+     * @param occurrence Occurrence of the op.
+     * @param crash If the fault is a crash fault.
+     * @param pages Pages to clear.
+     * @param ret If the current system call is finished before crashing.
+    */
+    ClearP(string timing, string op, string from, string to, int occurrence, bool crash, string pages, bool ret);
+    
+    ~ClearP ();
+
+    /**
+     * @brief Check if the parameters have correct values for the fault.
+     * 
+     * @return Vector with errors.
+    */
+    vector<string> validate();
+
+};
+
 // namespace faults
 }

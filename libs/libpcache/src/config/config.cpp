@@ -202,7 +202,7 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                 if (injection.contains("return")) {
                     ret = toml::find<bool>(injection,"return");
                 } else {
-                    ret = false;
+                    ret = true;
                 }
 
                 faults::ReorderF * fault = NULL;
@@ -283,7 +283,7 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                 if (injection.contains("return")) {
                     ret = toml::find<bool>(injection,"return");
                 } else {
-                    ret = false;
+                    ret = true;
                 }
 
                 faults::SplitWriteF * fault = nullptr;
@@ -383,7 +383,7 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                 if (injection.contains("return")) {
                     ret = toml::find<bool>(injection,"return");
                 } else {
-                    ret = false;
+                    ret = true;
                 }
 
                 faults::ClearF * fault = NULL;
@@ -420,6 +420,94 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                     }
                 }
             
+            } else if (type == CLEAR_PAGE) {
+                valid_fault = true;
+                error_msg = "The following errors were found in the configuration file for a fault of type \"clear-cache\": \n";
+
+                int occurrence = 0;
+                if (!injection.contains("occurrence")) {
+                    valid_fault = false;
+                    error_msg += "\tKey 'occurrence' for some injection of type \"clear\" is not defined in the configuration file.\n";
+                } else 
+                    occurrence = toml::find<int>(injection,"occurrence");
+
+                string timing{};
+                if (!injection.contains("timing")) {
+                    valid_fault = false;
+                    error_msg += "\tKey 'timing' for some injection of type \"clear\" is not defined in the configuration file.\n";
+                } else 
+                    timing = toml::find<string>(injection,"timing");
+
+                string op{};
+                if (!injection.contains("op")) {
+                    valid_fault = false;
+                    error_msg += "\tKey 'op' for some injection of type \"clear\" is not defined in the configuration file.\n";
+                } else 
+                    op = toml::find<string>(injection,"op");
+
+                string from = "none";
+                if (injection.contains("from")) 
+                    from = toml::find<string>(injection,"from");
+
+                string to = "none";
+                if (injection.contains("to")) 
+                    to = toml::find<string>(injection,"to");
+
+                string pages{};
+                if (!injection.contains("pages")) {
+                    valid_fault = false;
+                    error_msg += "\tKey 'pages' for some injection of type \"clear-page\" is not defined in the configuration file.\n";
+                } else 
+                    pages = toml::find<string>(injection,"pages");
+
+                bool crash = false;
+                if (!injection.contains("crash")) {
+                    valid_fault = false;
+                    error_msg += "\tKey 'crash' for some injection of type \"clear\" is not defined in the configuration file.\n";
+                } else 
+                    crash = toml::find<bool>(injection,"crash");
+                
+                bool ret;
+                if (injection.contains("return")) {
+                    ret = toml::find<bool>(injection,"return");
+                } else {
+                    ret = true;
+                }
+
+                faults::ClearP * fault = NULL;
+                vector<string> errors;
+                if (valid_fault) {
+                    fault = new faults::ClearP(timing,op,from,to,occurrence,crash,pages,ret);
+                    errors = fault->validate();
+                }
+
+                if (!valid_fault || errors.size() > 0) {
+                    for (string error : errors) {
+                        error_msg +=  "\t" + error + "\n";
+                    }
+                    spdlog::error(error_msg);
+                    delete fault;
+
+                } else {
+
+                    auto it = faults.find(from);
+                    if (it == faults.end()) {
+                        vector<faults::Fault*> v_faults;
+                        v_faults.push_back(fault);
+                        faults[from] = v_faults;
+                    } else {
+                        //At the moment, only one clear fault per file is acceptable.
+                        for (faults::Fault* f : it->second) {
+                            faults::ClearP* clear_fault = dynamic_cast<faults::ClearP*>(f);
+                            if (clear_fault) {
+                                valid_fault = false;
+                                spdlog::error("It is only acceptable one clear-page fault per file.");
+                            }
+                        }
+                        if (valid_fault) (it->second).push_back(fault);
+                    }
+                }
+
             } else {
                 spdlog::error("Key 'type' for some injection has an unknown value in the configuration file.");
             }
