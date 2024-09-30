@@ -459,13 +459,6 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                     error_msg += "\tKey 'pages' for some injection of type \"clear-page\" is not defined in the configuration file.\n";
                 } else 
                     pages = toml::find<string>(injection,"pages");
-
-                bool crash = false;
-                if (!injection.contains("crash")) {
-                    valid_fault = false;
-                    error_msg += "\tKey 'crash' for some injection of type \"clear\" is not defined in the configuration file.\n";
-                } else 
-                    crash = toml::find<bool>(injection,"crash");
                 
                 bool ret;
                 if (injection.contains("return")) {
@@ -477,7 +470,7 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                 faults::ClearP * fault = NULL;
                 vector<string> errors;
                 if (valid_fault) {
-                    fault = new faults::ClearP(timing,op,from,to,occurrence,crash,pages,ret);
+                    fault = new faults::ClearP(timing,op,from,to,occurrence,pages,ret);
                     errors = fault->validate();
                 }
 

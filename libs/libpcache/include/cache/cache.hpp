@@ -277,6 +277,17 @@ class Cache {
     void full_checkpoint ();
 
     /**
+     * @brief Performs a partial checkpoint for uncached data based on input from user
+     *
+     * @param owner the content id
+     * @param path original path name
+     * @param parts parts from file that will be removed
+     * @return int true if item was removed
+     * 
+     */
+    int partial_file_sync (string owner, char* path, string parts);
+
+    /**
      * @brief Gets the list of files that have unsynced data, mapped to
      *        the size cached (number of bytes).
      *

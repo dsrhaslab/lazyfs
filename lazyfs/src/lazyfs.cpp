@@ -125,6 +125,7 @@ bool LazyFS::trigger_crash_fault (string opname,
         for (auto fault : v_faults) {
             faults::ReorderF* faultR = dynamic_cast<faults::ReorderF*>(fault);
             if (faultR && faultR->op == opname && ret) ret = faultR->ret;
+            
             faults::SplitWriteF* faultS = dynamic_cast<faults::SplitWriteF*>(fault);
             if (faultS && opname == "write" && ret) ret = faultS->ret;
         }
@@ -195,6 +196,7 @@ bool LazyFS::trigger_configured_clear_fault (string opname,
 
         for (auto fault : v_faults) {
             faults::ClearF* clear_fault = dynamic_cast<faults::ClearF*>(fault);
+            faults::ClearP* page_fault = dynamic_cast<faults::ClearP*>(fault);
 
             if (clear_fault && clear_fault->op == opname) {
 
@@ -228,6 +230,39 @@ bool LazyFS::trigger_configured_clear_fault (string opname,
                             } else {
                                 this_ ()->command_fault_clear_cache ();
                             }   
+                        }
+                    }
+                }
+            }
+
+            if (page_fault && page_fault->op == opname) {
+
+                bool is_multi_path = this_ ()->fs_op_multi_path.find (opname) != this_ ()->fs_op_multi_path.end ();
+
+                if ((is_multi_path && to_path == page_fault->to) || !is_multi_path) {
+                    
+                    int current_count = page_fault->counter.load();
+                    if (optiming == "before") {
+                        current_count = page_fault->counter.fetch_add(1);
+                    }
+            
+                    if (page_fault->timing == optiming) {
+
+                        if (current_count == page_fault->occurrence) {
+
+                            spdlog::critical ("Triggered fault condition (op={},timing={})", opname, optiming);
+
+                            this->injecting_fault_lock.lock();
+                            this_ ()->command_unsynced_data_report (this->injecting_fault);
+                            this->injecting_fault_lock.unlock();
+
+                            this_ ()->command_fault_clear_page (from_path, page_fault->pages);
+
+                            if (optiming == "after" && page_fault->ret) return true;
+
+                            pid_t lazyfs_pid = getpid ();
+                            spdlog::critical ("Killing LazyFS pid {}!", lazyfs_pid);
+                            kill (lazyfs_pid, SIGKILL);
                         }
                     }
                 }
@@ -462,6 +497,19 @@ void LazyFS::command_fault_clear_cache () {
     FSCache->clear_all_cache ();
 
     spdlog::warn ("[lazyfs.cmds]: cache is cleared.");
+}
+
+void LazyFS::command_fault_clear_page (string path, string parts) {
+
+    //std::unique_lock<std::shared_mutex> lock (cache_command_lock);
+
+    spdlog::warn ("[lazyfs.cmds]: clear page request submitted...");
+
+    string owner (path);
+
+    FSCache->partial_file_sync (owner, path.data(), parts);
+
+    spdlog::warn ("[lazyfs.cmds]: pages requested cleared.");
 }
 
 void LazyFS::command_display_cache_usage () {

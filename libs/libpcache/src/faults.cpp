@@ -189,13 +189,12 @@ const unordered_set<string> ClearP::allow_crash_fs_operations = {"unlink",
 
 const unordered_set<string> ClearP::fs_op_multi_path = {"rename", "link", "symlink"};
 
-ClearP::ClearP (string timing, string op, string from, string to, int occurrence, bool crash, string pages, bool ret) : Fault(CLEAR) {
+ClearP::ClearP (string timing, string op, string from, string to, int occurrence, string pages, bool ret) : Fault(CLEAR) {
     this->timing = timing;
     this->op = op;
     this->from = from;
     this->to = to;
     this->occurrence = occurrence;
-    this->crash = crash;
     this->pages = pages;
     (this->counter).store(0);
     this->ret = ret;

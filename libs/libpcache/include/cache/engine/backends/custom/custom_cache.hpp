@@ -175,6 +175,7 @@ class CustomCacheEngine : public PageCacheEngine {
     double get_engine_usage ();
     bool remove_cached_blocks (string content_owner_id);
     bool sync_pages (string owner, off_t size, char* orig_path);
+    bool partial_sync_pages (string owner, off_t size, char* orig_path, string parts);
     void make_block_readable_to_offset (string cid, int page_id, int block_id, int offset);
     bool rename_owner_pages (string old_owner, string new_owner);
     bool truncate_cached_blocks (string content_owner_id,
