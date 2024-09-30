@@ -13,5 +13,13 @@ blocks_per_page=1
 [filesystem]
 log_all_operations=true
 logfile=""
+[[injection]]
+type="clear-page"
+from="/home/marta/lazyfs/root/ex.txt"
+timing="after"
+op="write"
+occurrence=999
+pages="first"
+return=true
 
-# /home/kianda/Desktop/root/ex.txt
+# /home/marta/lazyfs/root/ex.txt

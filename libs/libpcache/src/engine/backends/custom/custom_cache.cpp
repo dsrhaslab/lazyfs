@@ -566,6 +566,140 @@ bool CustomCacheEngine::sync_pages (string owner, off_t size, char* orig_path) {
     return 0;
 }
 
+bool CustomCacheEngine::partial_sync_pages (string owner, off_t last_size, char* orig_path, string parts) {
+
+    std::unique_lock<std::shared_mutex> lock (lock_cache_mtx);
+
+    int fd = open (orig_path, O_WRONLY);
+
+    if (this->owner_pages_mapping.find (owner) != this->owner_pages_mapping.end ()) {
+
+        off_t wrote_bytes = 0;
+        off_t page_streak = 0;
+
+        auto& iterate_blocks = this->owner_ordered_pages_mapping.at (owner);
+
+        map<int, tuple<int, Page*, pair<int, int>, bool>> new_iterate_blocks;
+
+        int size = iterate_blocks.size();
+        spdlog::warn("SIZE = {}", size);
+
+        if (parts == "first") {
+
+            auto cit = iterate_blocks.begin();
+
+            auto pptr = std::get<1> (cit->second);
+            if (pptr->is_page_dirty ()) {
+                new_iterate_blocks.insert ({cit->first, cit->second});
+                pptr->set_page_as_dirty (false);
+            }
+
+        } else if (parts == "last") {
+
+            auto cit = iterate_blocks.rbegin();
+
+            auto pptr = std::get<1> (cit->second);
+            if (pptr->is_page_dirty ()) {
+                new_iterate_blocks.insert ({cit->first, cit->second});
+                pptr->set_page_as_dirty (false);
+            }
+
+        } else if (parts == "first-half") {
+            
+            auto cit = iterate_blocks.begin ();
+            for (int i = 0; i < size/2; i++) {
+                auto pptr = std::get<1> (cit->second);
+                if (pptr->is_page_dirty ()) {
+                    new_iterate_blocks.insert ({cit->first, cit->second});
+                    pptr->set_page_as_dirty (false);
+                }
+                cit++;
+            }
+
+        } else if (parts == "last-half") {
+            
+            auto cit = iterate_blocks.rbegin ();
+            for (int i = size/2; i <= size; i++) {
+                auto pptr = std::get<1> (cit->second);
+                if (pptr->is_page_dirty ()) {
+                    new_iterate_blocks.insert ({cit->first, cit->second});
+                    pptr->set_page_as_dirty (false);
+                }
+                cit++;
+            }
+
+        }
+
+        off_t page_streak_last_offset =
+            (new_iterate_blocks.begin ()->first) * this->config->IO_BLOCK_SIZE;
+
+        vector<tuple<int, Page*, pair<int, int>, bool>> page_chunk;
+        page_chunk.reserve (new_iterate_blocks.size ());
+
+        for (auto it = new_iterate_blocks.begin (); it != new_iterate_blocks.end (); it++) {
+
+            auto current_block_id     = it->first;
+            auto const& next_block_id = std::next (it, 1)->first;
+
+            if ((page_streak < (__IOV_MAX - 1)) && (it != prev (new_iterate_blocks.end (), 1)) &&
+                (current_block_id == (next_block_id - 1))) {
+
+                page_streak++;
+
+                page_chunk.push_back (it->second);
+
+            } else {
+
+                page_streak++;
+
+                page_chunk.push_back (it->second);
+
+                struct iovec iov[page_streak];
+
+                page_streak_last_offset =
+                    (current_block_id - page_streak + 1) * this->config->IO_BLOCK_SIZE;
+
+                for (int p_id = 0; p_id < page_streak; p_id++) {
+
+                    int streak_block = current_block_id - page_streak + p_id + 1;
+
+                    auto const& streak_pair = page_chunk[p_id];
+                    // auto const& streak_pair     = iterate_blocks.at (streak_block);
+                    Page* page_ptr = get<1> (streak_pair);
+                    // auto const& block_data_offs = page_ptr->get_block_offsets (streak_block);
+                    auto const& block_data_offs = get<2> (streak_pair);
+                    iov[p_id].iov_base          = page_ptr->data + block_data_offs.first;
+                    if (p_id == page_streak - 1) {
+                        iov[p_id].iov_len =
+                            page_ptr->allocated_block_ids.get_readable_to (streak_block) + 1;
+                    } else {
+                        iov[p_id].iov_len = this->config->IO_BLOCK_SIZE;
+                    }
+
+                    // mark block as clean
+                    std::get<3> (iterate_blocks.at (streak_block)) = true;
+                }
+
+                wrote_bytes += pwritev (fd, iov, page_streak, page_streak_last_offset);
+
+                page_streak = 0;
+
+                page_chunk.clear ();
+
+                page_streak_last_offset = (current_block_id + 1) * this->config->IO_BLOCK_SIZE;
+            }
+        }
+    }
+
+    if (ftruncate (fd, last_size) < 0) {
+        spdlog::info ("ftruncate: failed");
+    }
+
+    close (fd);
+
+    return 0;
+}
+
 bool CustomCacheEngine::rename_owner_pages (string old_owner, string new_owner) {
 
     std::unique_lock<std::shared_mutex> lock (lock_cache_mtx);

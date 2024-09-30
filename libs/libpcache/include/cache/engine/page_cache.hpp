@@ -142,6 +142,20 @@ class PageCacheEngine {
     virtual bool sync_pages (string owner, off_t size, char* orig_path) = 0;
 
     /**
+     * @brief Syncs the specified blocks associated with an owner with the underlying filesystem.
+     * It calls pwritev for the dirty data chunks but fsync is not issued, for performance
+     * reasons.
+     *
+     * @param owner the content id
+     * @param size final file size
+     * @param orig_path original file name to sync data
+     * @param parts blocks to sync
+     * @return true the pages were synced
+     * @return false the content was not found
+     */
+    virtual bool partial_sync_pages (string owner, off_t size, char* orig_path, string parts) = 0;
+
+    /**
      * @brief Renames the content associated with an owner to the new owner
      *
      * @param old_owner

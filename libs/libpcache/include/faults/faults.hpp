@@ -311,11 +311,6 @@ class ClearP : public Fault {
     std::atomic_int counter;
 
     /**
-     * @brief If the fault is a crash fault.
-    */
-    bool crash;
-
-    /**
      * @brief Pages that will be cleared.
     */
     string pages;
@@ -349,7 +344,7 @@ class ClearP : public Fault {
      * @param pages Pages to clear.
      * @param ret If the current system call is finished before crashing.
     */
-    ClearP(string timing, string op, string from, string to, int occurrence, bool crash, string pages, bool ret);
+    ClearP(string timing, string op, string from, string to, int occurrence, string pages, bool ret);
     
     ~ClearP ();
 

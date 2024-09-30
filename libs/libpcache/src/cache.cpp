@@ -560,6 +560,17 @@ void Cache::full_checkpoint () {
         this->sync_owner (it.second, false, (char*)it.first.c_str ());
 }
 
+int Cache::partial_file_sync (string owner, char* path, string parts) {
+
+    string inode = get_original_inode (owner);
+    off_t last_size = get_content_metadata (inode)->size;
+
+    int res = this->engine->partial_sync_pages (inode, last_size, path, parts);
+    _get_content_ptr (inode)->set_data_sync_flag (true);
+
+    return res;
+}
+
 std::vector<tuple<string, size_t, vector<tuple<int, pair<int, int>, int>>>>
 Cache::report_unsynced_data () {
 

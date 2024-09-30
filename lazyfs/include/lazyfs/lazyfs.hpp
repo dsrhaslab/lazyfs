@@ -202,6 +202,14 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
     void command_fault_clear_cache ();
 
     /**
+     * @brief Fifo: (fault) Clear the cached pages requested
+     * @param path Path of the file
+     * @param parts Pages to be removed
+     *
+     */
+    void command_fault_clear_page (string path, string parts);
+
+    /**
      * @brief Fifo: (info) Display the cache usage
      *
      */
