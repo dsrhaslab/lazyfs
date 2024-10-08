@@ -2,7 +2,21 @@
 
 using namespace std;
 
+
 namespace faults {
+
+const unordered_set<string> Fault::allow_crash_fs_operations = {"unlink",
+                                                                "truncate",
+                                                                "fsync",
+                                                                "write",
+                                                                "create",
+                                                                "access",
+                                                                "open",
+                                                                "read",
+                                                                "rename",
+                                                                "link",
+                                                                "symlink"};
+const unordered_set<string> Fault::fs_op_multi_path = {"rename", "link", "symlink"};
 
 Fault::Fault(string type) {
     this->type = type;
@@ -11,7 +25,7 @@ Fault::Fault(string type) {
 Fault::~Fault(){}
 
 
-// Torn seq fault
+// Torn-seq Fault
 ReorderF::ReorderF(string op, vector<int> persist, int occurrence, bool ret) : Fault(TORN_SEQ) {
     (this->counter).store(0);
     this->op = op;
@@ -52,8 +66,8 @@ vector<string> ReorderF::validate() {
 }
 
 
-//Torn op fault
 
+//Torn-op Fault
 SplitWriteF::SplitWriteF(int occurrence, vector<int> persist, int parts, bool ret) : Fault(TORN_OP) {
     (this->counter).store(0);
     this->occurrence = occurrence;
@@ -117,22 +131,9 @@ vector<string> SplitWriteF::validate(int occurrence, vector<int> persist, option
     return errors;
 }
 
-//crash fault
 
-const unordered_set<string> ClearF::allow_crash_fs_operations = {"unlink", 
-                                                                "truncate", 
-                                                                "fsync", 
-                                                                "write", 
-                                                                "create", 
-                                                                "access", 
-                                                                "open", 
-                                                                "read", 
-                                                                "rename", 
-                                                                "link", 
-                                                                "symlink"};
 
-const unordered_set<string> ClearF::fs_op_multi_path = {"rename", "link", "symlink"};
-
+//Crash Fault
 ClearF::ClearF (string timing, string op, string from, string to, int occurrence, bool crash, bool ret) : Fault(CLEAR) {
     this->timing = timing;
     this->op = op;
@@ -173,23 +174,9 @@ vector<string> ClearF::validate() {
     return errors;
 }
 
-// clear page fault
 
-const unordered_set<string> ClearP::allow_crash_fs_operations = {"unlink", 
-                                                                "truncate", 
-                                                                "fsync", 
-                                                                "write", 
-                                                                "create", 
-                                                                "access", 
-                                                                "open", 
-                                                                "read", 
-                                                                "rename", 
-                                                                "link", 
-                                                                "symlink"};
-
-const unordered_set<string> ClearP::fs_op_multi_path = {"rename", "link", "symlink"};
-
-ClearP::ClearP (string timing, string op, string from, string to, int occurrence, string pages, bool ret) : Fault(CLEAR) {
+// Clear page Fault
+PersistPageF::PersistPageF (string timing, string op, string from, string to, int occurrence, string pages, bool ret) : Fault(CLEAR) {
     this->timing = timing;
     this->op = op;
     this->from = from;
@@ -200,15 +187,15 @@ ClearP::ClearP (string timing, string op, string from, string to, int occurrence
     this->ret = ret;
 }
 
-ClearP::~ClearP(){}
+PersistPageF::~PersistPageF(){}
 
-vector<string> ClearP::validate() {
+vector<string> PersistPageF::validate() {
     vector<string> errors;
     if (this->occurrence <= 0) {
         errors.push_back("Occurrence must be greater than 0.");
     }
 
-    if (ClearP::allow_crash_fs_operations.find(this->op) == ClearP::allow_crash_fs_operations.end()) {
+    if (PersistPageF::allow_crash_fs_operations.find(this->op) == PersistPageF::allow_crash_fs_operations.end()) {
         errors.push_back("Operation not available.");
     }
 
@@ -220,7 +207,7 @@ vector<string> ClearP::validate() {
         errors.push_back("Pages must be \"first\", \"last\", \"first-half\", \"last-half\" or \"random\".");
     }
 
-    if (ClearP::fs_op_multi_path.find (this->op) != ClearP::fs_op_multi_path.end ()) {
+    if (PersistPageF::fs_op_multi_path.find (this->op) != PersistPageF::fs_op_multi_path.end ()) {
         if (this->from == "none" || this->to == "none") {
             errors.push_back("\"from\" and \"to\" must be set defined operations with two paths.");
         }

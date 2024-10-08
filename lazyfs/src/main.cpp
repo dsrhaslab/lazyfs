@@ -1,4 +1,3 @@
-
 /**
  * @file main.cpp
  * @author João Azevedo joao.azevedo@inesctec.pt
@@ -14,7 +13,6 @@
 #include <errno.h>
 #include <fstream>
 #include <lazyfs/lazyfs.hpp>
-#include <regex>
 #include <spdlog/spdlog.h>
 #include <string>
 #include <thread>
@@ -90,8 +88,8 @@ void fht_worker (LazyFS* filesystem) {
                         string tmp_op = current.erase (0, current.find ("=") + 1);
 
                         if (tmp_op.length () != 0 &&
-                            filesystem->allow_crash_fs_operations.find (tmp_op) !=
-                                filesystem->allow_crash_fs_operations.end ())
+                            faults::Fault::allow_crash_fs_operations.find (tmp_op) !=
+                                faults::Fault::allow_crash_fs_operations.end ())
                             crash_operation = tmp_op;
                         else {
                             VF = false;
@@ -127,8 +125,8 @@ void fht_worker (LazyFS* filesystem) {
 
                 bool is_from_to = false;
 
-                if (filesystem->fs_op_multi_path.find (crash_operation) !=
-                    filesystem->fs_op_multi_path.end ()) {
+                if (faults::Fault::fs_op_multi_path.find (crash_operation) !=
+                    faults::Fault::fs_op_multi_path.end ()) {
 
                     if (crash_from_rgx == "none" && crash_to_rgx == "none") {
                         errors.push_back ("should specify 'from_rgx' and/or 'to_rgx'");

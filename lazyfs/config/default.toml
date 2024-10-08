@@ -13,13 +13,14 @@ blocks_per_page=1
 [filesystem]
 log_all_operations=true
 logfile=""
+
 [[injection]]
-type="clear-page"
-from="/home/marta/lazyfs/root/ex.txt"
-timing="after"
+type="clear-cache"
+from="/home/gsd/clear-pages-test/rootd/hello.txt"
+timing="after" 
 op="write"
-occurrence=999
-pages="first"
-return=true
+occurrence=1
+crash=true
+return=false
 
 # /home/marta/lazyfs/root/ex.txt

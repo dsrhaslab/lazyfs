@@ -146,7 +146,7 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      * @brief Map of allowed operations to have a crash fault
      *
      */
-    std::unordered_set<string> allow_crash_fs_operations = {"unlink",
+    /*std::unordered_set<string> allow_crash_fs_operations = {"unlink",
                                                             "truncate",
                                                             "fsync",
                                                             "write",
@@ -157,12 +157,13 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
                                                             "rename",
                                                             "link",
                                                             "symlink"};
-
+    */
+   
     /**
      * @brief Map of operations that have two paths
      *
      */
-    std::unordered_set<string> fs_op_multi_path = {"rename", "link", "symlink"};
+    //std::unordered_set<string> fs_op_multi_path = {"rename", "link", "symlink"};
 
     /**
      * @brief Construct a new LazyFS object.

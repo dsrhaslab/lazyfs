@@ -32,6 +32,7 @@ target_sources(
     PRIVATE
     src/lazyfs.cpp
     src/main.cpp
+    src/write_handler.cpp
 )
 
 target_link_libraries(${CMAKE_PROJECT_NAME} fuse3 Threads::Threads libpcache.so)

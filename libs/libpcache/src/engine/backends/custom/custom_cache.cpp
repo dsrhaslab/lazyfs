@@ -109,6 +109,35 @@ void CustomCacheEngine::print_page_cache_engine () {
     cout << "----------------------------------------------------------------" << endl;
 }
 
+void CustomCacheEngine::print_page_cache_dirty_pages () {
+
+    cout << "------------------- ENGINE DIRTY PAGES -------------------------" << endl;
+
+    //printf (":: Order (LRU): "); ---- TO-DO
+
+    printf ("\n:: Cached pages: \n");
+    for (auto it = this->search_index.begin (); it != this->search_index.end (); it++) {
+        if (it->second->is_page_dirty ()) {
+            cout << "\t"
+                 << "-> p(" << it->first << ")";
+            it->second->_print_page ();
+            cout << endl;
+        }
+    }
+
+    printf (":: Owner <-> pages mapping: ");
+    for (auto const& it : this->owner_pages_mapping) {
+        cout << "\n\t-> '" << it.first << "' owns pages: | ";
+        for (auto const& it2 : it.second) {
+            cout << it2 << " | ";
+        }
+        cout << "\n";
+    }
+    cout << endl;
+
+    cout << "----------------------------------------------------------------" << endl;
+}
+
 Page* CustomCacheEngine::_get_page_ptr (int page_id) {
 
     if (this->search_index.find (page_id) != this->search_index.end ())
@@ -477,8 +506,6 @@ bool CustomCacheEngine::sync_pages (string owner, off_t size, char* orig_path) {
 
     int fd = open (orig_path, O_WRONLY);
 
-    // std::printf ("\tengine: (fsync) %s opened descriptor %d\n", owner.c_str (), fd);
-
     if (this->owner_pages_mapping.find (owner) != this->owner_pages_mapping.end ()) {
 
         off_t wrote_bytes = 0;
@@ -582,7 +609,7 @@ bool CustomCacheEngine::partial_sync_pages (string owner, off_t last_size, char*
         map<int, tuple<int, Page*, pair<int, int>, bool>> new_iterate_blocks;
 
         int size = iterate_blocks.size();
-        spdlog::warn("SIZE = {}", size);
+        //spdlog::warn("SIZE = {}", size);
 
         if (parts == "first") {
 

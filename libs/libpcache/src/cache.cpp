@@ -565,8 +565,10 @@ int Cache::partial_file_sync (string owner, char* path, string parts) {
     string inode = get_original_inode (owner);
     off_t last_size = get_content_metadata (inode)->size;
 
+    spdlog::info ("[CACHE]: partial file sync for inode: {} path: {} parts: {}", inode, path, parts);
+
     int res = this->engine->partial_sync_pages (inode, last_size, path, parts);
-    _get_content_ptr (inode)->set_data_sync_flag (true);
+    //_get_content_ptr (inode)->set_data_sync_flag (true);  -> We cannot set this to true, since the file is not fully synced, maybe we should add a sync flag to pages instead, which then could be usefull for debugging ?
 
     return res;
 }

@@ -1,3 +1,6 @@
+#ifndef FAULTS_HPP 
+#define FAULTS_HPP
+
 #include <string>
 #include <vector>
 #include <optional>
@@ -23,6 +26,18 @@ class Fault {
      * @brief Type of fault. 
      */
     string type;
+
+    /**
+     * @brief Map of allowed operations to have a crash fault
+     *
+     */
+    static const std::unordered_set<string> allow_crash_fs_operations;
+
+    /**
+     * @brief Map of operations that have two paths
+     *
+     */
+    static const std::unordered_set<string> fs_op_multi_path;
 
     /**
       * @brief Default constructor of a new Fault object.
@@ -238,18 +253,6 @@ class ClearF : public Fault {
     bool ret;
 
     /**
-     * @brief Map of allowed operations to have a crash fault
-     *
-     */
-    static const unordered_set<string> allow_crash_fs_operations;
-
-    /**
-     * @brief Map of operations that have two paths
-     *
-     */
-    static const unordered_set<string> fs_op_multi_path;
-
-    /**
      * @brief Constructor for Fault.
      * 
      * @param timing Timing of the fault ("before","after").
@@ -276,9 +279,9 @@ class ClearF : public Fault {
 /*********************************************************************************************/
 
 /**
- * @brief Fault for clearing certain pages in LazyFS's cache in a specific point of execution, persist the others and, optionally, crash the process.
+ * @brief Fault for persisting certain pages in LazyFS's cache in a specific point of execution and, optionally, crash the process.
 */
-class ClearP : public Fault {
+class PersistPageF : public Fault {
   public:
     /**
      * @brief Timing of the fault ("before","after").
@@ -321,18 +324,6 @@ class ClearP : public Fault {
     bool ret;
 
     /**
-     * @brief Map of allowed operations to have a crash fault
-     *
-     */
-    static const unordered_set<string> allow_crash_fs_operations;
-
-    /**
-     * @brief Map of operations that have two paths
-     *
-     */
-    static const unordered_set<string> fs_op_multi_path;
-
-    /**
      * @brief Constructor for Fault.
      * 
      * @param timing Timing of the fault ("before","after").
@@ -344,9 +335,9 @@ class ClearP : public Fault {
      * @param pages Pages to clear.
      * @param ret If the current system call is finished before crashing.
     */
-    ClearP(string timing, string op, string from, string to, int occurrence, string pages, bool ret);
+    PersistPageF(string timing, string op, string from, string to, int occurrence, string pages, bool ret);
     
-    ~ClearP ();
+    ~PersistPageF ();
 
     /**
      * @brief Check if the parameters have correct values for the fault.
@@ -359,3 +350,5 @@ class ClearP : public Fault {
 
 // namespace faults
 }
+
+#endif // FAULTS_HPP
