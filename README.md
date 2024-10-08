@@ -95,7 +95,7 @@ parts=3 #or parts_bytes=[4096,3600,1260]
 persist=[1,3]
 
 [[injection]]
-type="clear"
+type="clear-cache"
 from="f1.txt"
 timing="before"
 op="fsync"

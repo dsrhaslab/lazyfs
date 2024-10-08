@@ -467,10 +467,10 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                     ret = true;
                 }
 
-                faults::ClearP * fault = NULL;
+                faults::PersistPageF * fault = NULL;
                 vector<string> errors;
                 if (valid_fault) {
-                    fault = new faults::ClearP(timing,op,from,to,occurrence,pages,ret);
+                    fault = new faults::PersistPageF(timing,op,from,to,occurrence,pages,ret);
                     errors = fault->validate();
                 }
 
@@ -491,7 +491,7 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                     } else {
                         //At the moment, only one clear fault per file is acceptable.
                         for (faults::Fault* f : it->second) {
-                            faults::ClearP* clear_fault = dynamic_cast<faults::ClearP*>(f);
+                            faults::PersistPageF* clear_fault = dynamic_cast<faults::PersistPageF*>(f);
                             if (clear_fault) {
                                 valid_fault = false;
                                 spdlog::error("It is only acceptable one clear-page fault per file.");

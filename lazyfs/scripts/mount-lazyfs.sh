@@ -9,12 +9,16 @@ HELP_MSG="Mount LazyFS with:
 \t-c | --config-path : The path to the LazyFS toml config file.
 \t-f | --foreground  : Run FUSE in foreground.
 \t-m | --mount.dir   : FUSE mount dir.
-\t-r | --root.dir    : FUSE root dir."
+\t-r | --root.dir    : FUSE root dir.
+\t-s | --single-thread : Run FUSE in single-thread mode.
+"
 
 if [ $# -eq 0 ]; then
     echo -e "$HELP_MSG"
     exit 1
 fi
+
+SINGLE_THREAD=""
 
 POSITIONAL_ARGS=()
 while [[ $# -gt 0 ]]; do
@@ -36,6 +40,10 @@ while [[ $# -gt 0 ]]; do
     -r|--root.dir)
       ROOT_DIR="$2"
       shift
+      shift
+      ;;
+    -s|--single-thread)
+      SINGLE_THREAD="-s"
       shift
       ;;
     -h|--help)
@@ -72,8 +80,8 @@ echo -e "Running LazyFS (stop with ctrl+c or umount-lazyfs.sh)...\n"
 if [ -z "$CMD_FG" ]; then
    echo -e "(running in no foreground mode)\n"
    echo -e "Note: run in foreground to see the <stdio> logs.\n"
-   ./build/lazyfs $MOUNT_DIR --config-path $CMD_CONFIG -o allow_other -o modules=subdir -o subdir=$ROOT_DIR &
+   ./build/lazyfs $MOUNT_DIR --config-path $CMD_CONFIG -o allow_other -o modules=subdir -o subdir=$ROOT_DIR $SINGLE_THREAD &
 else
    echo -e "(running in foreground mode)\n"
-   ./build/lazyfs $MOUNT_DIR --config-path $CMD_CONFIG -o allow_other -o modules=subdir -o subdir=$ROOT_DIR -f
+   ./build/lazyfs $MOUNT_DIR --config-path $CMD_CONFIG -o allow_other -o modules=subdir -o subdir=$ROOT_DIR $SINGLE_THREAD -f
 fi
