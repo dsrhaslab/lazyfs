@@ -1,6 +1,0 @@
-{
-    "cmake.sourceDirectory": "${workspaceFolder}/lib/libpcache",
-    "cmake.buildDirectory": "${workspaceFolder}/lib/libpcache/build",
-    "C_Cpp.default.compilerPath": "/usr/bin/g++",
-    "C_Cpp.default.cppStandard": "c++17"
-}

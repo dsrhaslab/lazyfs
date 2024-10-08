@@ -1,7 +1,0 @@
-{
-    "cmake.sourceDirectory": "/home/gsd/lazyfs-rep/lazyfs/lazyfs",
-    "cmake.buildDirectory": "${workspaceFolder}/lazyfs/build",
-    "C_Cpp.default.compileCommands": "${workspaceFolder}/lazyfs/build/compile_commands.json",
-    "C_Cpp.default.compilerPath": "/usr/bin/g++",
-    "C_Cpp.default.cppStandard": "c++17"
-}

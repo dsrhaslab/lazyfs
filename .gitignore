@@ -47,7 +47,8 @@
 build/
 
 # Vscode files
-.vscode/**
+**/.vscode/**
+
 
 # LazyFS or other log files
 
