@@ -51,9 +51,10 @@ build/
 
 
 # LazyFS or other log files
-
 *.log
 
 # tests/filebench: output files
-
 outputs*
+
+# Default config
+lazyfs/config/default.toml
