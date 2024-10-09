@@ -55,6 +55,8 @@ class Fault {
      * @brief Default destructor for a Fault object.
      */
     virtual ~Fault();
+
+    virtual void pretty_print() const;
 };
 
 /*********************************************************************************************/
@@ -135,6 +137,8 @@ class SplitWriteF : public Fault {
     */
     static vector<string> validate(int occurrence, vector<int> persist, optional<int> parts, optional<vector<int>> parts_bytes);
 
+    void pretty_print() const override;
+
 };
 
 /*********************************************************************************************/
@@ -174,8 +178,6 @@ class ReorderF : public Fault {
      */
     bool ret;
 
-
-
   
     /**
      * @brief Construct a new Fault object.
@@ -203,6 +205,8 @@ class ReorderF : public Fault {
      * @return Vector with errors.
     */
     vector<string> validate();
+
+    void pretty_print() const override;
 };
 
 /*********************************************************************************************/
@@ -273,6 +277,8 @@ class ClearF : public Fault {
      * @return Vector with errors.
     */
     vector<string> validate();
+
+    void pretty_print() const override;
 
 };
 

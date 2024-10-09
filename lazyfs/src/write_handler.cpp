@@ -4,6 +4,9 @@
 #include <vector>
 #include <map>
 #include <regex>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <signal.h>
 #include <lazyfs/lazyfs.hpp>
 
 using namespace std;
@@ -252,6 +255,7 @@ bool LazyFS::persist_write(const char* path, const char* buf, size_t size, off_t
                         if (max == fault->counter) {
                             this_ ()->add_crash_fault ("after", "write", path_str, "none"); 
                             spdlog::critical ("[lazyfs.faults]: Added crash fault ");
+                            if (fault->ret) this_ ()->kill_before.store(true);  
                             res= true;
                         }
                     } else {
@@ -347,7 +351,8 @@ bool LazyFS::split_write(const char* path, const char* buf, size_t size, off_t o
                     }
 
                     this_ ()->add_crash_fault ("after", "write", path_s, "none");            
-                    spdlog::critical ("[lazyfs.faults]: Added crash fault ");  
+                    spdlog::critical ("[lazyfs.faults]: Added crash fault ");
+                    if (split_fault->ret) this_ ()->kill_before.store(true);  
                     res = true;        
                 }
                 break; //At the moment only one fault per file is accepted.
@@ -355,6 +360,14 @@ bool LazyFS::split_write(const char* path, const char* buf, size_t size, off_t o
         }
     } 
     return res;
+}
+
+void LazyFS::check_kill_before() {
+    if (this_()->kill_before.load()) {
+        pid_t lazyfs_pid = getpid ();
+        spdlog::critical ("Killing LazyFS pid {}!", lazyfs_pid);
+        kill (lazyfs_pid, SIGKILL);
+    }
 }
 
 

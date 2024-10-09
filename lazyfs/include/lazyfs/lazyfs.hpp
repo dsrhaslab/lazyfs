@@ -132,6 +132,11 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
     */
     std::mutex injecting_fault_lock;
 
+    /**
+     * @brief Indicates if we need to kill LazyFS (because of fault after return).
+    */
+    atomic<bool> kill_before;
+
   public:
 
     /**
@@ -203,12 +208,12 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
     void command_fault_clear_cache ();
 
     /**
-     * @brief Fifo: (fault) Clear the cached pages requested
+     * @brief Fifo: (fault) Persist the cached pages requested
      * @param path Path of the file
-     * @param parts Pages to be removed
+     * @param parts Pages to be persisted
      *
      */
-    void command_fault_clear_page (string path, string parts);
+    void command_fault_persist_page (string path, string parts);
 
     /**
      * @brief Fifo: (info) Display the cache usage
@@ -414,12 +419,12 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      * @param optiming timing for triggering fault operation ('before' or 'after' a given system call)
      * @param from_op_path source path specified in the operation
      * @param dest_op_path destination path specified in the operation
-     * @param fault_type type of fault that triggered the crash
      */
-    bool trigger_crash_fault (string opname, string optiming, string from_op_path, string to_op_path, string fault_type);
+    bool trigger_crash_fault (string opname, string optiming, string from_op_path, string to_op_path);
 
     /**
-     * @brief Triggers a clear fault if condition is verified.
+     * @brief Triggers a clear-cache fault if condition is verified.
+     * (Important) Assumes that a lock of the cache is obtained. This is because this function is called by system calls that already have a lock.
      *
      * @param opname operation name
      * @param optiming timing for triggering fault operation ('before' or 'after')
@@ -427,6 +432,13 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      * @param dest_op_path destination path specified in the operation
      */
     bool trigger_configured_clear_fault (string opname, string optiming, string from_path, string to_path);
+
+    /**
+     * @brief Kills lazyfs with SIGKILL if kill_before is true.
+     */
+    void check_kill_before();
+
+    void print_faults ();
 };
 
 } // namespace lazyfs

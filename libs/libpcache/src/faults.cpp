@@ -1,4 +1,5 @@
 #include <faults/faults.hpp>
+#include <iostream>
 
 using namespace std;
 
@@ -23,6 +24,14 @@ Fault::Fault(string type) {
 }
 
 Fault::~Fault(){}
+
+
+void Fault::pretty_print() const {
+    cout << "***** Fault *****" << endl;
+    cout << "  Type: " << this->type << endl;
+    cout << "HERE prtey pint fault" << endl;
+
+}
 
 
 // Torn-seq Fault
@@ -63,6 +72,18 @@ vector<string> ReorderF::validate() {
         }
     }
     return errors;
+}
+
+void ReorderF::pretty_print() const {
+    //Fault::pretty_print();
+    cout << "  Operation: " << this->op << endl;
+    cout << "  Persist: ";
+    for (const auto& p : this->persist) {
+        cout << p << " ";
+    }
+    cout << endl;
+    cout << "  Occurrence: " << this->occurrence << endl;
+    cout << "  Return: " << (this->ret ? "true" : "false") << endl;
 }
 
 
@@ -131,6 +152,23 @@ vector<string> SplitWriteF::validate(int occurrence, vector<int> persist, option
     return errors;
 }
 
+void SplitWriteF::pretty_print() const {
+    //Fault::pretty_print();
+    cout << "  Occurrence: " << this->occurrence << endl;
+    cout << "  Persist: ";
+    for (const auto& p : this->persist) {
+        cout << p << " ";
+    }
+    cout << endl;
+    cout << "  Parts: " << this->parts << endl;
+    cout << "  Parts Bytes: ";
+    for (const auto& pb : this->parts_bytes) {
+        cout << pb << " ";
+    }
+    cout << endl;
+    cout << "  Return: " << (this->ret ? "true" : "false") << endl;
+}
+
 
 
 //Crash Fault
@@ -172,6 +210,18 @@ vector<string> ClearF::validate() {
     }
 
     return errors;
+}
+
+void ClearF::pretty_print() const {
+    //Fault::pretty_print();
+    cout << "HERE prtey pint clearf" << endl;
+    cout << "  Timing: " << this->timing << endl;
+    cout << "  Operation: " << this->op << endl;
+    cout << "  From: " << this->from << endl;
+    cout << "  To: " << this->to << endl;
+    cout << "  Occurrence: " << this->occurrence << endl;
+    cout << "  Crash: " << (this->crash ? "true" : "false") << endl;
+    cout << "  Return: " << (this->ret ? "true" : "false") << endl;
 }
 
 
