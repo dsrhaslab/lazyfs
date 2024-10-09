@@ -38,8 +38,6 @@ using namespace std;
 using namespace cache;
 using namespace cache::engine::backends::custom;
 
-bool kill_before = false;
-std::shared_mutex kill_lock;
 std::shared_mutex cache_command_lock;
 
 namespace lazyfs {
@@ -60,6 +58,7 @@ LazyFS::LazyFS (Cache* cache,
     this->fht_worker            = fht_worker;
     this->faults                = faults;
     this->pending_write         = NULL;
+    this->kill_before           .store (false);
 
     for (auto const& it : faults::Fault::allow_crash_fs_operations) {
         this->crash_faults_before_map.insert ({it, {}});
@@ -77,12 +76,13 @@ vector<string> LazyFS::get_injecting_fault() {
 bool LazyFS::trigger_crash_fault (string opname,
                                   string optiming,
                                   string from_op_path,
-                                  string to_op_path,
-                                  string fault_type) {
-
+                                  string to_op_path
+                                  ) {
+    
     vector<pair<std::regex, string>> opfaults;
-    const int length = from_op_path.length();
+
  /*
+    const int length = from_op_path.length();
     // declaring character array (+1 for null terminator)
     char* char_array = new char[length + 1];
  
@@ -94,19 +94,6 @@ bool LazyFS::trigger_crash_fault (string opname,
 
     status = lstat(char_array, &buffer);
 */
-
-    bool ret = true;
-    auto it = faults->find(from_op_path);
-    if (it != faults->end()) {
-        auto& v_faults = it->second;
-        for (auto fault : v_faults) {
-            faults::ReorderF* faultR = dynamic_cast<faults::ReorderF*>(fault);
-            if (faultR && faultR->op == opname && ret) ret = faultR->ret;
-            
-            faults::SplitWriteF* faultS = dynamic_cast<faults::SplitWriteF*>(fault);
-            if (faultS && opname == "write" && ret) ret = faultS->ret;
-        }
-    }
 
     if (optiming == "before") {
         opfaults = this->crash_faults_before_map.at (opname);
@@ -149,8 +136,6 @@ bool LazyFS::trigger_crash_fault (string opname,
                 this->injecting_fault_lock.lock();
                 this_ ()->command_unsynced_data_report (this->injecting_fault);
                 this->injecting_fault_lock.unlock();
-                
-                if (ret) return true;
 
                 pid_t lazyfs_pid = getpid ();
                 spdlog::critical ("Killing LazyFS pid {}!", lazyfs_pid);
@@ -168,6 +153,8 @@ bool LazyFS::trigger_configured_clear_fault (string opname,
 
     auto it = faults->find(from_path);
 
+    cout << " CURENT " << opname << " " << optiming << endl;
+
     if (it != faults->end()) {
         auto& v_faults = it->second;
 
@@ -183,12 +170,17 @@ bool LazyFS::trigger_configured_clear_fault (string opname,
                     
                     int current_count = clear_fault->counter.load();
                     if (optiming == "before") {
-                        current_count = clear_fault->counter.fetch_add(1);
+                        clear_fault->counter.fetch_add(1);
+                        current_count++;
                     }
+
+                    cout << "COUNTERS - WHEN IS FAULT :" << clear_fault->occurrence  << " CURRENT:" << current_count <<  " actual stores " << clear_fault->counter.load() << endl;
             
                     if (clear_fault->timing == optiming) {
 
                         if (current_count == clear_fault->occurrence) {
+
+                            cout << "OUT HERE counter match" << endl;
 
                             spdlog::critical ("Triggered fault condition (op={},timing={})", opname, optiming);
 
@@ -197,15 +189,24 @@ bool LazyFS::trigger_configured_clear_fault (string opname,
                             this->injecting_fault_lock.unlock();
 
                             if (clear_fault->crash) {
+
+                                cout << "CRASH" << endl;
                                 
-                                if (optiming == "after" && clear_fault->ret) return true;
+                                if (optiming == "after" && clear_fault->ret) {
+                                    this_()->kill_before.store(true);
+                                    spdlog::warn("Syscall {} will return. LazyFS will crash before the next system call.", opname);
+                                    return true;
+                                }
 
                                 pid_t lazyfs_pid = getpid ();
                                 spdlog::critical ("Killing LazyFS pid {}!", lazyfs_pid);
                                 kill (lazyfs_pid, SIGKILL);
 
                             } else {
-                                this_ ()->command_fault_clear_cache ();
+                                spdlog::warn ("[lazyfs.cmds]: clearing cache...");
+
+                                //Assumes cache lock is obtained!
+                                FSCache->clear_all_cache ();
                             }   
                         }
                     }
@@ -233,9 +234,13 @@ bool LazyFS::trigger_configured_clear_fault (string opname,
                             this_ ()->command_unsynced_data_report (this->injecting_fault);
                             this->injecting_fault_lock.unlock();
 
-                            this_ ()->command_fault_clear_page (from_path, page_fault->pages);
+                            this_ ()->command_fault_persist_page (from_path, page_fault->pages);
 
-                            if (optiming == "after" && page_fault->ret) return true;
+                            if (optiming == "after" && page_fault->ret) {
+                                this_()->kill_before.store(true);
+                                spdlog::critical("Syscall {} will return. LazyFS will crash before the next system call.", opname);
+                                return true;
+                            }
 
                             pid_t lazyfs_pid = getpid ();
                             spdlog::critical ("Killing LazyFS pid {}!", lazyfs_pid);
@@ -254,6 +259,7 @@ void LazyFS::add_crash_fault (string crash_timing,
                               string crash_regex_from,
                               string crash_regex_to) {
 
+    //TO-DO: regex_to is not actually regex
     if (crash_timing == "before") {
 
         auto& crash_regex_list = crash_faults_before_map.at (crash_operation);
@@ -363,12 +369,12 @@ void LazyFS::command_fault_clear_cache () {
     spdlog::warn ("[lazyfs.cmds]: cache is cleared.");
 }
 
-void LazyFS::command_fault_clear_page (string path, string parts) {
+void LazyFS::command_fault_persist_page (string path, string parts) {
 
+    //std::unique_lock<std::shared_mutex> lock (cache_command_lock);
+    
     spdlog::warn ("[lazyfs.cmds]: clear page request submitted...");
     
-    //std::unique_lock<std::shared_mutex> lock (cache_command_lock);
-
     string owner (path);
 
     FSCache->partial_file_sync (owner, const_cast<char*>(path.c_str()), parts);
@@ -406,7 +412,33 @@ void* LazyFS::lfs_init (struct fuse_conn_info* conn, struct fuse_config* cfg) {
 
     new (this_ ()->faults_handler_thread) std::thread (this_ ()->fht_worker, this_ ());
 
+    this_ ()->print_faults();
+
     return this_ ();
+}
+
+void LazyFS::print_faults () {
+    for (const auto& fault_pair : *(this_()->faults)) {
+        cout << "\n>> Faults for path: " << fault_pair.first << endl;
+        for (const auto& fault : fault_pair.second) {
+            fault->pretty_print();
+        }
+    }
+    cout << "\n>> Crash Faults Before Map:" << endl;
+    for (const auto& pair : this_()->crash_faults_before_map) {
+        cout << "Operation: " << pair.first << endl;
+        for (const auto& fault : pair.second) {
+            cout << "  From Regex: " << fault.first.mark_count() << ", To Regex: " << fault.second << endl;
+        }
+    }
+
+    cout << "\n>> Crash Faults After Map:" << endl;
+    for (const auto& pair : this_()->crash_faults_after_map) {
+        cout << "Operation: " << pair.first << endl;
+        for (const auto& fault : pair.second) {
+            cout << "  From Regex: " << fault.first.mark_count() << ", To Regex: " << fault.second << endl;
+        }
+    }
 }
 
 void LazyFS::lfs_destroy (void*) { spdlog::info ("[lazyfs]: stopping LazyFS..."); }
@@ -510,7 +542,7 @@ int LazyFS::lfs_readdir (const char* path,
                          off_t offset,
                          struct fuse_file_info* fi,
                          enum fuse_readdir_flags flags) {
-
+    
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
     if (this_ ()->FSConfig->log_all_operations) {
@@ -544,15 +576,9 @@ int LazyFS::lfs_readdir (const char* path,
 
 int LazyFS::lfs_open (const char* path, struct fuse_file_info* fi) {
 
-    kill_lock.lock();
-    if (kill_before) {
-        pid_t lazyfs_pid = getpid ();
-        spdlog::critical ("Killing LazyFS pid {}!", lazyfs_pid);
-        kill (lazyfs_pid, SIGKILL);
-    }
-    kill_lock.unlock();
+    this_ ()->check_kill_before();
 
-    this_ ()->trigger_crash_fault ("open", "before", path, "", CLEAR);
+    this_ ()->trigger_crash_fault ("open", "before", path, "");
     this_ ()->trigger_configured_clear_fault ("open", "before", path, "");
 
 
@@ -596,25 +622,17 @@ int LazyFS::lfs_open (const char* path, struct fuse_file_info* fi) {
     if (fi->flags & O_TRUNC)
         lfs_truncate (path, 0, fi);
 
-    kill_lock.lock();
-    if (!kill_before) kill_before = this_()->trigger_crash_fault ("open", "after", path, "", CLEAR) || this_()->trigger_configured_clear_fault ("open", "after", path, "");
-    if (kill_before) spdlog::critical("Open returned. LazyFS will crash before the next system call.");
-    kill_lock.unlock();
+    this_()->trigger_crash_fault ("open", "after", path, "");
+    this_()->trigger_configured_clear_fault ("open", "after", path, "");
 
     return 0;
 }
 
 int LazyFS::lfs_create (const char* path, mode_t mode, struct fuse_file_info* fi) {
 
-    kill_lock.lock();
-    if (kill_before) {
-        pid_t lazyfs_pid = getpid ();
-        spdlog::critical ("Killing LazyFS pid {}!", lazyfs_pid);
-        kill (lazyfs_pid, SIGKILL);
-    }
-    kill_lock.unlock();
+    this_ ()->check_kill_before();
 
-    this_ ()->trigger_crash_fault ("create", "before", path, "", CLEAR);
+    this_ ()->trigger_crash_fault ("create", "before", path, "");
     this_ ()->trigger_configured_clear_fault ("create", "before", path, "");
 
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
@@ -681,11 +699,6 @@ int LazyFS::lfs_create (const char* path, mode_t mode, struct fuse_file_info* fi
         this_ ()->FSCache->unlockItem (inode);
     }
 
-    kill_lock.lock();
-    if (!kill_before) kill_before = this_ ()->trigger_crash_fault ("create", "after", path, "", CLEAR) || this_ ()->trigger_configured_clear_fault ("create", "after", path, "");
-    if (kill_before) spdlog::critical("Create returned. LazyFS will crash before the next system call.");
-    kill_lock.unlock();
-
     return 0;
 }
 
@@ -695,15 +708,9 @@ int LazyFS::lfs_write (const char* path,
                        off_t offset,
                        struct fuse_file_info* fi) {
 
-    kill_lock.lock();
-    if (kill_before) {
-        pid_t lazyfs_pid = getpid ();
-        spdlog::critical ("Killing LazyFS pid {}!", lazyfs_pid);
-        kill (lazyfs_pid, SIGKILL);
-    }
-    kill_lock.unlock();
+    this_ ()->check_kill_before();
 
-    this_ ()->trigger_crash_fault ("write", "before", path, "", CLEAR);
+    this_ ()->trigger_crash_fault ("write", "before", path, "");
     this_ ()->trigger_configured_clear_fault ("write", "before", path, "");
 
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
@@ -1028,14 +1035,7 @@ int LazyFS::lfs_write (const char* path,
 
     // ----------------------------------------------------------------------------------
     
-    string fault_type = CLEAR;
-    bool crash_added = this_ () -> persist_write(path,buf,size,offset);
-    if (!crash_added) { //At the moment only one fault type can be injected
-        crash_added =  this_ () -> split_write(path,buf,size,offset);
-        fault_type = TORN_OP;
-    } else {
-        fault_type = TORN_SEQ; 
-    }
+    bool crash_added = this_ () -> persist_write(path,buf,size,offset) || this_ () -> split_write(path,buf,size,offset); //only one will be injected, becaus eby now we only allow one
 
     // res should be = actual bytes written as pwrite could fail...
     res = size;
@@ -1048,10 +1048,11 @@ int LazyFS::lfs_write (const char* path,
     if (fi == NULL)
         close (fd);
 
-    kill_lock.lock();
-    if (!kill_before) kill_before = this_ ()->trigger_crash_fault ("write", "after", path, "",fault_type) || this_ ()->trigger_configured_clear_fault ("write", "after", path, "");
-    if (kill_before) spdlog::critical("Write returned. LazyFS will crash before the next system call.");
-    kill_lock.unlock();
+    if (crash_added && this_ ()->kill_before.load()) spdlog::critical("Syscall write returned. LazyFS will crash before the next system call.");
+    else {
+        this_ ()->trigger_crash_fault ("write", "after", path, "");
+        this_ ()->trigger_configured_clear_fault ("write", "after", path, "");
+    }
 
     return res;
 }
@@ -1062,15 +1063,9 @@ int LazyFS::lfs_read (const char* path,
                       off_t offset,
                       struct fuse_file_info* fi) {
 
-    kill_lock.lock();
-    if (kill_before) {
-        pid_t lazyfs_pid = getpid ();
-        spdlog::critical ("Killing LazyFS pid {}!", lazyfs_pid);
-        kill (lazyfs_pid, SIGKILL);
-    }
-    kill_lock.unlock();
+    this_ ()->check_kill_before();
 
-    this_ ()->trigger_crash_fault ("read", "before", path, "", CLEAR);
+    this_ ()->trigger_crash_fault ("read", "before", path, "");
     this_ ()->trigger_configured_clear_fault ("read", "before", path, "");
 
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
@@ -1302,25 +1297,17 @@ int LazyFS::lfs_read (const char* path,
     if (fi == NULL)
         close (fd);
 
-    kill_lock.lock();
-    if (!kill_before) kill_before = this_ ()->trigger_crash_fault ("read", "after", path, "", CLEAR) || this_ ()->trigger_configured_clear_fault ("read", "after", path, "");
-    if (kill_before) spdlog::critical("Read returned. LazyFS will crash before the next system call.");
-    kill_lock.unlock();
+    this_ ()->trigger_crash_fault ("read", "after", path, "");
+    this_ ()->trigger_configured_clear_fault ("read", "after", path, "");
 
     return res;
 }
 
 int LazyFS::lfs_fsync (const char* path, int isdatasync, struct fuse_file_info* fi) {
 
-    kill_lock.lock();
-    if (kill_before) {
-        pid_t lazyfs_pid = getpid ();
-        spdlog::critical ("Killing LazyFS pid {}!", lazyfs_pid);
-        kill (lazyfs_pid, SIGKILL);
-    }
-    kill_lock.unlock();
+    this_ ()->check_kill_before();
 
-    this_ ()->trigger_crash_fault ("fsync", "before", path, "", CLEAR);
+    this_ ()->trigger_crash_fault ("fsync", "before", path, "");
     this_ ()->trigger_configured_clear_fault ("fsync", "before", path, "");
 
 
@@ -1350,15 +1337,15 @@ int LazyFS::lfs_fsync (const char* path, int isdatasync, struct fuse_file_info* 
         res = is_owner_cached ? this_ ()->FSCache->sync_owner (inode, false, (char*)path)
                               : fsync (fi->fh);
 
-    kill_lock.lock();
-    if (!kill_before) kill_before = this_ ()->trigger_crash_fault ("fsync", "after", path, "", CLEAR) || this_ ()->trigger_configured_clear_fault ("fsync", "after", path, "");
-    if (kill_before) spdlog::critical("Fsync returned. LazyFS will crash before the next system call.");
-    kill_lock.unlock();
+    this_ ()->trigger_crash_fault ("fsync", "after", path, "");
+    this_ ()->trigger_configured_clear_fault ("fsync", "after", path, "");
     
     return res;
 }
 
 int LazyFS::lfs_is_dir_empty (const char* dirname) {
+
+    this_ ()->check_kill_before();
 
     struct dirent* from_DIRENT;
     DIR* from_DIR = opendir (dirname);
@@ -1450,7 +1437,9 @@ int LazyFS::lfs_recursive_rename (const char* from, const char* to, unsigned int
 
 int LazyFS::lfs_rename (const char* from, const char* to, unsigned int flags) {
 
-    this_ ()->trigger_crash_fault ("rename", "before", from, to, CLEAR);
+    this_ ()->check_kill_before();
+
+    this_ ()->trigger_crash_fault ("rename", "before", from, to);
     this_ ()->trigger_configured_clear_fault ("rename", "before", from, to);
 
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
@@ -1464,9 +1453,11 @@ int LazyFS::lfs_rename (const char* from, const char* to, unsigned int flags) {
     if (flags)
         return -EINVAL;
 
+    cout << "hre1 " << endl;
     string last_owner (from);
     string inode = this_ ()->FSCache->get_original_inode (last_owner);
     string new_owner (to);
+    cout << "hre2 " << endl;
 
     if (inode.empty ()) {
 
@@ -1484,7 +1475,7 @@ int LazyFS::lfs_rename (const char* from, const char* to, unsigned int flags) {
     if (res == -1)
         return -errno;
 
-    this_ ()->trigger_crash_fault ("rename", "after", from, to, CLEAR);
+    this_ ()->trigger_crash_fault ("rename", "after", from, to);
     this_ ()->trigger_configured_clear_fault ("rename", "after", from, to);
 
     return 0;
@@ -1493,7 +1484,9 @@ int LazyFS::lfs_rename (const char* from, const char* to, unsigned int flags) {
 int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_file_info* fi) {
     cout << ">> FTRUNCATE" << endl;
 
-    this_ ()->trigger_crash_fault ("truncate", "before", path, "", CLEAR);
+    this_ ()->check_kill_before();
+
+    this_ ()->trigger_crash_fault ("truncate", "before", path, "");
     this_ ()->trigger_configured_clear_fault ("truncate", "before", path, "");
 
 
@@ -1631,7 +1624,7 @@ int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_fil
     if (res == -1)
         return -errno;
 
-    this_ ()->trigger_crash_fault ("truncate", "after", path, "", CLEAR);
+    this_ ()->trigger_crash_fault ("truncate", "after", path, "");
     this_ ()->trigger_configured_clear_fault ("truncate", "after", path, "");
 
     return 0;
@@ -1639,7 +1632,9 @@ int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_fil
 
 int LazyFS::lfs_symlink (const char* from, const char* to) {
 
-    this_ ()->trigger_crash_fault ("symlink", "before", from, to, CLEAR);
+    this_ ()->check_kill_before();
+
+    this_ ()->trigger_crash_fault ("symlink", "before", from, to);
     this_ ()->trigger_configured_clear_fault ("symlink", "before", from, to);
 
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
@@ -1654,14 +1649,16 @@ int LazyFS::lfs_symlink (const char* from, const char* to) {
     if (res == -1)
         return -errno;
 
-    this_ ()->trigger_crash_fault ("symlink", "after", from, to, CLEAR);
+    this_ ()->trigger_crash_fault ("symlink", "after", from, to);
     this_ ()->trigger_configured_clear_fault ("symlink", "after", from, to);
     return 0;
 }
 
 int LazyFS::lfs_access (const char* path, int mask) {
 
-    this_ ()->trigger_crash_fault ("access", "before", path, "", CLEAR);
+    this_ ()->check_kill_before();
+
+    this_ ()->trigger_crash_fault ("access", "before", path, "");
     this_ ()->trigger_configured_clear_fault ("access", "before", path, "");
 
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
@@ -1676,13 +1673,15 @@ int LazyFS::lfs_access (const char* path, int mask) {
     if (res == -1)
         return -errno;
 
-    this_ ()->trigger_crash_fault ("access", "after", path, "", CLEAR);
+    this_ ()->trigger_crash_fault ("access", "after", path, "");
     this_ ()->trigger_configured_clear_fault ("access", "after", path, "");
 
     return 0;
 }
 
 int LazyFS::lfs_mkdir (const char* path, mode_t mode) {
+
+    this_ ()->check_kill_before();
 
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
@@ -1701,7 +1700,9 @@ int LazyFS::lfs_mkdir (const char* path, mode_t mode) {
 
 int LazyFS::lfs_link (const char* from, const char* to) {
 
-    this_ ()->trigger_crash_fault ("link", "before", from, to, CLEAR);
+    this_ ()->check_kill_before();
+
+    this_ ()->trigger_crash_fault ("link", "before", from, to);
     this_ ()->trigger_configured_clear_fault ("link", "before", from, to);
 
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
@@ -1721,13 +1722,15 @@ int LazyFS::lfs_link (const char* from, const char* to) {
     if (!inode.empty ())
         this_ ()->FSCache->insert_inode_mapping (to, inode, true);
 
-    this_ ()->trigger_crash_fault ("link", "after", from, to, CLEAR);
+    this_ ()->trigger_crash_fault ("link", "after", from, to);
     this_ ()->trigger_configured_clear_fault ("link", "after", from, to);
 
     return 0;
 }
 
 int LazyFS::lfs_readlink (const char* path, char* buf, size_t size) {
+
+    this_ ()->check_kill_before();
 
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
@@ -1747,6 +1750,8 @@ int LazyFS::lfs_readlink (const char* path, char* buf, size_t size) {
 
 int LazyFS::lfs_release (const char* path, struct fuse_file_info* fi) {
 
+    this_ ()->check_kill_before();
+
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
     if (this_ ()->FSConfig->log_all_operations) {
@@ -1761,6 +1766,8 @@ int LazyFS::lfs_release (const char* path, struct fuse_file_info* fi) {
 }
 
 int LazyFS::lfs_rmdir (const char* path) {
+
+    this_ ()->check_kill_before();
 
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
@@ -1779,6 +1786,8 @@ int LazyFS::lfs_rmdir (const char* path) {
 
 int LazyFS::lfs_chmod (const char* path, mode_t mode, struct fuse_file_info* fi) {
 
+    this_ ()->check_kill_before();
+
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
     if (this_ ()->FSConfig->log_all_operations) {
@@ -1796,6 +1805,8 @@ int LazyFS::lfs_chmod (const char* path, mode_t mode, struct fuse_file_info* fi)
 }
 
 int LazyFS::lfs_chown (const char* path, uid_t uid, gid_t gid, fuse_file_info* fi) {
+
+    this_ ()->check_kill_before();
 
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
@@ -1914,7 +1925,9 @@ off_t LazyFS::lfs_lseek (const char* path, off_t off, int whence, struct fuse_fi
 
 int LazyFS::lfs_unlink (const char* path) {
 
-    this_ ()->trigger_crash_fault ("unlink", "before", path, "", CLEAR);
+    this_ ()->check_kill_before();
+
+    this_ ()->trigger_crash_fault ("unlink", "before", path, "");
     this_ ()->trigger_configured_clear_fault ("unlink", "before", path, "");
 
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
@@ -1938,7 +1951,7 @@ int LazyFS::lfs_unlink (const char* path) {
     if (res == -1)
         return -errno;
 
-    this_ ()->trigger_crash_fault ("unlink", "after", path, "", CLEAR);
+    this_ ()->trigger_crash_fault ("unlink", "after", path, "");
     this_ ()->trigger_configured_clear_fault ("unlink", "before", path, "");
 
     return 0;
