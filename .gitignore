@@ -55,6 +55,3 @@ build/
 
 # tests/filebench: output files
 outputs*
-
-# Default config
-lazyfs/config/default.toml
