@@ -205,27 +205,29 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      * @brief Fifo: (fault) Clear the cached contents
      *
      */
-    void command_fault_clear_cache ();
+    void command_fault_clear_cache (bool lock_needed = true);
 
     /**
-     * @brief Fifo: (fault) Persist the cached pages requested
+     * @brief Fifo: (fault) Persist the cached pages requested.
+     * Only use after obtaining lock on cache_command_lock.
+     * 
      * @param path Path of the file
      * @param parts Pages to be persisted
      *
      */
-    void command_fault_persist_page (string path, string parts);
+    void command_fault_persist_page (string path, string parts, bool lock_needed = true);
 
     /**
      * @brief Fifo: (info) Display the cache usage
      *
      */
-    void command_display_cache_usage ();
+    void command_display_cache_usage (bool lock_needed = true);
 
     /**
      * @brief Fifo: (sync) Sync all cached data with the underlying FS
      *
      */
-    void command_checkpoint ();
+    void command_checkpoint (bool lock_needed = true);
 
     /**
      * @brief Fifo: Reports which files have unsynced data.
@@ -420,7 +422,7 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      * @param from_op_path source path specified in the operation
      * @param dest_op_path destination path specified in the operation
      */
-    bool trigger_crash_fault (string opname, string optiming, string from_op_path, string to_op_path);
+    bool trigger_crash_fault (string opname, string optiming, string from_op_path, string to_op_path, bool lock_needed = true);
 
     /**
      * @brief Triggers a clear-cache fault if condition is verified.
@@ -431,7 +433,7 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      * @param from_op_path source path specified in the operation
      * @param dest_op_path destination path specified in the operation
      */
-    bool trigger_configured_clear_fault (string opname, string optiming, string from_path, string to_path);
+    bool trigger_configured_clear_fault (string opname, string optiming, string from_path, string to_path, bool lock_needed = true);
 
     /**
      * @brief Kills lazyfs with SIGKILL if kill_before is true.

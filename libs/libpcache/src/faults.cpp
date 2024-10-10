@@ -25,12 +25,9 @@ Fault::Fault(string type) {
 
 Fault::~Fault(){}
 
-
 void Fault::pretty_print() const {
     cout << "***** Fault *****" << endl;
     cout << "  Type: " << this->type << endl;
-    cout << "HERE prtey pint fault" << endl;
-
 }
 
 
@@ -75,7 +72,7 @@ vector<string> ReorderF::validate() {
 }
 
 void ReorderF::pretty_print() const {
-    //Fault::pretty_print();
+    Fault::pretty_print();
     cout << "  Operation: " << this->op << endl;
     cout << "  Persist: ";
     for (const auto& p : this->persist) {
@@ -153,7 +150,7 @@ vector<string> SplitWriteF::validate(int occurrence, vector<int> persist, option
 }
 
 void SplitWriteF::pretty_print() const {
-    //Fault::pretty_print();
+    Fault::pretty_print();
     cout << "  Occurrence: " << this->occurrence << endl;
     cout << "  Persist: ";
     for (const auto& p : this->persist) {
@@ -170,9 +167,9 @@ void SplitWriteF::pretty_print() const {
 }
 
 
-
 //Crash Fault
 ClearF::ClearF (string timing, string op, string from, string to, int occurrence, bool crash, bool ret) : Fault(CLEAR) {
+    Fault::pretty_print();
     this->timing = timing;
     this->op = op;
     this->from = from;
@@ -213,8 +210,7 @@ vector<string> ClearF::validate() {
 }
 
 void ClearF::pretty_print() const {
-    //Fault::pretty_print();
-    cout << "HERE prtey pint clearf" << endl;
+    Fault::pretty_print();
     cout << "  Timing: " << this->timing << endl;
     cout << "  Operation: " << this->op << endl;
     cout << "  From: " << this->from << endl;
