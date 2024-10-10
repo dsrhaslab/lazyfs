@@ -21,6 +21,7 @@
 using namespace lazyfs;
 
 #define MAX_READ_CHUNK 255
+#define THREAD_ID 1
 
 cache::config::Config std_config;
 std::thread faults_handler_thread;
@@ -29,7 +30,7 @@ LazyFS fs;
 void fht_worker (LazyFS* filesystem) {
     int fd_fifo, fd_fifo_completed;
     std::shared_mutex fifo_lock;
-    
+
     fd_fifo = open (std_config.FIFO_PATH.c_str (), O_RDWR);
     if (fd_fifo < 0) {
         spdlog::critical ("[lazyfs.fifo]: failed to open fifo '{}' (error: {})",
@@ -174,7 +175,7 @@ void fht_worker (LazyFS* filesystem) {
 
                 spdlog::info ("[lazyfs.faults.worker]: received '{}'", string (buffer));
                 filesystem->command_fault_clear_cache ();
-                
+
                 if (write_completed_faults) {
                     const char* clear_cache = "finished::clear-cache\n";
                     fifo_lock.lock();
@@ -186,7 +187,7 @@ void fht_worker (LazyFS* filesystem) {
 
             } else if (command_str.rfind ("lazyfs::torn-op", 0) == 0) {
                 spdlog::info ("[lazyfs.faults.worker]: received '{}'", string (buffer));
-                
+
                 std::regex rgx_global ("::");
                 std::regex rgx_attrib ("=");
                 std::sregex_token_iterator iter_glob (command_str.begin (),
@@ -229,21 +230,21 @@ void fht_worker (LazyFS* filesystem) {
                         if (!std::regex_match(tmp_parts, pattern)) {
                             errors.push_back ("parts should be a number");
                             valid_fault = false;
-                        } else 
+                        } else
                             parts = tmp_parts;
-                        
-                    
+
+
                     } else if (current.rfind ("parts_bytes=", 0) == 0) {
-                        
+
                         string tmp_parts_bytes = current.erase (0, current.find ("=") + 1);
                         std::regex pattern(R"((\d+,)*\d+)");
 
                         if (!std::regex_match(tmp_parts_bytes, pattern)) {
                             errors.push_back ("parts_bytes should be a list of numbers separated by commas");
                             valid_fault = false;
-                        } else 
+                        } else
                             parts_bytes = tmp_parts_bytes;
-                        
+
 
                     } else if (current.rfind ("persist=", 0) == 0) {
 
@@ -253,9 +254,9 @@ void fht_worker (LazyFS* filesystem) {
                         if (!std::regex_match(tmp_persist, pattern)) {
                             errors.push_back ("persist should be a list of numbers separated by commas");
                             valid_fault = false;
-                        } else 
+                        } else
                             persist = tmp_persist;
-                        
+
                     } else if (current.rfind("return=", 0) == 0) {
 
                         string tmp_ret = current.erase (0, current.find ("=") + 1);
@@ -278,12 +279,12 @@ void fht_worker (LazyFS* filesystem) {
                     errors.push_back ("should specify 'parts' or 'parts_bytes', not both");
                     valid_fault = false;
                 }
-                
+
                 vector<string> errors_add_torn_op;
-                if (valid_fault) 
+                if (valid_fault)
                     errors_add_torn_op = filesystem->add_torn_op_fault (file, parts, parts_bytes, persist, ret);
 
-                if (errors_add_torn_op.size() == 0) 
+                if (errors_add_torn_op.size() == 0)
                         spdlog::info ("[lazyfs.faults.worker]: configured successfully '{}'", string (buffer));
                 else {
                     spdlog::warn ("[lazyfs.faults.worker]: received: INVALID torn-op fault:");
@@ -293,12 +294,12 @@ void fht_worker (LazyFS* filesystem) {
                     for (auto const err : errors) {
                         spdlog::warn ("[lazyfs.faults.worker]: {}", err);
                     }
-                    
+
                 }
-                
+
             } else if (command_str.rfind ("lazyfs::torn-seq", 0) == 0) {
                 spdlog::info ("[lazyfs.faults.worker]: received '{}'", string (buffer));
-                
+
                 std::regex rgx_global ("::");
                 std::regex rgx_attrib ("=");
                 std::sregex_token_iterator iter_glob (command_str.begin (),
@@ -348,9 +349,9 @@ void fht_worker (LazyFS* filesystem) {
                         if (!std::regex_match(tmp_per, pattern)) {
                             errors.push_back ("persist should be a list of numbers separated by commas");
                             valid_fault = false;
-                        } else 
+                        } else
                             persist = tmp_per;
-                        
+
                     } else if (current.rfind("return=", 0) == 0) {
 
                         string tmp_ret = current.erase (0, current.find ("=") + 1);
@@ -370,21 +371,21 @@ void fht_worker (LazyFS* filesystem) {
                 }
 
                 vector<string> errors_add_torn_seq;
-                if (valid_fault) 
+                if (valid_fault)
                     errors_add_torn_seq = filesystem->add_torn_seq_fault(file, op, persist, ret);
 
                 if (errors_add_torn_seq.size() == 0)
                         spdlog::info ("[lazyfs.faults.worker]: configured successfully '{}'", string (buffer));
-                else {  
+                else {
                         errors.insert(errors.end(), errors_add_torn_seq.begin(), errors_add_torn_seq.end());
 
                         spdlog::warn ("[lazyfs.faults.worker]: received: INVALID torn-seq fault:");
-                        
+
                         for (auto const err : errors) {
                             spdlog::warn ("[lazyfs.faults.worker]: {}", err);
                         }
-                }      
-            
+                }
+
             } else if (!strcmp (buffer, "lazyfs::display-cache-usage")) {
 
                 spdlog::info ("[lazyfs.faults.worker]: received '{}'", string (buffer));
@@ -400,7 +401,7 @@ void fht_worker (LazyFS* filesystem) {
                 spdlog::info ("[lazyfs.faults.worker]: received '{}'", string (buffer));
                 vector<string> injecting_fault = filesystem->get_injecting_fault ();
                 filesystem->command_unsynced_data_report (injecting_fault);
-                
+
             } else if (!strcmp (buffer, "lazyfs::help")) {
 
                 spdlog::info ("[lazyfs.faults.worker]: <" + string (buffer) + ">");
@@ -429,7 +430,7 @@ void fht_worker (LazyFS* filesystem) {
 
     spdlog::info ("[lazyfs.faults.worker]: worker stopped");
 
-    close (fd_fifo);   
+    close (fd_fifo);
     if (write_completed_faults) close(fd_fifo_completed);
 }
 
@@ -472,8 +473,8 @@ int main (int argc, char* argv[]) {
     unordered_map<string,vector<faults::Fault*>> faults = std_config.load_config (config_path);
 
     // Setup logger
-
     bool only_console_sink = false;
+    if (THREAD_ID) spdlog::set_pattern("[thread: %t] %+");
 
     if (std_config.LOG_FILE != "") {
 
@@ -528,11 +529,11 @@ int main (int argc, char* argv[]) {
     else
         spdlog::warn ("[lazyfs.args]: path not specified, using path 'config/default.toml'");
 
-    
+
     //Fifos
 
     spdlog::info ("[lazyfs]: trying to create fifo '{}'", std_config.FIFO_PATH);
-    
+
     // Create fifo, if not exists already
     if (mkfifo (std_config.FIFO_PATH.c_str (), 0777) < 0) {
          if (errno != EEXIST) {
@@ -545,11 +546,11 @@ int main (int argc, char* argv[]) {
              spdlog::info ("[lazyfs.fifo]: faults fifo exists!");
     } else
          spdlog::info ("[lazyfs.fifo]: fifo {} created", std_config.FIFO_PATH.c_str ());
-   
-    
+
+
     if (std_config.FIFO_PATH_COMPLETED != "") {
         spdlog::info ("[lazyfs]: trying to create fifo '{}'", std_config.FIFO_PATH_COMPLETED);
-        
+
         // Create fifo, if not exists already
         if (mkfifo (std_config.FIFO_PATH_COMPLETED.c_str (), 0777) < 0) {
             if (errno != EEXIST) {

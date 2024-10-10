@@ -181,11 +181,8 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                 } else 
                     op = toml::find<string>(injection,"op");
 
-                int occurrence = 0;
-                if (!injection.contains("occurrence")) {
-                    valid_fault = false;
-                    error_msg += "\tKey 'occurrence' for some injection of type \"torn-seq\" is not defined in the configuration file.\n";
-                } else 
+                int occurrence = 1;
+                if (injection.contains("occurrence")) {
                     occurrence = toml::find<int>(injection,"occurrence");
 
                 vector<int> persist;
@@ -255,11 +252,8 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                 } else 
                     file = toml::find<string>(injection,"file");
 
-                int occurrence = 0;
-                if (!injection.contains("occurrence")) {
-                    valid_fault = false;
-                    error_msg += "\tKey 'occurrence' for some injection of type \"torn-op\" is not defined in the configuration file.\n";
-                } else
+                int occurrence = 1;
+                if (injection.contains("occurrence")) {
                     occurrence = toml::find<int>(injection,"occurrence");
 
                 vector<int> persist;
@@ -343,11 +337,8 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                 valid_fault = true;
                 error_msg = "The following errors were found in the configuration file for a fault of type \"clear-cache\": \n";
 
-                int occurrence = 0;
-                if (!injection.contains("occurrence")) {
-                    valid_fault = false;
-                    error_msg += "\tKey 'occurrence' for some injection of type \"clear\" is not defined in the configuration file.\n";
-                } else 
+                int occurrence = 1;
+                if (injection.contains("occurrence")) {
                     occurrence = toml::find<int>(injection,"occurrence");
 
                 string timing{};
@@ -379,11 +370,9 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                 } else 
                     crash = toml::find<bool>(injection,"crash");
                 
-                bool ret;
+                bool ret = true;
                 if (injection.contains("return")) {
                     ret = toml::find<bool>(injection,"return");
-                } else {
-                    ret = true;
                 }
 
                 faults::ClearF * fault = NULL;
@@ -424,11 +413,8 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                 valid_fault = true;
                 error_msg = "The following errors were found in the configuration file for a fault of type \"clear-cache\": \n";
 
-                int occurrence = 0;
-                if (!injection.contains("occurrence")) {
-                    valid_fault = false;
-                    error_msg += "\tKey 'occurrence' for some injection of type \"clear\" is not defined in the configuration file.\n";
-                } else 
+                int occurrence = 1;
+                if (injection.contains("occurrence")) {                   
                     occurrence = toml::find<int>(injection,"occurrence");
 
                 string timing{};
