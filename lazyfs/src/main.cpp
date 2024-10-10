@@ -21,6 +21,7 @@
 using namespace lazyfs;
 
 #define MAX_READ_CHUNK 100
+#define THREAD_ID 1
 
 cache::config::Config std_config;
 std::thread faults_handler_thread;
@@ -472,8 +473,8 @@ int main (int argc, char* argv[]) {
     unordered_map<string,vector<faults::Fault*>> faults = std_config.load_config (config_path);
 
     // Setup logger
-
     bool only_console_sink = false;
+    if (THREAD_ID) spdlog::set_pattern("[thread: %t] %+");
 
     if (std_config.LOG_FILE != "") {
 
