@@ -156,6 +156,15 @@ class PageCacheEngine {
     virtual bool partial_sync_pages (string owner, off_t size, char* orig_path, string parts) = 0;
 
     /**
+     * @brief Checks if the owner is synced with the underlying filesystem
+     *
+     * @param owner the content id
+     * @return true the owner is synced
+     * @return false the owner is not synced
+     */
+    virtual bool is_owner_synced (string owner) = 0;
+
+    /**
      * @brief Renames the content associated with an owner to the new owner
      *
      * @param old_owner

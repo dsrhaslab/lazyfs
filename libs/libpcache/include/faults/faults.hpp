@@ -11,7 +11,7 @@
 #define TORN_OP "torn-op"
 #define TORN_SEQ "torn-seq"
 #define CLEAR "clear-cache"
-#define CLEAR_PAGE "clear-page"
+#define SYNC_PAGE "sync-pages"
 
 using namespace std;
 
@@ -56,6 +56,9 @@ class Fault {
      */
     virtual ~Fault();
 
+    /**
+     * @brief Print the fault.
+     */
     virtual void pretty_print() const;
 };
 
@@ -137,6 +140,9 @@ class SplitWriteF : public Fault {
     */
     static vector<string> validate(int occurrence, vector<int> persist, optional<int> parts, optional<vector<int>> parts_bytes);
 
+    /**
+     * @brief Print the fault.
+     */
     void pretty_print() const override;
 
 };
@@ -206,6 +212,9 @@ class ReorderF : public Fault {
     */
     vector<string> validate();
 
+    /**
+     * @brief Print the fault.
+     */
     void pretty_print() const override;
 };
 
@@ -278,6 +287,9 @@ class ClearF : public Fault {
     */
     vector<string> validate();
 
+    /**
+     * @brief Print the fault.
+     */
     void pretty_print() const override;
 
 };
@@ -287,7 +299,7 @@ class ClearF : public Fault {
 /**
  * @brief Fault for persisting certain pages in LazyFS's cache in a specific point of execution and, optionally, crash the process.
 */
-class PersistPageF : public Fault {
+class SyncPageF : public Fault {
   public:
     /**
      * @brief Timing of the fault ("before","after").
@@ -341,9 +353,9 @@ class PersistPageF : public Fault {
      * @param pages Pages to clear.
      * @param ret If the current system call is finished before crashing.
     */
-    PersistPageF(string timing, string op, string from, string to, int occurrence, string pages, bool ret);
+    SyncPageF(string timing, string op, string from, string to, int occurrence, string pages, bool ret);
     
-    ~PersistPageF ();
+    ~SyncPageF ();
 
     /**
      * @brief Check if the parameters have correct values for the fault.
@@ -351,6 +363,11 @@ class PersistPageF : public Fault {
      * @return Vector with errors.
     */
     vector<string> validate();
+
+    /**
+     * @brief Print the fault.
+     */
+    void pretty_print() const override;
 
 };
 

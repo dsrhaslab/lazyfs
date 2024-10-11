@@ -160,7 +160,7 @@ bool LazyFS::trigger_configured_clear_fault (string opname,
 
         for (auto fault : v_faults) {
             faults::ClearF* clear_fault = dynamic_cast<faults::ClearF*>(fault);
-            faults::PersistPageF* page_fault = dynamic_cast<faults::PersistPageF*>(fault);
+            faults::SyncPageF* page_fault = dynamic_cast<faults::SyncPageF*>(fault);
 
             if (clear_fault && clear_fault->op == opname) {
 
@@ -227,7 +227,7 @@ bool LazyFS::trigger_configured_clear_fault (string opname,
                             this_ ()->command_unsynced_data_report (this->injecting_fault);
                             this->injecting_fault_lock.unlock();
 
-                            this_ ()->command_fault_persist_page (from_path, page_fault->pages, lock_needed);
+                            this_ ()->command_fault_sync_page (from_path, page_fault->pages, lock_needed);
 
                             if (optiming == "after" && page_fault->ret) {
                                 this_()->kill_before.store(true);
@@ -363,7 +363,7 @@ void LazyFS::command_fault_clear_cache (bool lock_needed) {
     spdlog::warn ("[lazyfs.cmds]: cache is cleared.");
 }
 
-void LazyFS::command_fault_persist_page (string path, string parts, bool lock_needed) {
+void LazyFS::command_fault_sync_page (string path, string parts, bool lock_needed) {
 
     if (lock_needed)
         std::unique_lock<std::shared_mutex> lock (cache_command_lock);

@@ -222,7 +222,7 @@ void ClearF::pretty_print() const {
 
 
 // Clear page Fault
-PersistPageF::PersistPageF (string timing, string op, string from, string to, int occurrence, string pages, bool ret) : Fault(CLEAR) {
+SyncPageF::SyncPageF (string timing, string op, string from, string to, int occurrence, string pages, bool ret) : Fault(CLEAR) {
     this->timing = timing;
     this->op = op;
     this->from = from;
@@ -233,15 +233,15 @@ PersistPageF::PersistPageF (string timing, string op, string from, string to, in
     this->ret = ret;
 }
 
-PersistPageF::~PersistPageF(){}
+SyncPageF::~SyncPageF(){}
 
-vector<string> PersistPageF::validate() {
+vector<string> SyncPageF::validate() {
     vector<string> errors;
     if (this->occurrence <= 0) {
         errors.push_back("Occurrence must be greater than 0.");
     }
 
-    if (PersistPageF::allow_crash_fs_operations.find(this->op) == PersistPageF::allow_crash_fs_operations.end()) {
+    if (SyncPageF::allow_crash_fs_operations.find(this->op) == SyncPageF::allow_crash_fs_operations.end()) {
         errors.push_back("Operation not available.");
     }
 
@@ -253,7 +253,7 @@ vector<string> PersistPageF::validate() {
         errors.push_back("Pages must be \"first\", \"last\", \"first-half\", \"last-half\" or \"random\".");
     }
 
-    if (PersistPageF::fs_op_multi_path.find (this->op) != PersistPageF::fs_op_multi_path.end ()) {
+    if (SyncPageF::fs_op_multi_path.find (this->op) != SyncPageF::fs_op_multi_path.end ()) {
         if (this->from == "none" || this->to == "none") {
             errors.push_back("\"from\" and \"to\" must be set defined operations with two paths.");
         }
@@ -264,6 +264,17 @@ vector<string> PersistPageF::validate() {
     }
 
     return errors;
+}
+
+void SyncPageF::pretty_print() const {
+    Fault::pretty_print();
+    cout << "  Timing: " << this->timing << endl;
+    cout << "  Operation: " << this->op << endl;
+    cout << "  From: " << this->from << endl;
+    cout << "  To: " << this->to << endl;
+    cout << "  Occurrence: " << this->occurrence << endl;
+    cout << "  Pages: " << this->pages << endl;
+    cout << "  Return: " << (this->ret ? "true" : "false") << endl;
 }
 
 // namespace faults
