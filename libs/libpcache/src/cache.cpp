@@ -565,7 +565,7 @@ int Cache::partial_file_sync (string owner, char* path, string parts) {
     string inode = get_original_inode (owner);
     off_t last_size = get_content_metadata (inode)->size;
 
-    spdlog::info ("[CACHE]: partial file sync for inode: {} path: {} parts: {}", inode, path, parts);
+    //spdlog::info ("[CACHE]: partial file sync for inode: {} path: {} parts: {}", inode, path, parts);
 
     int res = this->engine->partial_sync_pages (inode, last_size, path, parts);
 

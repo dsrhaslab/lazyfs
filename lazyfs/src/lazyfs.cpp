@@ -280,6 +280,10 @@ void LazyFS::command_unsynced_data_report (vector<string> paths_to_exclude) {
         spdlog::info ("[lazyfs.cmds]: report: all data blocks are synced!");
 
     } else {
+        
+        spdlog::set_pattern ("[%^lazyfs.report%$] %v");
+        spdlog::info("----------------------------------------------------");
+
         size_t total_bytes_unsynced = 0;
 
         for (auto const& it : res) {
@@ -296,7 +300,13 @@ void LazyFS::command_unsynced_data_report (vector<string> paths_to_exclude) {
 
                 if (std::get<2> (it).size () > 0 && files_mapped.size () > 0) {
 
-                    spdlog::info ("[lazyfs.cmds]: report: [inode {}] is not fully synced, info:", ino);
+                    spdlog::info ("Inode {} is not fully synced!", ino);
+
+                    spdlog::info ("[inode {}]: files mapped to this inode:", ino);
+
+                    for (auto it = files_mapped.begin (); it != files_mapped.end (); ++it)
+                        spdlog::info ("\t=> file: '{}'",
+                                    *it);
 
                     int last_block_index     = -1;
                     int last_block_off_start = -1;
@@ -317,7 +327,7 @@ void LazyFS::command_unsynced_data_report (vector<string> paths_to_exclude) {
                         if (block_id != (get<0> (*std::next (block_it)) - 1)) {
 
                             spdlog::info (
-                                "[lazyfs.cmds]: report: [inode {}] info: (block {}) to (block "
+                                "[inode {}]: (block {}) to (block "
                                 "{}) [byte index {} to index {}]",
                                 ino,
                                 last_block_index,
@@ -334,20 +344,18 @@ void LazyFS::command_unsynced_data_report (vector<string> paths_to_exclude) {
                             get<1> (*block_it).second - get<1> (*block_it).first + 1;
                     }
 
-                    spdlog::info ("[lazyfs.cmds]: report: [inode {}] files mapped to this inode:", ino);
-
-                    for (auto it = files_mapped.begin (); it != files_mapped.end (); ++it)
-                        spdlog::info ("[lazyfs.cmds]: report: [inode {}] => file: '{}'",
-                                    ino,
-                                    *it.base ());
                 }
             }
-            
+
+            spdlog::info("----------------------------------------------------");
         }
-        spdlog::info ("[lazyfs.cmds]: report: total number of bytes un-fsynced: {} bytes.\n",total_bytes_unsynced);
+        spdlog::info ("Total number of bytes un-fsynced: {} bytes.",total_bytes_unsynced);
 
         if (paths_to_exclude.size() > 0)
-            spdlog::info ("[lazyfs.cmds]: report: info about un-fsynced bytes from some files was excluded.\n");
+            spdlog::info ("Info about un-fsynced bytes from some files was excluded.");
+        
+        spdlog::info("----------------------------------------------------");
+        if (THREAD_ID) spdlog::set_pattern("[thread: %t] %+");
     }
 }
 
