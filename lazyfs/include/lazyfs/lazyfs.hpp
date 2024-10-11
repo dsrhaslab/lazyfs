@@ -215,7 +215,7 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      * @param parts Pages to be persisted
      *
      */
-    void command_fault_persist_page (string path, string parts, bool lock_needed = true);
+    void command_fault_sync_page (string path, string parts, bool lock_needed = true);
 
     /**
      * @brief Fifo: (info) Display the cache usage

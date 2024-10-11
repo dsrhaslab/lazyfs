@@ -165,30 +165,30 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
             if (type == TORN_SEQ) {
                 //Checking the values of the parameters of the reordering fault 
                 valid_fault = true;
-                error_msg = "The following errors were found in the configuration file for a fault of type \"torn-seq\": \n";
+                error_msg = "The following errors were found in the configuration file for a fault of type " + std::string(TORN_SEQ) + ": \n";
 
                 string file{};
                 if (!injection.contains("file")) {
                     valid_fault = false;
-                    error_msg += "\tKey 'file' for some injection of type \"torn-seq\" is not defined in the configuration file.\n";
+                    error_msg += "\tKey 'file' for some injection of type " + std::string(TORN_SEQ) + " is not defined in the configuration file.\n";
                 } else 
                     file = toml::find<string>(injection,"file");
 
                 string op{};
                 if (!injection.contains("op")) {
                     valid_fault = false;
-                    error_msg += "\tKey 'op' for some injection of type \"torn-seq\" is not defined in the configuration file.\n";
+                    error_msg += "\tKey 'op' for some injection of type " + std::string(TORN_SEQ) + " is not defined in the configuration file.\n";
                 } else 
                     op = toml::find<string>(injection,"op");
 
                 int occurrence = 1;
-                if (injection.contains("occurrence")) {
+                if (injection.contains("occurrence"))
                     occurrence = toml::find<int>(injection,"occurrence");
 
                 vector<int> persist;
                 if (!injection.contains("persist")) {
                     valid_fault = false;
-                    error_msg += "\tKey 'persist' for some injection of type \"torn-seq\" is not defined in the configuration file.\n";  
+                    error_msg += "\tKey 'persist' for some injection of type " + std::string(TORN_SEQ) + " is not defined in the configuration file.\n";  
                 } else {
                     persist = toml::find<vector<int>>(injection,"persist");
                     //Sorting the persist vector is necessary for injecting this fault
@@ -231,7 +231,7 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
 
                             if (reorder_fault && reorder_fault->op == op) {
                                 valid_fault = false;
-                                spdlog::error("It is only acceptable one torn-seq fault per type of operation for a given file.");
+                                spdlog::error("It is only acceptable one " + std::string(TORN_SEQ) + " fault per type of operation for a given file.");
                             }
                         }
                         if (valid_fault) (it->second).push_back(fault);
@@ -243,34 +243,34 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                 //Checking the values of the parameters of the split write fault 
 
                 valid_fault = true;
-                error_msg = "The following errors were found in the configuration file for a fault of type \"torn-op\": \n";
+                error_msg = "The following errors were found in the configuration file for a fault of type " + std::string(TORN_OP) + ": \n";
 
                 string file{};
                 if (!injection.contains("file")) {
                     valid_fault = false;
-                    error_msg += "\tKey 'file' for some injection of type \"torn-op\" is not defined in the configuration file.\n";
+                    error_msg += "\tKey 'file' for some injection of type " + std::string(TORN_OP) + " is not defined in the configuration file.\n";
                 } else 
                     file = toml::find<string>(injection,"file");
 
                 int occurrence = 1;
-                if (injection.contains("occurrence")) {
+                if (injection.contains("occurrence")) 
                     occurrence = toml::find<int>(injection,"occurrence");
 
                 vector<int> persist;
                 if (!injection.contains("persist")) {
                     valid_fault = false;
-                    error_msg += "\tKey 'persist' for some injection of type \"torn-op\" is not defined in the configuration file.\n";
+                    error_msg += "\tKey 'persist' for some injection of type " + std::string(TORN_OP) + " is not defined in the configuration file.\n";
                 } else
                     persist = toml::find<vector<int>>(injection,"persist");
 
                 if (!injection.contains("parts") && !injection.contains("parts_bytes")) {
                     valid_fault = false;
-                    error_msg += "\tNone of the keys 'parts' and 'key_parts' for some injection of type \"torn-op\" is defined in the configuration file. Please define at most one of them.\n";  
+                    error_msg += "\tNone of the keys 'parts' and 'key_parts' for some injection of type " + std::string(TORN_OP) + " is defined in the configuration file. Please define at most one of them.\n";  
                 }   
 
                 if (injection.contains("parts") && injection.contains("parts_bytes")) {
                     valid_fault = false;
-                    error_msg += "\tKeys 'parts' and 'key_parts' for some injection of type \"torn-op\" are exclusive in the configuration file. Please define at most one of them.\n";     
+                    error_msg += "\tKeys 'parts' and 'key_parts' for some injection of type " + std::string(TORN_OP) + " are exclusive in the configuration file. Please define at most one of them.\n";     
                 }
 
                 bool ret;
@@ -326,7 +326,7 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                             faults::SplitWriteF* splitwrite_fault = dynamic_cast<faults::SplitWriteF*>(f);
                             if (splitwrite_fault) {
                                 valid_fault = false;
-                                spdlog::error("It is only acceptable one torn-op write fault per file.");
+                                spdlog::error("It is only acceptable one " + std::string(TORN_OP) + " fault per file.");
                             }
                         }
                         if (valid_fault) (it->second).push_back(fault);
@@ -335,23 +335,23 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
 
             } else if (type == CLEAR) {
                 valid_fault = true;
-                error_msg = "The following errors were found in the configuration file for a fault of type \"clear-cache\": \n";
+                error_msg = "The following errors were found in the configuration file for a fault of type " + std::string(CLEAR) + ": \n";
 
                 int occurrence = 1;
-                if (injection.contains("occurrence")) {
+                if (injection.contains("occurrence"))
                     occurrence = toml::find<int>(injection,"occurrence");
 
                 string timing{};
                 if (!injection.contains("timing")) {
                     valid_fault = false;
-                    error_msg += "\tKey 'timing' for some injection of type \"clear\" is not defined in the configuration file.\n";
+                    error_msg += "\tKey 'timing' for some injection of type " + std::string(CLEAR) + " is not defined in the configuration file.\n";
                 } else 
                     timing = toml::find<string>(injection,"timing");
 
                 string op{};
                 if (!injection.contains("op")) {
                     valid_fault = false;
-                    error_msg += "\tKey 'op' for some injection of type \"clear\" is not defined in the configuration file.\n";
+                    error_msg += "\tKey 'op' for some injection of type " + std::string(CLEAR) + " is not defined in the configuration file.\n";
                 } else 
                     op = toml::find<string>(injection,"op");
 
@@ -366,7 +366,7 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                 bool crash = false;
                 if (!injection.contains("crash")) {
                     valid_fault = false;
-                    error_msg += "\tKey 'crash' for some injection of type \"clear\" is not defined in the configuration file.\n";
+                    error_msg += "\tKey 'crash' for some injection of type " + std::string(CLEAR) + " is not defined in the configuration file.\n";
                 } else 
                     crash = toml::find<bool>(injection,"crash");
                 
@@ -402,32 +402,32 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                             faults::ClearF* clear_fault = dynamic_cast<faults::ClearF*>(f);
                             if (clear_fault) {
                                 valid_fault = false;
-                                spdlog::error("It is only acceptable one clear fault per file.");
+                                spdlog::error("It is only acceptable one " + std::string(CLEAR) + " fault per file.");
                             }
                         }
                         if (valid_fault) (it->second).push_back(fault);
                     }
                 }
             
-            } else if (type == CLEAR_PAGE) {
+            } else if (type == SYNC_PAGE) {
                 valid_fault = true;
-                error_msg = "The following errors were found in the configuration file for a fault of type \"clear-cache\": \n";
+                error_msg = "The following errors were found in the configuration file for a fault of type " + std::string(SYNC_PAGE) + " : \n";
 
                 int occurrence = 1;
-                if (injection.contains("occurrence")) {                   
+                if (injection.contains("occurrence"))               
                     occurrence = toml::find<int>(injection,"occurrence");
 
                 string timing{};
                 if (!injection.contains("timing")) {
                     valid_fault = false;
-                    error_msg += "\tKey 'timing' for some injection of type \"clear\" is not defined in the configuration file.\n";
+                    error_msg += "\tKey 'timing' for some injection of type " + std::string(SYNC_PAGE) + " is not defined in the configuration file.\n";
                 } else 
                     timing = toml::find<string>(injection,"timing");
 
                 string op{};
                 if (!injection.contains("op")) {
                     valid_fault = false;
-                    error_msg += "\tKey 'op' for some injection of type \"clear\" is not defined in the configuration file.\n";
+                    error_msg += "\tKey 'op' for some injection of type " + std::string(SYNC_PAGE) + " is not defined in the configuration file.\n";
                 } else 
                     op = toml::find<string>(injection,"op");
 
@@ -442,7 +442,7 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                 string pages{};
                 if (!injection.contains("pages")) {
                     valid_fault = false;
-                    error_msg += "\tKey 'pages' for some injection of type \"clear-page\" is not defined in the configuration file.\n";
+                    error_msg += "\tKey 'pages' for some injection of type " + std::string(SYNC_PAGE) + " is not defined in the configuration file.\n";
                 } else 
                     pages = toml::find<string>(injection,"pages");
                 
@@ -453,10 +453,10 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                     ret = true;
                 }
 
-                faults::PersistPageF * fault = NULL;
+                faults::SyncPageF * fault = NULL;
                 vector<string> errors;
                 if (valid_fault) {
-                    fault = new faults::PersistPageF(timing,op,from,to,occurrence,pages,ret);
+                    fault = new faults::SyncPageF(timing,op,from,to,occurrence,pages,ret);
                     errors = fault->validate();
                 }
 
@@ -477,10 +477,10 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                     } else {
                         //At the moment, only one clear fault per file is acceptable.
                         for (faults::Fault* f : it->second) {
-                            faults::PersistPageF* clear_fault = dynamic_cast<faults::PersistPageF*>(f);
+                            faults::SyncPageF* clear_fault = dynamic_cast<faults::SyncPageF*>(f);
                             if (clear_fault) {
                                 valid_fault = false;
-                                spdlog::error("It is only acceptable one clear-page fault per file.");
+                                spdlog::error("It is only acceptable one " + std::string(SYNC_PAGE) + " fault per file.");
                             }
                         }
                         if (valid_fault) (it->second).push_back(fault);
