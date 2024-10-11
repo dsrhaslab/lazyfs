@@ -9,6 +9,7 @@
 
 #ifndef _LFS_HPP_
 #define _LFS_HPP_
+#define THREAD_ID 1
 
 #include <cache/cache.hpp>
 #include <cache/config/config.hpp>

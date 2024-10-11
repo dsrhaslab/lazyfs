@@ -21,7 +21,6 @@
 using namespace lazyfs;
 
 #define MAX_READ_CHUNK 100
-#define THREAD_ID 1
 
 cache::config::Config std_config;
 std::thread faults_handler_thread;
