@@ -136,6 +136,11 @@ cd lazyfs/
 
 ./scripts/mount-lazyfs.sh -c config/default.toml -m /tmp/lazyfs.mnt -r /tmp/lazyfs.root
 
+# [Recommended] Running LazyFS in single-thread mode (add '-s')
+
+./scripts/mount-lazyfs.sh -c config/default.toml -m /tmp/lazyfs.mnt -r /tmp/lazyfs.root -s
+
+
 # Umount with
 
 ./scripts/umount-lazyfs.sh -m /tmp/lazyfs.mnt/

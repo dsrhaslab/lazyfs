@@ -56,7 +56,7 @@ class Cache {
      */
     cache::config::Config* cache_config;
     /**
-     * @brief Maps content ids (e.g. file names) to the contents
+     * @brief Maps content ids (e.g. inodes) to the contents
      *
      */
     unordered_map<string, Item*> contents;
@@ -240,9 +240,9 @@ class Cache {
      * @param owner the content id
      * @param only_sync_data only sync data from content
      * @param orig_path original path to write data
-     * @return int true if item was removed
+     * @return bool true if data was synced
      */
-    int sync_owner (string owner, bool only_sync_data, char* orig_path);
+    bool sync_owner (string owner, bool only_sync_data, char* orig_path);
 
     /**
      * @brief Renames an item id
@@ -282,10 +282,10 @@ class Cache {
      * @param owner the content id
      * @param path original path name
      * @param parts parts from file that will be removed
-     * @return int true if item was removed
+     * @return bool true if parts were synced
      * 
      */
-    int partial_file_sync (string owner, char* path, string parts);
+    bool partial_file_sync (string owner, char* path, string parts);
 
     /**
      * @brief Gets the list of files that have unsynced data, mapped to
@@ -320,6 +320,14 @@ class Cache {
      * @return vector<string> files mapped to that inode
      */
     vector<string> find_files_mapped_to_inode (string inode);
+
+    /**
+     * @brief Retrieves a list of unsynced inodes.
+     *      
+     * @return std::vector<std::string> A vector of unsynced inodes.
+     */
+    vector<string> unsynced_inodes();
+
 };
 
 } // namespace cache

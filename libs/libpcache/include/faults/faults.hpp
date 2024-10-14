@@ -342,6 +342,11 @@ class SyncPageF : public Fault {
     bool ret;
 
     /**
+     * @brief True if we want to fsync other files.
+     */
+    bool sync_other_files;
+    
+    /**
      * @brief Constructor for Fault.
      * 
      * @param timing Timing of the fault ("before","after").
@@ -352,8 +357,9 @@ class SyncPageF : public Fault {
      * @param crash If the fault is a crash fault.
      * @param pages Pages to clear.
      * @param ret If the current system call is finished before crashing.
+     * @param sync_other_files If we want to fsync other files.
     */
-    SyncPageF(string timing, string op, string from, string to, int occurrence, string pages, bool ret);
+    SyncPageF(string timing, string op, string from, string to, int occurrence, string pages, bool ret, bool fsync_other_files = true);
     
     ~SyncPageF ();
 

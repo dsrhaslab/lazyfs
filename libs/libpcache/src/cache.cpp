@@ -352,7 +352,7 @@ bool Cache::truncate_item (string owner, off_t new_size) {
     return true;
 }
 
-int Cache::sync_owner (string owner, bool only_sync_data, char* orig_path) {
+bool Cache::sync_owner (string owner, bool only_sync_data, char* orig_path) {
 
     std::unique_lock<shared_mutex> lock (lock_cache_mtx, std::defer_lock);
     lock.lock ();
@@ -373,7 +373,10 @@ int Cache::sync_owner (string owner, bool only_sync_data, char* orig_path) {
     off_t last_size = get_content_metadata (owner)->size;
 
     res = this->engine->sync_pages (owner, last_size, orig_path);
-    _get_content_ptr (owner)->set_data_sync_flag (true);
+    if (res) 
+        _get_content_ptr (owner)->set_data_sync_flag (true);
+    else 
+        spdlog::warn ("[cache] sync_pages failed");
 
     if (not only_sync_data) {
 
@@ -560,18 +563,17 @@ void Cache::full_checkpoint () {
         this->sync_owner (it.second, false, (char*)it.first.c_str ());
 }
 
-int Cache::partial_file_sync (string owner, char* path, string parts) {
+bool Cache::partial_file_sync (string owner, char* path, string parts) {
 
     string inode = get_original_inode (owner);
     off_t last_size = get_content_metadata (inode)->size;
 
     //spdlog::info ("[CACHE]: partial file sync for inode: {} path: {} parts: {}", inode, path, parts);
 
-    int res = this->engine->partial_sync_pages (inode, last_size, path, parts);
+    bool res = this->engine->partial_sync_pages (inode, last_size, path, parts);
 
     if (this->engine->is_owner_synced (inode)) {
         _get_content_ptr (inode)->set_data_sync_flag (true);
-        cout << "SYNCED" << endl;
     }
     
     return res;
@@ -603,6 +605,21 @@ vector<string> Cache::find_files_mapped_to_inode (string inode) {
     for (auto it = this->file_inode_mapping.begin (); it != this->file_inode_mapping.end (); ++it) {
         if (it->second == inode)
             res.push_back (it->first);
+    }
+
+    return res;
+}
+
+vector<string> Cache::unsynced_inodes() {
+    
+    std::lock_guard<shared_mutex> lock (lock_cache_mtx);
+
+    vector<string> res;
+
+    for (auto const& it : this->contents) {
+        if (not it.second->is_synced ()) {
+            res.push_back (it.first);
+        }
     }
 
     return res;
