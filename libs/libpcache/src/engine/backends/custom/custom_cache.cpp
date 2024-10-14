@@ -474,6 +474,7 @@ void CustomCacheEngine::make_block_readable_to_offset (string cid,
 bool CustomCacheEngine::sync_pages (string owner, off_t size, char* orig_path) {
 
     std::unique_lock<std::shared_mutex> lock (lock_cache_mtx);
+    bool res = true;
 
     int fd = open (orig_path, O_WRONLY);
 
@@ -545,6 +546,11 @@ bool CustomCacheEngine::sync_pages (string owner, off_t size, char* orig_path) {
                 }
 
                 wrote_bytes += pwritev (fd, iov, page_streak, page_streak_last_offset);
+                
+                if (wrote_bytes < 0) {
+                    spdlog::warn ("[cache] pwritev of partial sync failed");
+                    res = false;
+                }
 
                 page_streak = 0;
 
@@ -556,18 +562,19 @@ bool CustomCacheEngine::sync_pages (string owner, off_t size, char* orig_path) {
     }
 
     if (ftruncate (fd, size) < 0) {
-        spdlog::info ("ftruncate: failed");
+        spdlog::warn ("ftruncate: failed");
     }
 
     close (fd);
 
-    return 0;
+    return res;
 }
 
 bool CustomCacheEngine::partial_sync_pages (string owner, off_t last_size, char* orig_path, string parts) {
 
     std::unique_lock<std::shared_mutex> lock (lock_cache_mtx);
 
+    bool res = true;
     int fd = open (orig_path, O_WRONLY);
 
     if (this->owner_pages_mapping.find (owner) != this->owner_pages_mapping.end ()) {
@@ -680,6 +687,11 @@ bool CustomCacheEngine::partial_sync_pages (string owner, off_t last_size, char*
 
                 wrote_bytes += pwritev (fd, iov, page_streak, page_streak_last_offset);
 
+                if (wrote_bytes < 0) {
+                    spdlog::warn ("[cache] pwritev of partial sync failed");
+                    res = false;
+                }
+
                 page_streak = 0;
 
                 page_chunk.clear ();
@@ -690,12 +702,12 @@ bool CustomCacheEngine::partial_sync_pages (string owner, off_t last_size, char*
     }
 
     if (ftruncate (fd, last_size) < 0) {
-        spdlog::info ("ftruncate: failed");
+        spdlog::warn ("[cache] ftruncate of partial sync failed");
     }
 
     close (fd);
 
-    return 0;
+    return res;
 }
 
 bool CustomCacheEngine::is_owner_synced (string owner) {

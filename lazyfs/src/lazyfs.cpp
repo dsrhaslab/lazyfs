@@ -7,6 +7,7 @@
  *
  */
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <ctime>
@@ -23,16 +24,14 @@
 #include <tuple>
 #include <unistd.h>
 #include <vector>
-#include <algorithm> 
-
 
 // LazyFS specific imports
-#include <lazyfs/lazyfs.hpp>
 #include <cache/cache.hpp>
 #include <cache/config/config.hpp>
 #include <cache/constants/constants.hpp>
 #include <cache/engine/backends/custom/custom_cache.hpp>
 #include <lazyfs/fusepp/Fuse-impl.h>
+#include <lazyfs/lazyfs.hpp>
 
 using namespace std;
 using namespace cache;
@@ -50,7 +49,7 @@ LazyFS::LazyFS (Cache* cache,
                 cache::config::Config* config,
                 std::thread* faults_handler_thread,
                 void (*fht_worker) (LazyFS* filesystem),
-                unordered_map<string,vector<faults::Fault*>>* faults) {
+                unordered_map<string, vector<faults::Fault*>>* faults) {
 
     this->FSConfig              = config;
     this->FSCache               = cache;
@@ -58,7 +57,7 @@ LazyFS::LazyFS (Cache* cache,
     this->fht_worker            = fht_worker;
     this->faults                = faults;
     this->pending_write         = NULL;
-    this->kill_before           .store (false);
+    this->kill_before.store (false);
 
     for (auto const& it : faults::Fault::allow_crash_fs_operations) {
         this->crash_faults_before_map.insert ({it, {}});
@@ -68,8 +67,8 @@ LazyFS::LazyFS (Cache* cache,
 
 LazyFS::~LazyFS () {}
 
-vector<string> LazyFS::get_injecting_fault() {
-    lock_guard<mutex> guard(this->injecting_fault_lock);
+vector<string> LazyFS::get_injecting_fault () {
+    lock_guard<mutex> guard (this->injecting_fault_lock);
     return injecting_fault;
 }
 
@@ -78,22 +77,22 @@ bool LazyFS::trigger_crash_fault (string opname,
                                   string from_op_path,
                                   string to_op_path,
                                   bool lock_needed) {
-    
+
     vector<pair<std::regex, string>> opfaults;
 
- /*
-    const int length = from_op_path.length();
-    // declaring character array (+1 for null terminator)
-    char* char_array = new char[length + 1];
- 
-    // copying the contents of the
-    // string to char array
-    strcpy(char_array, from_op_path.c_str());
-    struct stat buffer;
-    int status;
+    /*
+       const int length = from_op_path.length();
+       // declaring character array (+1 for null terminator)
+       char* char_array = new char[length + 1];
 
-    status = lstat(char_array, &buffer);
-*/
+       // copying the contents of the
+       // string to char array
+       strcpy(char_array, from_op_path.c_str());
+       struct stat buffer;
+       int status;
+
+       status = lstat(char_array, &buffer);
+   */
 
     if (optiming == "before") {
         opfaults = this->crash_faults_before_map.at (opname);
@@ -104,7 +103,8 @@ bool LazyFS::trigger_crash_fault (string opname,
     if (opfaults.size () > 0) {
 
         bool is_multi_path = false;
-        if (faults::Fault::fs_op_multi_path.find (opname) != faults::Fault::fs_op_multi_path.end ()) {
+        if (faults::Fault::fs_op_multi_path.find (opname) !=
+            faults::Fault::fs_op_multi_path.end ()) {
             is_multi_path = true;
         }
 
@@ -133,9 +133,9 @@ bool LazyFS::trigger_crash_fault (string opname,
 
                 spdlog::critical ("Triggered fault condition (op={},timing={})", opname, optiming);
 
-                this->injecting_fault_lock.lock();
+                this->injecting_fault_lock.lock ();
                 this_ ()->command_unsynced_data_report (this->injecting_fault);
-                this->injecting_fault_lock.unlock();
+                this->injecting_fault_lock.unlock ();
 
                 pid_t lazyfs_pid = getpid ();
                 spdlog::critical ("Killing LazyFS pid {}!", lazyfs_pid);
@@ -146,49 +146,56 @@ bool LazyFS::trigger_crash_fault (string opname,
     return false;
 }
 
-// TO-DO: Unify this with trigger_crash_fault. This function gets the faults in the LazyFS fault structure, and the other functions gets in the crash_faults_before_map and crash_faults_after_map.
+// TO-DO: Unify this with trigger_crash_fault. This function gets the faults in the LazyFS fault
+// structure, and the other functions gets in the crash_faults_before_map and
+// crash_faults_after_map.
 bool LazyFS::trigger_configured_clear_fault (string opname,
-                                  string optiming,
-                                  string from_path,
-                                  string to_path,
-                                  bool lock_needed) {
+                                             string optiming,
+                                             string from_path,
+                                             string to_path,
+                                             bool lock_needed) {
 
-    auto it = faults->find(from_path);
+    auto it = faults->find (from_path);
 
-    if (it != faults->end()) {
+    if (it != faults->end ()) {
         auto& v_faults = it->second;
 
         for (auto fault : v_faults) {
-            faults::ClearF* clear_fault = dynamic_cast<faults::ClearF*>(fault);
-            faults::SyncPageF* page_fault = dynamic_cast<faults::SyncPageF*>(fault);
+            faults::ClearF* clear_fault   = dynamic_cast<faults::ClearF*> (fault);
+            faults::SyncPageF* page_fault = dynamic_cast<faults::SyncPageF*> (fault);
 
             if (clear_fault && clear_fault->op == opname) {
 
-                bool is_multi_path = faults::Fault::fs_op_multi_path.find (opname) != faults::Fault::fs_op_multi_path.end ();
+                bool is_multi_path = faults::Fault::fs_op_multi_path.find (opname) !=
+                                     faults::Fault::fs_op_multi_path.end ();
 
                 if ((is_multi_path && to_path == clear_fault->to) || !is_multi_path) {
-                    
-                    int current_count = clear_fault->counter.load();
+
+                    int current_count = clear_fault->counter.load ();
                     if (optiming == "before") {
-                        clear_fault->counter.fetch_add(1);
+                        clear_fault->counter.fetch_add (1);
                         current_count++;
                     }
-            
+
                     if (clear_fault->timing == optiming) {
 
                         if (current_count == clear_fault->occurrence) {
 
-                            spdlog::critical ("Triggered fault condition (op={},timing={})", opname, optiming);
+                            spdlog::critical ("Triggered fault condition (op={},timing={})",
+                                              opname,
+                                              optiming);
 
-                            this->injecting_fault_lock.lock();
+                            this->injecting_fault_lock.lock ();
                             this_ ()->command_unsynced_data_report (this->injecting_fault);
-                            this->injecting_fault_lock.unlock();
+                            this->injecting_fault_lock.unlock ();
 
                             if (clear_fault->crash) {
-                                
+
                                 if (optiming == "after" && clear_fault->ret) {
-                                    this_()->kill_before.store(true);
-                                    spdlog::warn("Syscall {} will return. LazyFS will crash before the next system call.", opname);
+                                    this_ ()->kill_before.store (true);
+                                    spdlog::warn ("Syscall {} will return. LazyFS will crash "
+                                                  "before the next system call.",
+                                                  opname);
                                     return true;
                                 }
 
@@ -200,7 +207,7 @@ bool LazyFS::trigger_configured_clear_fault (string opname,
                                 spdlog::warn ("[lazyfs.cmds]: clearing cache...");
 
                                 this_ ()->command_fault_clear_cache (lock_needed);
-                            }   
+                            }
                         }
                     }
                 }
@@ -208,30 +215,38 @@ bool LazyFS::trigger_configured_clear_fault (string opname,
 
             if (page_fault && page_fault->op == opname) {
 
-                bool is_multi_path = faults::Fault::fs_op_multi_path.find (opname) != faults::Fault::fs_op_multi_path.end ();
+                bool is_multi_path = faults::Fault::fs_op_multi_path.find (opname) !=
+                                     faults::Fault::fs_op_multi_path.end ();
 
                 if ((is_multi_path && to_path == page_fault->to) || !is_multi_path) {
-                    
-                    int current_count = page_fault->counter.load();
+
+                    int current_count = page_fault->counter.load ();
                     if (optiming == "before") {
-                        current_count = page_fault->counter.fetch_add(1);
+                        current_count = page_fault->counter.fetch_add (1);
                     }
-            
+
                     if (page_fault->timing == optiming) {
 
                         if (current_count == page_fault->occurrence) {
 
-                            spdlog::critical ("Triggered fault condition (op={},timing={})", opname, optiming);
+                            spdlog::critical ("Triggered fault condition (op={},timing={})",
+                                              opname,
+                                              optiming);
 
-                            this->injecting_fault_lock.lock();
+                            this->injecting_fault_lock.lock ();
                             this_ ()->command_unsynced_data_report (this->injecting_fault);
-                            this->injecting_fault_lock.unlock();
+                            this->injecting_fault_lock.unlock ();
 
-                            this_ ()->command_fault_sync_page (from_path, page_fault->pages, lock_needed);
+                            this_ ()->command_fault_sync_page (from_path,
+                                                               page_fault->pages,
+                                                               page_fault->sync_other_files,
+                                                               lock_needed);
 
                             if (optiming == "after" && page_fault->ret) {
-                                this_()->kill_before.store(true);
-                                spdlog::critical("Syscall {} will return. LazyFS will crash before the next system call.", opname);
+                                this_ ()->kill_before.store (true);
+                                spdlog::warn ("Syscall {} will return. LazyFS will crash before "
+                                              "the next system call.",
+                                              opname);
                                 return true;
                             }
 
@@ -252,7 +267,7 @@ void LazyFS::add_crash_fault (string crash_timing,
                               string crash_regex_from,
                               string crash_regex_to) {
 
-    //TO-DO: regex_to is not actually regex
+    // TO-DO: regex_to is not actually regex
     if (crash_timing == "before") {
 
         auto& crash_regex_list = crash_faults_before_map.at (crash_operation);
@@ -280,9 +295,9 @@ void LazyFS::command_unsynced_data_report (vector<string> paths_to_exclude) {
         spdlog::info ("[lazyfs.cmds]: report: all data blocks are synced!");
 
     } else {
-        
+
         spdlog::set_pattern ("[%^lazyfs.report%$] %v");
-        spdlog::info("----------------------------------------------------");
+        spdlog::info ("----------------------------------------------------");
 
         size_t total_bytes_unsynced = 0;
 
@@ -290,13 +305,16 @@ void LazyFS::command_unsynced_data_report (vector<string> paths_to_exclude) {
 
             string ino        = string (get<0> (it).c_str ());
             auto files_mapped = FSCache->find_files_mapped_to_inode (ino);
-            
+
             bool report = true;
-            if (paths_to_exclude.size() > 0) {
-                report = find_first_of (files_mapped.begin(), files_mapped.end(), paths_to_exclude.begin(), paths_to_exclude.end()) != files_mapped.end();
+            if (paths_to_exclude.size () > 0) {
+                report = find_first_of (files_mapped.begin (),
+                                        files_mapped.end (),
+                                        paths_to_exclude.begin (),
+                                        paths_to_exclude.end ()) != files_mapped.end ();
             }
 
-            if(report) {
+            if (report) {
 
                 if (std::get<2> (it).size () > 0 && files_mapped.size () > 0) {
 
@@ -305,15 +323,15 @@ void LazyFS::command_unsynced_data_report (vector<string> paths_to_exclude) {
                     spdlog::info ("[inode {}]: files mapped to this inode:", ino);
 
                     for (auto it = files_mapped.begin (); it != files_mapped.end (); ++it)
-                        spdlog::info ("\t=> file: '{}'",
-                                    *it);
+                        spdlog::info ("\t=> file: '{}'", *it);
 
                     int last_block_index     = -1;
                     int last_block_off_start = -1;
                     int first_block_id       = -1;
 
-                    for (auto block_it = std::get<2> (it).begin (); block_it != std::get<2> (it).end ();
-                        block_it++) {
+                    for (auto block_it = std::get<2> (it).begin ();
+                         block_it != std::get<2> (it).end ();
+                         block_it++) {
 
                         int block_id = get<0> (*block_it);
                         auto offs    = get<1> (*block_it);
@@ -326,15 +344,14 @@ void LazyFS::command_unsynced_data_report (vector<string> paths_to_exclude) {
 
                         if (block_id != (get<0> (*std::next (block_it)) - 1)) {
 
-                            spdlog::info (
-                                "[inode {}]: (block {}) to (block "
-                                "{}) [byte index {} to index {}]",
-                                ino,
-                                last_block_index,
-                                block_id,
-                                last_block_off_start,
-                                (offs.second + block_id * FSConfig->IO_BLOCK_SIZE) -
-                                    (first_block_id * FSConfig->IO_BLOCK_SIZE));
+                            spdlog::info ("[inode {}]: (block {}) to (block "
+                                          "{}) [byte index {} to index {}]",
+                                          ino,
+                                          last_block_index,
+                                          block_id,
+                                          last_block_off_start,
+                                          (offs.second + block_id * FSConfig->IO_BLOCK_SIZE) -
+                                              (first_block_id * FSConfig->IO_BLOCK_SIZE));
 
                             last_block_off_start = offs.first;
                             last_block_index     = block_id;
@@ -343,19 +360,19 @@ void LazyFS::command_unsynced_data_report (vector<string> paths_to_exclude) {
                         total_bytes_unsynced +=
                             get<1> (*block_it).second - get<1> (*block_it).first + 1;
                     }
-
                 }
             }
 
-            spdlog::info("----------------------------------------------------");
+            spdlog::info ("----------------------------------------------------");
         }
-        spdlog::info ("Total number of bytes un-fsynced: {} bytes.",total_bytes_unsynced);
+        spdlog::info ("Total number of bytes un-fsynced: {} bytes.", total_bytes_unsynced);
 
-        if (paths_to_exclude.size() > 0)
+        if (paths_to_exclude.size () > 0)
             spdlog::info ("Info about un-fsynced bytes from some files was excluded.");
-        
-        spdlog::info("----------------------------------------------------");
-        if (THREAD_ID) spdlog::set_pattern("[thread: %t] %+");
+
+        spdlog::info ("----------------------------------------------------");
+        if (THREAD_ID)
+            spdlog::set_pattern ("[thread: %t] %+");
     }
 }
 
@@ -371,18 +388,58 @@ void LazyFS::command_fault_clear_cache (bool lock_needed) {
     spdlog::warn ("[lazyfs.cmds]: cache is cleared.");
 }
 
-void LazyFS::command_fault_sync_page (string path, string parts, bool lock_needed) {
+void LazyFS::command_fault_sync_page (string path,
+                                      string parts,
+                                      bool sync_other_files,
+                                      bool lock_needed) {
 
     if (lock_needed)
         std::unique_lock<std::shared_mutex> lock (cache_command_lock);
-    
-    spdlog::warn ("[lazyfs.cmds]: clear page request submitted...");
-    
+
+    spdlog::warn ("[lazyfs.{}]: sync pages request submitted...", SYNC_PAGE);
+
     string owner (path);
 
-    FSCache->partial_file_sync (owner, const_cast<char*>(path.c_str()), parts);
+    bool synced = FSCache->partial_file_sync (owner, const_cast<char*> (path.c_str ()), parts);
 
-    spdlog::warn ("[lazyfs.cmds]: pages requested cleared.");
+    if (!synced)
+        spdlog::warn ("[lazyfs.{}]: sync pages went wrong!", SYNC_PAGE);
+    else {
+        spdlog::info ("[lazyfs.{}]: sync pages successfuly!", SYNC_PAGE);
+
+        if (sync_other_files) {
+            spdlog::warn (
+                "[lazyfs.{}]: sync other files is enabled, proceeding to sync other files...",
+                SYNC_PAGE);
+            vector<string> inodes = FSCache->unsynced_inodes ();
+
+            string path_inode = this_ ()->FSCache->get_original_inode (owner);
+
+            for (const auto& inode : inodes) {
+                if (inode != path_inode) {
+
+                    const auto& files = FSCache->find_files_mapped_to_inode (inode);
+
+                    for (const auto& file : files) {
+
+                        synced =
+                            FSCache->sync_owner (inode, true, const_cast<char*> (file.c_str ()));
+                        if (!synced) {
+                            spdlog::warn ("[lazyfs.{}]: Failed to sync file: {}", SYNC_PAGE, file);
+                        } else {
+                            spdlog::info ("[lazyfs.{}]: Successfully synced file: {}",
+                                          SYNC_PAGE,
+                                          file);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    spdlog::warn ("[lazyfs.cmds]: pages requested synced.");
+
+    command_unsynced_data_report ({});
 }
 
 void LazyFS::command_display_cache_usage (bool lock_needed) {
@@ -405,7 +462,6 @@ void LazyFS::command_checkpoint (bool lock_needed) {
     spdlog::warn ("[lazyfs.cmds]: checkpoint is done.");
 }
 
-
 /************ LazyFS FUSE operations ***************/
 
 void* LazyFS::lfs_init (struct fuse_conn_info* conn, struct fuse_config* cfg) {
@@ -420,7 +476,7 @@ void* LazyFS::lfs_init (struct fuse_conn_info* conn, struct fuse_config* cfg) {
 
     new (this_ ()->faults_handler_thread) std::thread (this_ ()->fht_worker, this_ ());
 
-    this_ ()->print_faults();
+    this_ ()->print_faults ();
 
     return this_ ();
 }
@@ -526,7 +582,7 @@ int LazyFS::lfs_readdir (const char* path,
                          off_t offset,
                          struct fuse_file_info* fi,
                          enum fuse_readdir_flags flags) {
-    
+
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
     if (this_ ()->FSConfig->log_all_operations) {
@@ -560,7 +616,7 @@ int LazyFS::lfs_readdir (const char* path,
 
 int LazyFS::lfs_open (const char* path, struct fuse_file_info* fi) {
 
-    this_ ()->check_kill_before();
+    this_ ()->check_kill_before ();
 
     this_ ()->trigger_crash_fault ("open", "before", path, "");
     this_ ()->trigger_configured_clear_fault ("open", "before", path, "");
@@ -605,15 +661,15 @@ int LazyFS::lfs_open (const char* path, struct fuse_file_info* fi) {
     if (fi->flags & O_TRUNC)
         lfs_truncate (path, 0, fi);
 
-    this_()->trigger_crash_fault ("open", "after", path, "", false);
-    this_()->trigger_configured_clear_fault ("open", "after", path, "", false);
+    this_ ()->trigger_crash_fault ("open", "after", path, "", false);
+    this_ ()->trigger_configured_clear_fault ("open", "after", path, "", false);
 
     return 0;
 }
 
 int LazyFS::lfs_create (const char* path, mode_t mode, struct fuse_file_info* fi) {
 
-    this_ ()->check_kill_before();
+    this_ ()->check_kill_before ();
 
     this_ ()->trigger_crash_fault ("create", "before", path, "");
     this_ ()->trigger_configured_clear_fault ("create", "before", path, "");
@@ -693,7 +749,7 @@ int LazyFS::lfs_write (const char* path,
                        off_t offset,
                        struct fuse_file_info* fi) {
 
-    this_ ()->check_kill_before();
+    this_ ()->check_kill_before ();
 
     this_ ()->trigger_crash_fault ("write", "before", path, "");
     this_ ()->trigger_configured_clear_fault ("write", "before", path, "");
@@ -732,312 +788,319 @@ int LazyFS::lfs_write (const char* path,
 
         // std::printf ("\t[write] direct_io=1, flushing data...");
 
-        res = pwrite (fd, buf, size, offset);
+        if (fi == NULL)
+            close (fd);
+
+        return pwrite (fd, buf, size, offset);
+    }
+
+    // ----------------------------------------------------------------------------------
+
+    bool locked_this = this_ ()->FSCache->lockItemCheckExists (inode);
+
+    bool cache_had_owner   = this_ ()->FSCache->has_content_cached (inode);
+    off_t FILE_SIZE_BEFORE = 0;
+
+    if (!locked_this) {
+
+        FILE_SIZE_BEFORE = stats.st_size;
 
     } else {
 
-        // ----------------------------------------------------------------------------------
+        Metadata* meta_now = this_ ()->FSCache->get_content_metadata (inode);
 
-        bool locked_this = this_ ()->FSCache->lockItemCheckExists (inode);
+        if (meta_now != nullptr)
+            FILE_SIZE_BEFORE = this_ ()->FSCache->get_content_metadata (inode)->size;
 
-        bool cache_had_owner   = this_ ()->FSCache->has_content_cached (inode);
-        off_t FILE_SIZE_BEFORE = 0;
+        this_ ()->FSCache->unlockItem (inode);
+    }
 
-        if (!locked_this) {
+    // std::printf ("\twrite: file size before is %d bytes\n", (int)FILE_SIZE_BEFORE);
 
-            FILE_SIZE_BEFORE = stats.st_size;
+    // ----------------------------------------------------------------------------------
 
-        } else {
+    if (fi != NULL) {
 
-            Metadata* meta_now = this_ ()->FSCache->get_content_metadata (inode);
+        if (FILE_SIZE_BEFORE < offset) {
 
-            if (meta_now != nullptr)
-                FILE_SIZE_BEFORE = this_ ()->FSCache->get_content_metadata (inode)->size;
+            // fill sparse write with zeros, how?
+            // [file_size_offset, offset - 1] = zeros
 
-            this_ ()->FSCache->unlockItem (inode);
-        }
+            spdlog::info ("[lazyfs.ops]: Calling a sparse write.");
 
-        // std::printf ("\twrite: file size before is %d bytes\n", (int)FILE_SIZE_BEFORE);
+            off_t size_to_fill = offset - std::max (FILE_SIZE_BEFORE, (off_t)0);
 
-        // ----------------------------------------------------------------------------------
+            if (size_to_fill > 0) {
 
-        if (fi != NULL) {
-
-            if (FILE_SIZE_BEFORE < offset) {
-
-                // fill sparse write with zeros, how?
-                // [file_size_offset, offset - 1] = zeros
-
-                spdlog::info ("[lazyfs.ops]: Calling a sparse write.");
-
-                off_t size_to_fill = offset - std::max (FILE_SIZE_BEFORE, (off_t)0);
-
-                if (size_to_fill > 0) {
-
-                    char* fill_zeros = (char*)calloc (size_to_fill, 1);
-                    lfs_write (path, fill_zeros, size_to_fill, FILE_SIZE_BEFORE, NULL);
-                    free (fill_zeros);
-                }
+                char* fill_zeros = (char*)calloc (size_to_fill, 1);
+                lfs_write (path, fill_zeros, size_to_fill, FILE_SIZE_BEFORE, NULL);
+                free (fill_zeros);
             }
         }
+    }
 
-        // ----------------------------------------------------------------------------------
+    // ----------------------------------------------------------------------------------
 
-        off_t blk_low              = offset / IO_BLOCK_SIZE;
-        off_t blk_high             = (offset + size - 1) / IO_BLOCK_SIZE;
-        off_t blk_readable_from    = 0;
-        off_t blk_readable_to      = 0;
-        off_t data_allocated       = 0;
-        off_t data_buffer_iterator = 0;
-        int fd_caching             = open (path, O_RDONLY);
+    off_t blk_low              = offset / IO_BLOCK_SIZE;
+    off_t blk_high             = (offset + size - 1) / IO_BLOCK_SIZE;
+    off_t blk_readable_from    = 0;
+    off_t blk_readable_to      = 0;
+    off_t data_allocated       = 0;
+    off_t data_buffer_iterator = 0;
+    int fd_caching             = open (path, O_RDONLY);
 
-        char block_caching_buffer[IO_BLOCK_SIZE];
-        map<int, tuple<const char*, size_t, int, int>> put_mapping;
+    char block_caching_buffer[IO_BLOCK_SIZE];
+    map<int, tuple<const char*, size_t, int, int>> put_mapping;
 
-        bool cache_full = (this_ ()->FSCache->get_cache_usage () == 100) &&
-                          !this_ ()->FSConfig->APPLY_LRU_EVICTION;
+    bool cache_full =
+        (this_ ()->FSCache->get_cache_usage () == 100) && !this_ ()->FSConfig->APPLY_LRU_EVICTION;
 
-        // ----------------------------------------------------------------------------------
+    // ----------------------------------------------------------------------------------
 
-        // std::printf ("\t[write] from_block=%d to_block=%d\n", blk_low, blk_high);
+    // std::printf ("\t[write] from_block=%d to_block=%d\n", blk_low, blk_high);
 
-        for (off_t CURR_BLK_IDX = blk_low; CURR_BLK_IDX <= blk_high; CURR_BLK_IDX++) {
+    for (off_t CURR_BLK_IDX = blk_low; CURR_BLK_IDX <= blk_high; CURR_BLK_IDX++) {
+
+        /*
+            > Calculate readable block offsets:
+
+            For each block, depending on the 'offset' and 'size' provided,
+            the write is bounded from an index to another in each block.
+            Each pair of offsets varies from [0 <-> IO_BLOCK_SIZE].
+        */
+
+        blk_readable_from = (CURR_BLK_IDX == blk_low) ? (offset % IO_BLOCK_SIZE) : 0;
+
+        if (CURR_BLK_IDX == blk_high)
+            blk_readable_to = ((offset + size - 1) % IO_BLOCK_SIZE);
+        else if ((CURR_BLK_IDX == blk_low) && ((offset + size - 1) < IO_BLOCK_SIZE))
+            blk_readable_to = offset + size - 1;
+        else if (CURR_BLK_IDX < blk_high)
+            blk_readable_to = IO_BLOCK_SIZE - 1;
+        else if (CURR_BLK_IDX == blk_high)
+            blk_readable_to = size - data_allocated - 1;
+
+        // data_allocated += blk_readable_to - blk_readable_from + 1;
+
+        bool is_block_cached = this_ ()->FSCache->is_block_cached (inode, CURR_BLK_IDX);
+
+        if (is_block_cached == false) {
+
+            bool needs_pread = FILE_SIZE_BEFORE > CURR_BLK_IDX * IO_BLOCK_SIZE;
 
             /*
-                > Calculate readable block offsets:
+                > Block not found in the caching lib:
 
-                For each block, depending on the 'offset' and 'size' provided,
-                the write is bounded from an index to another in each block.
-                Each pair of offsets varies from [0 <-> IO_BLOCK_SIZE].
+                Try to cache it using pread first then inserting into the cache,
+                if any of these fails, pwrite it to the underlying FS.
             */
 
-            blk_readable_from = (CURR_BLK_IDX == blk_low) ? (offset % IO_BLOCK_SIZE) : 0;
+            if (fd_caching >= 0) {
 
-            if (CURR_BLK_IDX == blk_high)
-                blk_readable_to = ((offset + size - 1) % IO_BLOCK_SIZE);
-            else if ((CURR_BLK_IDX == blk_low) && ((offset + size - 1) < IO_BLOCK_SIZE))
-                blk_readable_to = offset + size - 1;
-            else if (CURR_BLK_IDX < blk_high)
-                blk_readable_to = IO_BLOCK_SIZE - 1;
-            else if (CURR_BLK_IDX == blk_high)
-                blk_readable_to = size - data_allocated - 1;
+                // Always block sized reads for pread calls
 
-            // data_allocated += blk_readable_to - blk_readable_from + 1;
+                int pread_res = 0;
 
-            bool is_block_cached = this_ ()->FSCache->is_block_cached (inode, CURR_BLK_IDX);
+                if (cache_full)
+                    needs_pread = false;
 
-            if (is_block_cached == false) {
+                if (needs_pread) {
 
-                bool needs_pread = FILE_SIZE_BEFORE > CURR_BLK_IDX * IO_BLOCK_SIZE;
+                    pread_res = pread (fd_caching,
+                                       block_caching_buffer,
+                                       IO_BLOCK_SIZE,
+                                       CURR_BLK_IDX * IO_BLOCK_SIZE);
+                }
 
-                /*
-                    > Block not found in the caching lib:
-
-                    Try to cache it using pread first then inserting into the cache,
-                    if any of these fails, pwrite it to the underlying FS.
-                */
-
-                if (fd_caching >= 0) {
-
-                    // Always block sized reads for pread calls
-
-                    int pread_res = 0;
-
-                    if (cache_full)
-                        needs_pread = false;
-
-                    if (needs_pread) {
-
-                        pread_res = pread (fd_caching,
-                                           block_caching_buffer,
-                                           IO_BLOCK_SIZE,
-                                           CURR_BLK_IDX * IO_BLOCK_SIZE);
-                    }
-
-                    if (pread_res < 0) {
-
-                        // Read failed for this file,
-                        // We assume that the file is not reachable
-
-                        res = -1;
-                        break;
-
-                    } else {
-
-                        const char* cache_buf;
-                        size_t cache_wr_sz;
-                        off_t cache_from;
-                        off_t cache_to;
-
-                        if ((not needs_pread) || (pread_res == 0)) {
-
-                            cache_buf   = buf + data_buffer_iterator;
-                            cache_wr_sz = blk_readable_to - blk_readable_from + 1;
-                            cache_from  = blk_readable_from;
-                            cache_to    = blk_readable_to;
-
-                        } else {
-
-                            memcpy (block_caching_buffer + blk_readable_from,
-                                    buf + data_buffer_iterator,
-                                    blk_readable_to - blk_readable_from + 1);
-
-                            if (blk_readable_from - pread_res > 0)
-                                memset (block_caching_buffer + pread_res,
-                                        0,
-                                        blk_readable_from - pread_res);
-
-                            cache_buf = block_caching_buffer;
-
-                            cache_wr_sz =
-                                pread_res > (blk_readable_to + 1) ? pread_res : blk_readable_to + 1;
-
-                            cache_from = 0;
-                            cache_to   = cache_wr_sz - 1;
-                        }
-
-                        // Increase the ammount of bytes already written from the argument
-                        // 'size'
-                        data_allocated += blk_readable_to - blk_readable_from + 1;
-
-                        bool curr_block_put_exists = false;
-                        std::map<int, bool> put_res;
-
-                        if (!cache_full) {
-
-                            put_res = this_ ()->FSCache->put_data_blocks (
-                                inode,
-                                {{CURR_BLK_IDX, {cache_buf, cache_wr_sz, cache_from, cache_to}}},
-                                OP_WRITE);
-                        }
-
-                        curr_block_put_exists = put_res.find (CURR_BLK_IDX) != put_res.end ();
-
-                        if (cache_full ||
-                            (!curr_block_put_exists || (put_res.at (CURR_BLK_IDX) == false))) {
-
-                            // Block allocation in cache failed
-
-                            int pwrite_res = pwrite (fd,
-                                                     cache_buf,
-                                                     cache_wr_sz,
-                                                     CURR_BLK_IDX * IO_BLOCK_SIZE + cache_from);
-
-                            if (pwrite_res != cache_wr_sz) {
-                                res = -1;
-                                break;
-                            }
-                        }
-                    }
-
-                } else {
+                if (pread_res < 0) {
 
                     // Read failed for this file,
                     // We assume that the file is not reachable
 
                     res = -1;
                     break;
+
+                } else {
+
+                    const char* cache_buf;
+                    size_t cache_wr_sz;
+                    off_t cache_from;
+                    off_t cache_to;
+
+                    if ((not needs_pread) || (pread_res == 0)) {
+
+                        cache_buf   = buf + data_buffer_iterator;
+                        cache_wr_sz = blk_readable_to - blk_readable_from + 1;
+                        cache_from  = blk_readable_from;
+                        cache_to    = blk_readable_to;
+
+                    } else {
+
+                        memcpy (block_caching_buffer + blk_readable_from,
+                                buf + data_buffer_iterator,
+                                blk_readable_to - blk_readable_from + 1);
+
+                        if (blk_readable_from - pread_res > 0)
+                            memset (block_caching_buffer + pread_res,
+                                    0,
+                                    blk_readable_from - pread_res);
+
+                        cache_buf = block_caching_buffer;
+
+                        cache_wr_sz =
+                            pread_res > (blk_readable_to + 1) ? pread_res : blk_readable_to + 1;
+
+                        cache_from = 0;
+                        cache_to   = cache_wr_sz - 1;
+                    }
+
+                    // Increase the ammount of bytes already written from the argument
+                    // 'size'
+                    data_allocated += blk_readable_to - blk_readable_from + 1;
+
+                    bool curr_block_put_exists = false;
+                    std::map<int, bool> put_res;
+
+                    if (!cache_full) {
+
+                        put_res = this_ ()->FSCache->put_data_blocks (
+                            inode,
+                            {{CURR_BLK_IDX, {cache_buf, cache_wr_sz, cache_from, cache_to}}},
+                            OP_WRITE);
+                    }
+
+                    curr_block_put_exists = put_res.find (CURR_BLK_IDX) != put_res.end ();
+
+                    if (cache_full ||
+                        (!curr_block_put_exists || (put_res.at (CURR_BLK_IDX) == false))) {
+
+                        // Block allocation in cache failed
+
+                        int pwrite_res = pwrite (fd,
+                                                 cache_buf,
+                                                 cache_wr_sz,
+                                                 CURR_BLK_IDX * IO_BLOCK_SIZE + cache_from);
+
+                        if (pwrite_res != cache_wr_sz) {
+                            res = -1;
+                            break;
+                        }
+                    }
                 }
 
             } else {
 
-                /*
-                    > Block seems to be cached:
+                // Read failed for this file,
+                // We assume that the file is not reachable
 
-                    Try to update block data by replacing block contents for that offsets.
-                    If it fails, sync data...
-                */
+                res = -1;
+                break;
+            }
 
-                // Increase the ammount of bytes already written from the argument 'size'
-                data_allocated += blk_readable_to - blk_readable_from + 1;
+        } else {
 
-                auto put_res =
-                    this_ ()->FSCache->put_data_blocks (inode,
-                                                        {{CURR_BLK_IDX,
-                                                          {buf + data_buffer_iterator,
-                                                           blk_readable_to - blk_readable_from + 1,
-                                                           blk_readable_from,
-                                                           blk_readable_to}}},
-                                                        OP_WRITE);
-                bool curr_block_put_exists = put_res.find (CURR_BLK_IDX) != put_res.end ();
+            /*
+                > Block seems to be cached:
 
-                if (!curr_block_put_exists || put_res.at (CURR_BLK_IDX) == false) {
+                Try to update block data by replacing block contents for that offsets.
+                If it fails, sync data...
+            */
 
-                    int pwrite_res = pwrite (fd,
-                                             buf + data_buffer_iterator,
-                                             blk_readable_to - blk_readable_from + 1,
-                                             CURR_BLK_IDX * IO_BLOCK_SIZE + blk_readable_from);
+            // Increase the ammount of bytes already written from the argument 'size'
+            data_allocated += blk_readable_to - blk_readable_from + 1;
 
-                    if (pwrite_res != (blk_readable_to - blk_readable_from + 1)) {
-                        res = -1;
-                        break;
-                    }
+            auto put_res =
+                this_ ()->FSCache->put_data_blocks (inode,
+                                                    {{CURR_BLK_IDX,
+                                                      {buf + data_buffer_iterator,
+                                                       blk_readable_to - blk_readable_from + 1,
+                                                       blk_readable_from,
+                                                       blk_readable_to}}},
+                                                    OP_WRITE);
+            bool curr_block_put_exists = put_res.find (CURR_BLK_IDX) != put_res.end ();
+
+            if (!curr_block_put_exists || put_res.at (CURR_BLK_IDX) == false) {
+
+                int pwrite_res = pwrite (fd,
+                                         buf + data_buffer_iterator,
+                                         blk_readable_to - blk_readable_from + 1,
+                                         CURR_BLK_IDX * IO_BLOCK_SIZE + blk_readable_from);
+
+                if (pwrite_res != (blk_readable_to - blk_readable_from + 1)) {
+                    res = -1;
+                    break;
                 }
             }
-
-            data_buffer_iterator = data_allocated;
         }
 
-        // ----------------------------------------------------------------------------------
-
-        // close (fd_caching);
-
-        // ----------------------------------------------------------------------------------
-
-        bool locked = this_ ()->FSCache->lockItemCheckExists (inode);
-
-        if (locked) {
-
-            off_t was_written_until_offset = offset + size;
-
-            Metadata meta;
-            meta.size = was_written_until_offset > FILE_SIZE_BEFORE ? was_written_until_offset
-                                                                    : FILE_SIZE_BEFORE;
-
-            vector<string> values_to_change;
-            values_to_change.push_back ("size");
-
-            struct timespec modify_time;
-            clock_gettime (CLOCK_REALTIME, &modify_time);
-            meta.mtim = modify_time;
-            values_to_change.push_back ("mtime");
-
-            if (meta.size > FILE_SIZE_BEFORE) {
-
-                meta.ctim = modify_time;
-                values_to_change.push_back ("ctime");
-            }
-
-            this_ ()->FSCache->update_content_metadata (inode, meta, values_to_change);
-
-            // std::printf ("\twrite: file size now is %d bytes\n", (int)meta.size);
-
-            this_ ()->FSCache->unlockItem (inode);
-        }
-
-        close (fd_caching);
+        data_buffer_iterator = data_allocated;
     }
 
     // ----------------------------------------------------------------------------------
-    
-    bool crash_added = this_ () -> persist_write(path,buf,size,offset) || this_ () -> split_write(path,buf,size,offset); //only one will be injected, becaus eby now we only allow one
 
-    // res should be = actual bytes written as pwrite could fail...
-    res = size;
+    // close (fd_caching);
+
+    // ----------------------------------------------------------------------------------
+
+    bool locked = this_ ()->FSCache->lockItemCheckExists (inode);
+
+    if (locked) {
+
+        off_t was_written_until_offset = offset + size;
+
+        Metadata meta;
+        meta.size = was_written_until_offset > FILE_SIZE_BEFORE ? was_written_until_offset
+                                                                : FILE_SIZE_BEFORE;
+
+        vector<string> values_to_change;
+        values_to_change.push_back ("size");
+
+        struct timespec modify_time;
+        clock_gettime (CLOCK_REALTIME, &modify_time);
+        meta.mtim = modify_time;
+        values_to_change.push_back ("mtime");
+
+        if (meta.size > FILE_SIZE_BEFORE) {
+
+            meta.ctim = modify_time;
+            values_to_change.push_back ("ctime");
+        }
+
+        this_ ()->FSCache->update_content_metadata (inode, meta, values_to_change);
+
+        // std::printf ("\twrite: file size now is %d bytes\n", (int)meta.size);
+
+        this_ ()->FSCache->unlockItem (inode);
+    }
+
+    close (fd_caching);
+
+    // ----------------------------------------------------------------------------------
+
+    bool crash_added = this_ ()->persist_write (path, buf, size, offset) ||
+                       this_ ()->split_write (
+                           path,
+                           buf,
+                           size,
+                           offset); // only one will be injected, becaus eby now we only allow one
 
     // std::printf ("\twrite: returning %d bytes\n", res);
 
+    if (crash_added && this_ ()->kill_before.load ())
+        spdlog::warn ("Syscall write returned. LazyFS will crash before the next system call.");
+    else {
+        this_ ()->trigger_crash_fault ("write", "after", path, "", false);
+        this_ ()->trigger_configured_clear_fault ("write", "after", path, "", false);
+    }
+
+    // res should be = actual bytes written as pwrite could fail...
+    res = size;
+    
     if (res == -1)
         res = -errno;
 
     if (fi == NULL)
         close (fd);
-
-    if (crash_added && this_ ()->kill_before.load()) spdlog::critical("Syscall write returned. LazyFS will crash before the next system call.");
-    else {
-        this_ ()->trigger_crash_fault ("write", "after", path, "", false);
-        this_ ()->trigger_configured_clear_fault ("write", "after", path, "", false);
-    }
 
     return res;
 }
@@ -1048,7 +1111,7 @@ int LazyFS::lfs_read (const char* path,
                       off_t offset,
                       struct fuse_file_info* fi) {
 
-    this_ ()->check_kill_before();
+    this_ ()->check_kill_before ();
 
     this_ ()->trigger_crash_fault ("read", "before", path, "");
     this_ ()->trigger_configured_clear_fault ("read", "before", path, "");
@@ -1290,7 +1353,7 @@ int LazyFS::lfs_read (const char* path,
 
 int LazyFS::lfs_fsync (const char* path, int isdatasync, struct fuse_file_info* fi) {
 
-    this_ ()->check_kill_before();
+    this_ ()->check_kill_before ();
 
     this_ ()->trigger_crash_fault ("fsync", "before", path, "");
     this_ ()->trigger_configured_clear_fault ("fsync", "before", path, "");
@@ -1303,9 +1366,9 @@ int LazyFS::lfs_fsync (const char* path, int isdatasync, struct fuse_file_info* 
     if (this_ ()->FSConfig->log_all_operations) {
         spdlog::info ("[lazyfs.ops]: {}(path={},isdatasync={})", __FUNCTION__, path, isdatasync);
     }
-    
-    this_ ()->restart_counter(path,"write"); //Reset counter of op write for this path
-    this_ ()->check_and_delete_pendingwrite(path); //If there's a pending write, remove it
+
+    this_ ()->restart_counter (path, "write");      // Reset counter of op write for this path
+    this_ ()->check_and_delete_pendingwrite (path); // If there's a pending write, remove it
 
     string owner (path);
     string inode = this_ ()->FSCache->get_original_inode (owner);
@@ -1323,13 +1386,13 @@ int LazyFS::lfs_fsync (const char* path, int isdatasync, struct fuse_file_info* 
 
     this_ ()->trigger_crash_fault ("fsync", "after", path, "", false);
     this_ ()->trigger_configured_clear_fault ("fsync", "after", path, "", false);
-    
+
     return res;
 }
 
 int LazyFS::lfs_is_dir_empty (const char* dirname) {
 
-    this_ ()->check_kill_before();
+    this_ ()->check_kill_before ();
 
     struct dirent* from_DIRENT;
     DIR* from_DIR = opendir (dirname);
@@ -1421,7 +1484,7 @@ int LazyFS::lfs_recursive_rename (const char* from, const char* to, unsigned int
 
 int LazyFS::lfs_rename (const char* from, const char* to, unsigned int flags) {
 
-    this_ ()->check_kill_before();
+    this_ ()->check_kill_before ();
 
     this_ ()->trigger_crash_fault ("rename", "before", from, to);
     this_ ()->trigger_configured_clear_fault ("rename", "before", from, to);
@@ -1468,7 +1531,7 @@ int LazyFS::lfs_rename (const char* from, const char* to, unsigned int flags) {
 int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_file_info* fi) {
     cout << ">> FTRUNCATE" << endl;
 
-    this_ ()->check_kill_before();
+    this_ ()->check_kill_before ();
 
     this_ ()->trigger_crash_fault ("truncate", "before", path, "");
     this_ ()->trigger_configured_clear_fault ("truncate", "before", path, "");
@@ -1615,7 +1678,7 @@ int LazyFS::lfs_truncate (const char* path, off_t truncate_size, struct fuse_fil
 
 int LazyFS::lfs_symlink (const char* from, const char* to) {
 
-    this_ ()->check_kill_before();
+    this_ ()->check_kill_before ();
 
     this_ ()->trigger_crash_fault ("symlink", "before", from, to);
     this_ ()->trigger_configured_clear_fault ("symlink", "before", from, to);
@@ -1639,7 +1702,7 @@ int LazyFS::lfs_symlink (const char* from, const char* to) {
 
 int LazyFS::lfs_access (const char* path, int mask) {
 
-    this_ ()->check_kill_before();
+    this_ ()->check_kill_before ();
 
     this_ ()->trigger_crash_fault ("access", "before", path, "");
     this_ ()->trigger_configured_clear_fault ("access", "before", path, "");
@@ -1664,7 +1727,7 @@ int LazyFS::lfs_access (const char* path, int mask) {
 
 int LazyFS::lfs_mkdir (const char* path, mode_t mode) {
 
-    this_ ()->check_kill_before();
+    this_ ()->check_kill_before ();
 
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
@@ -1683,7 +1746,7 @@ int LazyFS::lfs_mkdir (const char* path, mode_t mode) {
 
 int LazyFS::lfs_link (const char* from, const char* to) {
 
-    this_ ()->check_kill_before();
+    this_ ()->check_kill_before ();
 
     this_ ()->trigger_crash_fault ("link", "before", from, to);
     this_ ()->trigger_configured_clear_fault ("link", "before", from, to);
@@ -1713,7 +1776,7 @@ int LazyFS::lfs_link (const char* from, const char* to) {
 
 int LazyFS::lfs_readlink (const char* path, char* buf, size_t size) {
 
-    this_ ()->check_kill_before();
+    this_ ()->check_kill_before ();
 
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
@@ -1733,7 +1796,7 @@ int LazyFS::lfs_readlink (const char* path, char* buf, size_t size) {
 
 int LazyFS::lfs_release (const char* path, struct fuse_file_info* fi) {
 
-    this_ ()->check_kill_before();
+    this_ ()->check_kill_before ();
 
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
@@ -1750,7 +1813,7 @@ int LazyFS::lfs_release (const char* path, struct fuse_file_info* fi) {
 
 int LazyFS::lfs_rmdir (const char* path) {
 
-    this_ ()->check_kill_before();
+    this_ ()->check_kill_before ();
 
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
@@ -1769,7 +1832,7 @@ int LazyFS::lfs_rmdir (const char* path) {
 
 int LazyFS::lfs_chmod (const char* path, mode_t mode, struct fuse_file_info* fi) {
 
-    this_ ()->check_kill_before();
+    this_ ()->check_kill_before ();
 
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
@@ -1789,7 +1852,7 @@ int LazyFS::lfs_chmod (const char* path, mode_t mode, struct fuse_file_info* fi)
 
 int LazyFS::lfs_chown (const char* path, uid_t uid, gid_t gid, fuse_file_info* fi) {
 
-    this_ ()->check_kill_before();
+    this_ ()->check_kill_before ();
 
     std::shared_lock<std::shared_mutex> lock (cache_command_lock);
 
@@ -1908,7 +1971,7 @@ off_t LazyFS::lfs_lseek (const char* path, off_t off, int whence, struct fuse_fi
 
 int LazyFS::lfs_unlink (const char* path) {
 
-    this_ ()->check_kill_before();
+    this_ ()->check_kill_before ();
 
     this_ ()->trigger_crash_fault ("unlink", "before", path, "");
     this_ ()->trigger_configured_clear_fault ("unlink", "before", path, "");
@@ -1941,25 +2004,27 @@ int LazyFS::lfs_unlink (const char* path) {
 }
 
 void LazyFS::print_faults () {
-    for (const auto& fault_pair : *(this_()->faults)) {
+    for (const auto& fault_pair : *(this_ ()->faults)) {
         cout << "\n>> Faults for path: " << fault_pair.first << endl;
         for (const auto& fault : fault_pair.second) {
-            fault->pretty_print();
+            fault->pretty_print ();
         }
     }
     cout << "\n>> Crash Faults Before Map:" << endl;
-    for (const auto& pair : this_()->crash_faults_before_map) {
+    for (const auto& pair : this_ ()->crash_faults_before_map) {
         cout << "Operation: " << pair.first << endl;
         for (const auto& fault : pair.second) {
-            cout << "  From Regex: " << fault.first.mark_count() << ", To Regex: " << fault.second << endl;
+            cout << "  From Regex: " << fault.first.mark_count () << ", To Regex: " << fault.second
+                 << endl;
         }
     }
 
     cout << "\n>> Crash Faults After Map:" << endl;
-    for (const auto& pair : this_()->crash_faults_after_map) {
+    for (const auto& pair : this_ ()->crash_faults_after_map) {
         cout << "Operation: " << pair.first << endl;
         for (const auto& fault : pair.second) {
-            cout << "  From Regex: " << fault.first.mark_count() << ", To Regex: " << fault.second << endl;
+            cout << "  From Regex: " << fault.first.mark_count () << ", To Regex: " << fault.second
+                 << endl;
         }
     }
 }

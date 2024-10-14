@@ -222,7 +222,7 @@ void ClearF::pretty_print() const {
 
 
 // Clear page Fault
-SyncPageF::SyncPageF (string timing, string op, string from, string to, int occurrence, string pages, bool ret) : Fault(CLEAR) {
+SyncPageF::SyncPageF (string timing, string op, string from, string to, int occurrence, string pages, bool ret, bool sync_other_files) : Fault(CLEAR) {
     this->timing = timing;
     this->op = op;
     this->from = from;
@@ -231,6 +231,7 @@ SyncPageF::SyncPageF (string timing, string op, string from, string to, int occu
     this->pages = pages;
     (this->counter).store(0);
     this->ret = ret;
+    this->sync_other_files = sync_other_files;
 }
 
 SyncPageF::~SyncPageF(){}
@@ -275,6 +276,7 @@ void SyncPageF::pretty_print() const {
     cout << "  Occurrence: " << this->occurrence << endl;
     cout << "  Pages: " << this->pages << endl;
     cout << "  Return: " << (this->ret ? "true" : "false") << endl;
+    cout << "  Sync other files: " << (this->sync_other_files ? "true" : "false") << endl;
 }
 
 // namespace faults
