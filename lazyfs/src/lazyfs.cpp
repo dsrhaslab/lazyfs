@@ -1375,19 +1375,16 @@ int LazyFS::lfs_fsync (const char* path, int isdatasync, struct fuse_file_info* 
 
     bool is_owner_cached = this_ ()->FSCache->has_content_cached (inode);
 
-    int res;
+    int res = this_ ()->FSCache->sync_owner (inode, isdatasync, (char*)path);
 
-    if (isdatasync)
-        res = is_owner_cached ? this_ ()->FSCache->sync_owner (inode, true, (char*)path)
-                              : fdatasync (fi->fh);
-    else
-        res = is_owner_cached ? this_ ()->FSCache->sync_owner (inode, false, (char*)path)
-                              : fsync (fi->fh);
+    if (!is_owner_cached) {
+        res = isdatasync ? fdatasync (fi->fh) : fsync (fi->fh);
+    }
 
     this_ ()->trigger_crash_fault ("fsync", "after", path, "", false);
     this_ ()->trigger_configured_clear_fault ("fsync", "after", path, "", false);
 
-    return res;
+    return res ? 0 : 1;
 }
 
 int LazyFS::lfs_is_dir_empty (const char* dirname) {
