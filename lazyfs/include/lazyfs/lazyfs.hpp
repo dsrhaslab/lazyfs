@@ -105,6 +105,16 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      */
     unordered_map<string,vector<faults::Fault*>>* faults;
 
+    /**
+     * @brief FUSE mount directory.
+     */
+    string mount_dir;
+
+    /**
+     * @brief FUSE root directory. 
+     */
+    string root_dir;
+
 
     /**
      * @brief Faults of LazyFS crash injected during runtime.
@@ -112,6 +122,12 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      * obsolete!
      */
     std::unordered_map<string, unordered_set<string>> crash_faults;
+
+    /**
+     * @brief Number of snapshots taken.
+     *
+     */
+    atomic<int> snapshot_counter;
 
     /**
      * @brief Write that was put on hold and may or may not be persisted.
@@ -184,12 +200,17 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      * @param config LazyFS configuration
      * @param faults_handler_thread A thread to handle fault requests
      * @param fht_worker The faults worker logic method
+     * @param faults Faults programmed in the configuration file
+     * @param mount_dir FUSE mount directory
+     * @param root_dir FUSE root directory
      */
     LazyFS (Cache* cache,
             cache::config::Config* config,
             std::thread* faults_handler_thread,
             void (*fht_worker) (LazyFS* filesystem),
-            unordered_map<string,vector<faults::Fault*>>* faults);
+            unordered_map<string,vector<faults::Fault*>>* faults,
+            string mount_dir,
+            string root_dir);
 
     /**
      * @brief Destroy the LazyFS object
@@ -204,7 +225,8 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
 
     /**
      * @brief Fifo: (fault) Clear the cached contents
-     *
+     * 
+     * @param lock_needed Indicates if the cache_command_lock should be locked. When this function is called inside a filesystem operation, it should be false, because all filesystem operations are already locked. When called from the fault handler, it should be true.
      */
     void command_fault_clear_cache (bool lock_needed = true);
 
@@ -214,18 +236,24 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      * 
      * @param path Path of the file
      * @param parts Pages to be persisted
+     * @param sync_other_files Indicates if other files should be synced
+     * @param lock_needed Indicates if the cache_command_lock should be locked. When this function is called inside a filesystem operation, it should be false, because all filesystem operations are already locked. When called from the fault handler, it should be true.
      *
      */
     void command_fault_sync_page (string path, string parts, bool sync_other_files, bool lock_needed = true);
 
     /**
      * @brief Fifo: (info) Display the cache usage
+     * 
+     * @param lock_needed Indicates if the cache_command_lock should be locked. When this function is called inside a filesystem operation, it should be false, because all filesystem operations are already locked. When called from the fault handler, it should be true.
      *
      */
     void command_display_cache_usage (bool lock_needed = true);
 
     /**
      * @brief Fifo: (sync) Sync all cached data with the underlying FS
+     * 
+     * @param lock_needed Indicates if the cache_command_lock should be locked. When this function is called inside a filesystem operation, it should be false, because all filesystem operations are already locked. When called from the fault handler, it should be true.
      *
      */
     void command_checkpoint (bool lock_needed = true);
@@ -236,6 +264,14 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      *
      */
     void command_unsynced_data_report (vector<string> paths_to_exclude);
+
+    /**
+     * @brief Creates a snapshot of files matching files_rgx and saves them in save_dir.
+     * @param files_rgx Regular expression to match the files
+     * @param save_dir Directory to save the snapshots
+     * @param lock_needed Indicates if the cache_command_lock should be locked. When this function is called inside a filesystem operation, it should be false, because all filesystem operations are already locked. When called from the fault handler, it should be true.
+     */
+    void command_snapshot_files(regex files_rgx, string save_dir, bool lock_needed = true);
 
     /**
      * @brief Checks if a programmed reorder fault for the given path and operation exists. If so, updates the counter and returns the fault.
@@ -441,7 +477,14 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      */
     void check_kill_before();
 
+    /**
+     * @brief Prints the programmed faults.
+     */
     void print_faults ();
+
+    int copy_file (string file, string destination);
+    off_t get_file_size (string file);
+    int read_file (const char* file, char* buf, size_t size, off_t offset);
 };
 
 } // namespace lazyfs

@@ -383,8 +383,56 @@ void fht_worker (LazyFS* filesystem) {
                         for (auto const err : errors) {
                             spdlog::warn ("[lazyfs.faults.worker]: {}", err);
                         }
+                }  
+
+            } else if (command_str.rfind ("lazyfs::snapshot", 0) == 0) {
+
+                spdlog::info ("[lazyfs.faults.worker]: received '{}'", string (buffer));
+                std::regex rgx_global ("::");
+                std::regex rgx_attrib ("=");
+                std::sregex_token_iterator iter_glob (command_str.begin (),
+                                                      command_str.end (),
+                                                      rgx_global,
+                                                      -1);
+                std::sregex_token_iterator end;
+
+                regex files;
+                string save = "";
+
+                bool valid_command = true;
+                vector<string> errors;
+
+                for (; iter_glob != end; ++iter_glob) {
+
+                    string current = string (*iter_glob);
+
+                    if (current.rfind ("files_rgx=", 0) == 0) {
+
+                        string tmp_files = current.erase (0, current.find ("=") + 1);
+
+                        if (tmp_files.length() != 0) {
+                            files = regex(tmp_files);          
+                        } else {
+                            valid_command = false;
+                            errors.push_back ("files regex not specified");
+                        }
+                        
+                    } else if (current.rfind("save=", 0) == 0) {
+
+                        string tmp_save = current.erase (0, current.find ("=") + 1);
+                    
+                        if (tmp_save.length() != 0) {
+                            save = tmp_save;          
+
+                        } else {
+                            valid_command = false;
+                            errors.push_back ("save directory not specified");
+                        }
+                    } 
                 }
 
+                if (valid_command) filesystem->command_snapshot_files(files, save);       
+            
             } else if (!strcmp (buffer, "lazyfs::display-cache-usage")) {
 
                 spdlog::info ("[lazyfs.faults.worker]: received '{}'", string (buffer));
@@ -444,6 +492,19 @@ int main (int argc, char* argv[]) {
     string config_path;
     bool path_specified = false;
 
+    string mount_dir;
+    if (argc > 1) {
+        mount_dir = argv[1];
+    }
+
+    string root_dir;
+    if (argc > 9) {
+        root_dir = argv[9];
+        const std::string key = "subdir=";
+        auto pos = root_dir.find(key);
+        root_dir = root_dir.substr(pos + key.size()); 
+    }
+
     for (i = 0, new_argc = 0; (i < argc) && (new_argc < MAX_ARGS); i++)
 
         if (!strcmp (argv[i], "--config-path")) {
@@ -472,8 +533,7 @@ int main (int argc, char* argv[]) {
     unordered_map<string,vector<faults::Fault*>> faults = std_config.load_config (config_path);
 
     // Setup logger
-    bool only_console_sink = false;
-    if (THREAD_ID) spdlog::set_pattern("[thread: %t] %+");
+    bool only_console_sink = false;    
 
     if (std_config.LOG_FILE != "") {
 
@@ -487,8 +547,7 @@ int main (int argc, char* argv[]) {
             auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt> ();
             console_sink->set_level (spdlog::level::info);
 
-            auto file_sink =
-                std::make_shared<spdlog::sinks::basic_file_sink_mt> (std_config.LOG_FILE, false);
+            auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt> (std_config.LOG_FILE, false);
             file_sink->set_level (spdlog::level::info);
 
             // Sinks to console and file
@@ -569,9 +628,11 @@ int main (int argc, char* argv[]) {
     CustomCacheEngine* engine = new CustomCacheEngine (&std_config);
     Cache* cache              = new Cache (&std_config, engine);
 
-    new (&fs) LazyFS (cache, &std_config, &faults_handler_thread, fht_worker, &faults);
+    new (&fs) LazyFS (cache, &std_config, &faults_handler_thread, fht_worker, &faults, mount_dir, root_dir);
 
     spdlog::info ("[lazyfs.fifo]: running LazyFS...");
+
+    if (THREAD_ID) spdlog::set_pattern("[thread: %t] %+");
 
     // Start LazyFS
 

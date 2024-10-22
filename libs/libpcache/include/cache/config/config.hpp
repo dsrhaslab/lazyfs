@@ -15,6 +15,7 @@
 #include <unordered_map>
 #include <sys/types.h>
 #include <atomic>
+#include <regex>
 
 #include <faults/faults.hpp>
 
@@ -91,6 +92,16 @@ class Config {
      *
      */
     string LOG_FILE = "";
+
+    /**
+     * @brief Regex to identify which files to snapshot.
+     */
+    string SNAPSHOT_FILES = "";
+
+    /**
+     * @brief Directory to save snapshots.
+     */
+    string SNAPSHOT_SAVE = "";
 
     /**
      * @brief Default constructor for Config.

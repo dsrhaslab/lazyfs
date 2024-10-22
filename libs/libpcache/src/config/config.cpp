@@ -18,6 +18,7 @@
 #include <atomic>
 #include <typeinfo>
 #include <optional>
+#include <regex>
 
 using namespace std;
 
@@ -135,7 +136,28 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
         this->set_eviction_flag (eviction_flag);
     }
 
-    if (data.contains ("filesystem")) {
+        if (data.contains ("snapshot")) {
+            const auto& snapshot_settings = toml::find (data, "snapshot");
+
+            if (snapshot_settings.contains ("files_rgx")) {
+                const string files_rgx = toml::find<toml::string> (snapshot_settings, "files_rgx");
+                if (files_rgx.length () > 0) {
+                    if (snapshot_settings.contains ("save")) {
+                        const string save = toml::find<toml::string> (snapshot_settings, "save");
+                        if (save.length () > 0) {
+                            this->SNAPSHOT_FILES = files_rgx;
+                            this->SNAPSHOT_SAVE = save;
+                        }
+                    } else {
+                        spdlog::error ("Key 'save' for snapshot is not defined in the configuration file.");
+                    }
+                }
+            } else {
+                spdlog::error ("Key 'files_rgx' for snapshot is not defined in the configuration file.");
+            }
+        }
+
+        if (data.contains ("filesystem")) {
 
         const auto& filesystem_settings = toml::find (data, "filesystem");
 
@@ -515,6 +537,8 @@ void Config::print_config () {
                   (double)total_bytes / 1024,
                   (double)total_bytes / std::pow (1024, 2),
                   (double)total_bytes / std::pow (1024, 3));
+    spdlog::info ("[config] snapshot: files regex = '{}', save = '{}'", this->SNAPSHOT_FILES, this->SNAPSHOT_SAVE);
+
 }
 
 } // namespace cache::config
