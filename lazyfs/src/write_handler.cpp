@@ -370,5 +370,4 @@ void LazyFS::check_kill_before() {
     }
 }
 
-
 } // namespace lazyfs

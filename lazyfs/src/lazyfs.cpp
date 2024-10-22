@@ -24,6 +24,7 @@
 #include <tuple>
 #include <unistd.h>
 #include <vector>
+#include <filesystem>
 
 // LazyFS specific imports
 #include <cache/cache.hpp>
@@ -49,15 +50,22 @@ LazyFS::LazyFS (Cache* cache,
                 cache::config::Config* config,
                 std::thread* faults_handler_thread,
                 void (*fht_worker) (LazyFS* filesystem),
-                unordered_map<string, vector<faults::Fault*>>* faults) {
+                unordered_map<string, vector<faults::Fault*>>* faults,
+                string mount_dir,
+                string root_dir) {
 
     this->FSConfig              = config;
     this->FSCache               = cache;
     this->faults_handler_thread = faults_handler_thread;
     this->fht_worker            = fht_worker;
     this->faults                = faults;
+    this->mount_dir             = mount_dir;
+    this->root_dir              = root_dir;
+
+
     this->pending_write         = NULL;
-    this->kill_before.store (false);
+    this->kill_before.          store (false);
+    this->snapshot_counter.     store(0); 
 
     for (auto const& it : faults::Fault::allow_crash_fs_operations) {
         this->crash_faults_before_map.insert ({it, {}});
@@ -137,6 +145,11 @@ bool LazyFS::trigger_crash_fault (string opname,
                 this_ ()->command_unsynced_data_report (this->injecting_fault);
                 this->injecting_fault_lock.unlock ();
 
+                //Taking snapshots before killing LazyFS
+                if (this->snapshot_counter.load () >= 0) {
+                    this_() ->command_snapshot_files (regex(this->FSConfig->SNAPSHOT_FILES), this->FSConfig->SNAPSHOT_SAVE, lock_needed);
+                }
+
                 pid_t lazyfs_pid = getpid ();
                 spdlog::critical ("Killing LazyFS pid {}!", lazyfs_pid);
                 kill (lazyfs_pid, SIGKILL);
@@ -154,6 +167,7 @@ bool LazyFS::trigger_configured_clear_fault (string opname,
                                              string from_path,
                                              string to_path,
                                              bool lock_needed) {
+                                                
 
     auto it = faults->find (from_path);
 
@@ -250,6 +264,11 @@ bool LazyFS::trigger_configured_clear_fault (string opname,
                                 return true;
                             }
 
+                            //Taking snapshots before killing LazyFS
+                            if (this->snapshot_counter.load () >= 0) {
+                                this_() ->command_snapshot_files (regex(this->FSConfig->SNAPSHOT_FILES), this->FSConfig->SNAPSHOT_SAVE, lock_needed);
+                            }
+
                             pid_t lazyfs_pid = getpid ();
                             spdlog::critical ("Killing LazyFS pid {}!", lazyfs_pid);
                             kill (lazyfs_pid, SIGKILL);
@@ -279,6 +298,345 @@ void LazyFS::add_crash_fault (string crash_timing,
         auto& crash_regex_list = crash_faults_after_map.at (crash_operation);
         std::regex from_rgx (".*" + crash_regex_from + ".*");
         crash_regex_list.push_back ({from_rgx, crash_regex_to});
+    }
+}
+
+off_t LazyFS::get_file_size (string path) {
+
+    off_t res;
+    struct stat stbuf;
+
+    res = lstat (path.c_str(), &stbuf);
+
+    if (res == -1)
+        return -errno;
+
+    if (not S_ISREG (stbuf.st_mode))
+        return 0;
+
+    string inode = this->FSCache->get_original_inode (path);
+
+    if (inode.empty ()) {
+        inode = to_string (stbuf.st_ino);
+    } 
+
+    bool locked = this->FSCache->lockItemCheckExists (inode);
+
+    if (!locked) {
+
+        res = stbuf.st_size;
+
+    } else if (locked) {
+
+        /*
+        Content is cached, must return cached metadata
+        */
+
+        Metadata* meta = this->FSCache->get_content_metadata (inode);
+
+        if (meta != nullptr) {
+            res  = meta->size;
+        }
+
+        this->FSCache->unlockItem (inode);
+    }
+
+    return res;
+}
+
+int LazyFS::read_file (const char * path, char* buf, size_t size, off_t offset) {
+    int fd;
+    int res;
+
+    fd = open (path, O_RDONLY);
+
+    if (fd == -1)
+        return -errno;
+
+    std::string OWNER (path);
+
+    string inode = this->FSCache->get_original_inode (OWNER);
+
+    if (inode.empty ()) {
+        // File is not cached, will read it directly from the file system
+        return pread (fd, buf, size, offset);
+    } 
+
+    int IO_BLOCK_SIZE = this->FSConfig->IO_BLOCK_SIZE;
+
+    // ----------------------------------------------------------------------------------
+
+    off_t blk_low        = offset / IO_BLOCK_SIZE;
+    off_t blk_high       = (offset + size - 1) / IO_BLOCK_SIZE;
+    int fd_caching       = fd;
+    off_t BUF_ITERATOR   = 0;
+    off_t BYTES_LEFT     = size;
+    off_t data_allocated = 0;
+
+    char read_buffer[IO_BLOCK_SIZE];
+
+    // ----------------------------------------------------------------------------------
+
+    bool cache_had_owner = this->FSCache->has_content_cached (inode);
+
+    Metadata meta;
+
+    if (not cache_had_owner) {
+        
+        // File is not cached, will read it directly from the file system
+        return pread (fd, buf, size, offset);
+
+    } else {
+
+        bool locked = this->FSCache->lockItemCheckExists (inode);
+
+        if (locked) {
+
+            Metadata* old_meta = this->FSCache->get_content_metadata (inode);
+
+            if (old_meta != nullptr)
+                meta.size = old_meta->size;
+
+            this->FSCache->unlockItem (inode);
+        }
+
+        // std::printf ("\tread: file has %d bytes\n", (int)meta.size);
+    }
+
+    if (offset > (meta.size - 1))
+        return 0;
+
+    // ---------------------------------------------------------------------------------
+
+    off_t last_pread_chunk_size   = 0;
+    off_t last_pread_chunk_offset = offset;
+
+    off_t blk_readable_from = 0;
+    off_t blk_readable_to   = 0;
+
+    for (off_t CURR_BLK_IDX = blk_low; CURR_BLK_IDX <= blk_high; CURR_BLK_IDX++) {
+
+        if ((CURR_BLK_IDX * IO_BLOCK_SIZE) > meta.size)
+            break;
+
+        blk_readable_from = (CURR_BLK_IDX == blk_low) ? (offset % IO_BLOCK_SIZE) : 0;
+
+        if (CURR_BLK_IDX == blk_high)
+            blk_readable_to = ((offset + size - 1) % IO_BLOCK_SIZE);
+        else if ((CURR_BLK_IDX == blk_low) && ((offset + size - 1) < IO_BLOCK_SIZE))
+            blk_readable_to = offset + size - 1;
+        else if (CURR_BLK_IDX < blk_high)
+            blk_readable_to = IO_BLOCK_SIZE - 1;
+        else if (CURR_BLK_IDX == blk_high)
+            blk_readable_to = size - data_allocated - 1;
+
+        if (this->FSCache->is_block_cached (inode, CURR_BLK_IDX)) {
+
+            if (last_pread_chunk_size > 0) {
+
+                int pread_res = pread (fd_caching,
+                                       buf + BUF_ITERATOR,
+                                       last_pread_chunk_size,
+                                       last_pread_chunk_offset);
+
+                BUF_ITERATOR += pread_res;
+                BYTES_LEFT -= pread_res;
+
+                last_pread_chunk_size   = 0;
+                last_pread_chunk_offset = (CURR_BLK_IDX + 1) * IO_BLOCK_SIZE;
+
+            } else if (CURR_BLK_IDX < blk_high) {
+
+                last_pread_chunk_offset = (CURR_BLK_IDX + 1) * IO_BLOCK_SIZE;
+            }
+
+            if (BYTES_LEFT <= 0) {
+
+                break;
+            }
+
+            /*
+                > Block is cached, so buffer was filled with the requested data:
+            */
+
+            auto GET_BLOCKS_RES =
+                this->FSCache->get_data_blocks (inode, {{CURR_BLK_IDX, read_buffer}});
+
+            if ((GET_BLOCKS_RES.find (CURR_BLK_IDX) != GET_BLOCKS_RES.end ()) and
+                GET_BLOCKS_RES.at (CURR_BLK_IDX).first) {
+
+                pair<int, int> readable_offsets = GET_BLOCKS_RES.at (CURR_BLK_IDX).second;
+
+                off_t max_readable_offset = readable_offsets.second;
+
+                off_t read_to = std::min (max_readable_offset, blk_readable_to);
+
+                memcpy (buf + BUF_ITERATOR,
+                        read_buffer + blk_readable_from,
+                        (read_to - blk_readable_from) + 1);
+
+                BUF_ITERATOR += (read_to - blk_readable_from) + 1;
+                BYTES_LEFT -= (read_to - blk_readable_from) + 1;
+
+                if (read_to < (IO_BLOCK_SIZE - 1) && CURR_BLK_IDX < blk_high) {
+
+                    memset (buf + BUF_ITERATOR + read_to, 0, IO_BLOCK_SIZE - read_to);
+                }
+
+                data_allocated += (read_to - blk_readable_from) + 1;
+
+            } else {
+
+                // todo: there could be a race condition between checking if the block is cached
+                // todo: and retrieving its data, so either lock the operation or go to the else
+                // todo: case
+
+                // goto try_pread;
+            }
+
+        } else {
+
+            // todo:
+            // try_pread:
+
+            /*
+                > Block is not cached, cache it first: If it fails, call pread if
+               needed.
+            */
+
+            bool needs_pread = meta.size > CURR_BLK_IDX * IO_BLOCK_SIZE;
+
+            if (fd_caching > 0) {
+
+                /*
+                    > Calculate readable block offsets:
+
+                    For each block, depending on the 'offset' and 'size' provided,
+                    the write is bounded from an index to another in each block.
+                    Each pair of offsets varies from [0 <-> IO_BLOCK_SIZE].
+                */
+
+                // ----------------------------------------------------------------------------------
+
+                data_allocated += blk_readable_to - blk_readable_from + 1;
+
+                // ----------------------------------------------------------------------------------
+
+                if (needs_pread)
+                    last_pread_chunk_size += blk_readable_to - blk_readable_from + 1;
+
+            } else {
+
+                // Read failed for this file,
+                // We assume that the file is not reachable
+
+                res = -1;
+                break;
+            }
+        }
+    }
+
+    if (last_pread_chunk_size > 0) {
+        int pread_res =
+            pread (fd_caching, buf + BUF_ITERATOR, last_pread_chunk_size, last_pread_chunk_offset);
+
+        BUF_ITERATOR += pread_res;
+        BYTES_LEFT -= pread_res;
+    }
+
+    // ---------------------------------------------------------
+
+    res = BUF_ITERATOR;
+
+    if (res == -1)
+        res = -errno;
+
+    close (fd);
+    
+    return res;
+}
+
+int LazyFS::copy_file (string file, string destination) {
+    struct stat file_stat;
+    int size;    
+
+    spdlog::info("[lazyfs.cmds]: Snapshotting file {} to {}", file, destination);
+
+    off_t file_size = get_file_size(file);
+
+    if (file_size < 0) {
+        spdlog::error("[lazyfs.cmds]: Error snapshoting file {}: {}", file, (errno));
+        return -errno;
+    } else if (file_size == 0) {
+        spdlog::warn("[lazyfs.cmds]: Did not snapshot file {} because size is 0", file);
+        return 0;
+    }
+
+    char * buf = new char[file_size];
+    int res_read;
+
+    if ((res_read = read_file(file.c_str(), buf, file_size, 0)) < 0) {
+        spdlog::error("[lazyfs.cmds]: Error snapshotting file {}: {}", file, (errno));
+        delete [] buf;
+        return -errno;
+    } else if (res_read != file_size) {
+        spdlog::error("[lazyfs.cmds]: Error snapshotting file {}: bytes read different from file size", file);
+        delete [] buf;
+        return 0;
+    }
+
+    int fd = open(destination.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
+
+    if (fd < 0) {
+        spdlog::error("[lazyfs.cmds]: Error snapshotting file {}: {}", file, (errno));
+        delete [] buf;
+        return -errno;
+    } 
+
+    if (write(fd, buf, file_size) != file_size) {
+        spdlog::error("[lazyfs.cmds]: Error snapshotting file {}: {}", file, (errno));
+        delete [] buf;
+        return -errno;
+    } 
+
+    delete [] buf;
+
+    return 0;
+}
+
+void LazyFS::command_snapshot_files(regex files_rgx, string save_dir, bool lock_needed) {
+    if (regex_match("", files_rgx) || save_dir == "") return;
+
+    bool found_path = false;
+    string destination = save_dir + "/snapshot" + to_string(this->snapshot_counter.load());
+
+    vector<tuple<string,string>> files_to_copy;
+
+    if (lock_needed) std::unique_lock<std::shared_mutex> lock (cache_command_lock);
+
+    if (!filesystem::exists(this->root_dir)) {
+        spdlog::error("[lazyfs.cmds]: Root directory {} does not exist.", this->mount_dir);
+    } else {
+        for (const auto& entry : filesystem::recursive_directory_iterator(this->root_dir)) {
+            if (filesystem::is_regular_file(entry.path())) {
+                if (regex_match(entry.path().string(), files_rgx)) {
+                    if (!found_path) {
+                        filesystem::create_directory(destination);
+                        this->snapshot_counter.fetch_add(1);
+                    }
+                    found_path = true;
+                    string src = entry.path().string();
+                    string dest = destination + "/" + entry.path().filename().string();
+                    tuple <std::string, std::string> src_dest = make_tuple(src, dest);
+
+                    files_to_copy.push_back(src_dest);     
+                }  
+            } 
+        } 
+    }
+    
+    for (auto const& it : files_to_copy) {
+        copy_file(get<0>(it), get<1>(it));
     }
 }
 
@@ -383,7 +741,14 @@ void LazyFS::command_fault_clear_cache (bool lock_needed) {
 
     spdlog::warn ("[lazyfs.cmds]: clear cache request submitted...");
 
+    //Taking snapshots 
+    if (this->snapshot_counter.load () >= 0) 
+        command_snapshot_files (regex(FSConfig->SNAPSHOT_FILES), FSConfig->SNAPSHOT_SAVE, lock_needed);
+
     FSCache->clear_all_cache ();
+
+    if (this->snapshot_counter.load () >= 0) 
+        command_snapshot_files (regex(FSConfig->SNAPSHOT_FILES), FSConfig->SNAPSHOT_SAVE, lock_needed);
 
     spdlog::warn ("[lazyfs.cmds]: cache is cleared.");
 }
@@ -476,12 +841,41 @@ void* LazyFS::lfs_init (struct fuse_conn_info* conn, struct fuse_config* cfg) {
 
     new (this_ ()->faults_handler_thread) std::thread (this_ ()->fht_worker, this_ ());
 
-    this_ ()->print_faults ();
+    // Checking snapshot folders to get the next snapshot index
+    if (this_ ()->FSConfig->SNAPSHOT_SAVE != "") {
+        int maxIndex = -1;
+        regex snapshot_save_regex(R"(snapshot(\d+))"); 
+
+        for (const auto& entry : filesystem::directory_iterator(this_ ()->FSConfig->SNAPSHOT_SAVE)) {
+            if (entry.is_directory()) {
+                string folderName = entry.path().filename().string();
+                smatch match;
+                if (regex_match(folderName, match, snapshot_save_regex)) {
+                    int index = stoi(match[1]);
+                    maxIndex = max(maxIndex, index);
+                }
+            }
+        }
+    
+        if (maxIndex == -1)
+            this_ ()->snapshot_counter.store(0);
+        else    
+            this_ ()->snapshot_counter.store(maxIndex + 1);
+
+        //Taking snapshots when starting LazyFS
+        if (filesystem::directory_iterator(this_ ()->root_dir) != filesystem::end(filesystem::directory_iterator{})) {
+            this_ ()->command_snapshot_files (regex(this_ ()->FSConfig->SNAPSHOT_FILES), this_ ()->FSConfig->SNAPSHOT_SAVE);
+        }
+    }
 
     return this_ ();
 }
 
-void LazyFS::lfs_destroy (void*) { spdlog::info ("[lazyfs]: stopping LazyFS..."); }
+void LazyFS::lfs_destroy (void*) { 
+    if (this_ ()->snapshot_counter.load () >= 0)
+        this_ ()->command_snapshot_files (regex(this_ ()->FSConfig->SNAPSHOT_FILES), this_ ()->FSConfig->SNAPSHOT_SAVE);
+    spdlog::info ("[lazyfs]: stopping LazyFS...");
+}
 
 int LazyFS::lfs_getattr (const char* path, struct stat* stbuf, struct fuse_file_info* fi) {
 
@@ -507,10 +901,9 @@ int LazyFS::lfs_getattr (const char* path, struct stat* stbuf, struct fuse_file_
     string inode = this_ ()->FSCache->get_original_inode (content_owner);
 
     if (inode.empty ()) {
-
         inode = to_string (stbuf->st_ino);
         this_ ()->FSCache->insert_inode_mapping (content_owner, inode, false);
-    }
+    } 
 
     bool locked = this_ ()->FSCache->lockItemCheckExists (inode);
 
@@ -1497,11 +1890,9 @@ int LazyFS::lfs_rename (const char* from, const char* to, unsigned int flags) {
     if (flags)
         return -EINVAL;
 
-    cout << "hre1 " << endl;
     string last_owner (from);
     string inode = this_ ()->FSCache->get_original_inode (last_owner);
     string new_owner (to);
-    cout << "hre2 " << endl;
 
     if (inode.empty ()) {
 
