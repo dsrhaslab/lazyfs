@@ -13,7 +13,28 @@
     </a>
 </h1>
 
-A FUSE file system with an internal dedicated page cache that only flushes data if explicitly requested by the application. This is useful for simulating power failures and losing all unsynced data.
+A FUSE file system with an internal dedicated page cache that only flushes data if explicitly requested by the application. This is useful for simulating power failures and losing unsynced data.
+
+Please cite the [following paper](https://www.vldb.org/pvldb/vol17/p3017-ramos.pdf) if you use LazyFS:
+
+```bibtex
+@article{
+    author = {Ramos, Maria and Azevedo, Jo\~{a}o and Kingsbury, Kyle and Pereira, Jos\'{e} and Esteves, T\^{a}nia and Macedo, Ricardo and Paulo, Jo\~{a}o},
+    title = {When Amnesia Strikes: Understanding and Reproducing Data Loss Bugs with Fault Injection},
+    year = {2024},
+    issue_date = {July 2024},
+    publisher = {VLDB Endowment},
+    volume = {17},
+    number = {11},
+    issn = {2150-8097},
+    url = {https://doi.org/10.14778/3681954.3681980},
+    doi = {10.14778/3681954.3681980},
+    journal = {Proc. VLDB Endow.},
+    month = jul,
+    pages = {3017–3030},
+    numpages = {14}
+}
+```
 
 <!--- > **Note**: The main branch is probably unstable and with not fully-tested features, so we recommend using one of [existing releases](https://github.com/dsrhaslab/lazyfs/releases) already created. -->
 
