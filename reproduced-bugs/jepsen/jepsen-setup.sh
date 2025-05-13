@@ -18,7 +18,8 @@ sed -i 's/debian:buster/debian:bullseye/g' docker/control/Dockerfile
 sed -i 's/debian-base-standard:buster/debian-base-standard:bullseye/g' docker/node/Dockerfile
 
 #Change LazyFS version
-sed -i 's/(def commit\s*".*"\s*")[^"]*"/\1"0.2.0"/' jepsen/src/jepsen/lazyfs.clj
+sed -E -i '/^\(def commit/,/\)/s/"[0-9a-f]{40}"/"0.2.0"/' jepsen/src/jepsen/lazyfs.clj
+cd jepsen
 lein install
 
 #Create a cluster with 5 nodes
