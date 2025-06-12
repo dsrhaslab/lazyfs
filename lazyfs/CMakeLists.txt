@@ -9,10 +9,20 @@ set (CMAKE_CXX_STANDARD 17)
 
 include_directories(include)
 
-link_directories(../libs/libpcache/build)
-include_directories(../libs/libpcache/include)
-link_directories(../libs/libpcache/build/_deps/spdlog-build/)
-include_directories(../libs/libpcache/build/_deps/spdlog-src/include)
+# Detect if the project is built independently
+if (CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    message(STATUS "Building lazyfs as an independent project")
+    link_directories(../libs/libpcache/build)
+    include_directories(../libs/libpcache/include)
+    link_directories(../libs/libpcache/build/_deps/spdlog-build/)
+    include_directories(../libs/libpcache/build/_deps/spdlog-src/include)
+else()
+    message(STATUS "Building lazyfs and libpcache")
+    link_directories(../build/libs/libpcache)
+    include_directories(../libs/libpcache/include)
+    link_directories(build/_deps/spdlog-build/)
+    include_directories(../build/_deps/spdlog-src/include)
+endif()
 
 find_package(Threads REQUIRED)
 

@@ -58,7 +58,7 @@ done
 #Checking the two possible locations for the lazyfs executable. Prioritizes LazyFS built individually.
 EXECUTABLE_DIR="./build/lazyfs"
 if [ ! -f "$EXECUTABLE_DIR" ]; then
-    EXECUTABLE_DIR="../build/lazyfs/libpcache_lazyfs"
+    EXECUTABLE_DIR="../../build/lazyfs/lazyfs"
     if [ ! -f "$EXECUTABLE_DIR" ]; then
         echo "Error: LazyFS executable not found in './build/lazyfs' or '../../build/lazyfs/lazyfs'."   
         exit
