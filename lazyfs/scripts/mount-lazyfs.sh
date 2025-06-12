@@ -55,6 +55,16 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+#Checking the two possible locations for the lazyfs executable. Prioritizes LazyFS built individually.
+EXECUTABLE_DIR="./build/lazyfs"
+if [ ! -f "$EXECUTABLE_DIR" ]; then
+    EXECUTABLE_DIR="../../build/lazyfs/lazyfs"
+    if [ ! -f "$EXECUTABLE_DIR" ]; then
+        echo "Error: LazyFS executable not found in './build/lazyfs' or '../../build/lazyfs/lazyfs'."   
+        exit
+    fi
+fi
+
 set -- "${POSITIONAL_ARGS[@]}"
 
 if [ ! -f "$CMD_CONFIG" ]; then
@@ -80,8 +90,8 @@ echo -e "Running LazyFS (stop with ctrl+c or umount-lazyfs.sh)...\n"
 if [ -z "$CMD_FG" ]; then
    echo -e "(running in no foreground mode)\n"
    echo -e "Note: run in foreground to see the <stdio> logs.\n"
-   ./build/lazyfs $MOUNT_DIR --config-path $CMD_CONFIG -o allow_other -o modules=subdir -o subdir=$ROOT_DIR $SINGLE_THREAD &
+   $EXECUTABLE_DIR $MOUNT_DIR --config-path $CMD_CONFIG -o allow_other -o modules=subdir -o subdir=$ROOT_DIR $SINGLE_THREAD &
 else
    echo -e "(running in foreground mode)\n"
-   ./build/lazyfs $MOUNT_DIR --config-path $CMD_CONFIG -o allow_other -o modules=subdir -o subdir=$ROOT_DIR $SINGLE_THREAD -f
+   $EXECUTABLE_DIR $MOUNT_DIR --config-path $CMD_CONFIG -o allow_other -o modules=subdir -o subdir=$ROOT_DIR $SINGLE_THREAD -f
 fi
