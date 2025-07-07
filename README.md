@@ -64,7 +64,13 @@ FUSE requires the option `allow_other` as a startup argument so that other users
 user_allow_other
 ```
 
-Compile and install the caching library `libpcache`, which will be attached to **LazyFS**:
+To **compile LazyFS** execute the `build.sh` script:
+
+```bash
+./build.sh
+```
+
+<!-- Compile and install the caching library `libpcache`, which will be attached to **LazyFS**:
 
 ```bash
 cd libs/libpcache && ./build.sh && cd -
@@ -75,6 +81,7 @@ Finally, build `lazyfs`:
 ```bash
 cd lazyfs && ./build.sh && cd -
 ```
+-->
 
 ## Running and Injecting faults
 
@@ -101,12 +108,17 @@ blocks_per_page=1
 log_all_operations=false
 logfile="/tmp/lazyfs.log"
 
+#[snapshot]
+#files_rgx="*.log"
+#save="/tmp/snapshot"
+
 [[injection]]
 type="torn-seq"
 op="write"
 file="output.txt"
 persist=[1,4]
 occurrence=2
+#return=false
 
 [[injection]]
 type="torn-op"
@@ -114,6 +126,7 @@ file="output1.txt"
 occurrence=5
 parts=3 #or parts_bytes=[4096,3600,1260]
 persist=[1,3]
+#return=false
 
 [[injection]]
 type="clear-cache"
@@ -124,7 +137,7 @@ occurrence=6
 crash=true
 ```
 
-I recommend following the `simple` cache configuration (indicating the cache size and using a similar configuration file as `default.toml`), since it's currently the most tested schema in our experiments. Additionally, for the section **[cache]**, you can specify the following:
+We recommend following the `simple` cache configuration (indicating the cache size and using a similar configuration file as `default.toml`), since it's currently the most tested schema in our experiments. Additionally, for the section **[cache]**, you can specify the following:
 
 -   **apply_eviction**: Whether the cache should behave like the real page cache, evicting pages when the cache fills to the maximum.
 
@@ -142,6 +155,7 @@ Other parameters:
 - **fifo_path_completed**: If we plan to inject the clear cache fault synchronously, it is necessary to determine the completion of the `lazyfs::clear-cache` command execution. By specifying this parameter, a message will be written to another FIFO (`finished::clear-cache`), so that users can set up a reader process that waits before making any post-fault consistency checks.
 - **log_all_operations**: Whether to log all file system operations that LazyFS receives.
 - **logfile**: The log file for LazyFS's outputs. Fault acknowledgment is sent to `stdout` or to the `logfile`.
+- **return**: Both torn-seq and torn-op have a parameter that by default is true, which only crashes LazyFS after the write returns. Can be set to false. 
 
 
 To **run the file system**, one could use the **mount-lazyfs.sh** script, which calls FUSE with the correct parameters:

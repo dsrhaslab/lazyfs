@@ -8,22 +8,24 @@ on:
       - '.github/workflows/**'
 jobs:
     build-repo:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-20.04
         env:
           LAZYFS_TEST_MOUNT_DIR: "/tmp/lfs.mnt/"
           LAZYFS_TEST_ROOT_DIR: "/tmp/lfs.root/"
         steps:
             - name: Check out repository code
-              uses: actions/checkout@v2
+              uses: actions/checkout@v4
 
             - name: Set up cache
-              uses: actions/cache@v2
+              uses: actions/cache@v4
               with:
                   path: ~/build
                   key: build-lazyfs
 
             - name: Install LazyFS's dependencies
-              run: sudo apt install g++ cmake libfuse3-dev libfuse3-3 fuse3 tree
+              run: |
+                  sudo apt update
+                  sudo apt install -y g++ cmake libfuse3-dev libfuse3-3 fuse3 tree
 
             - name: Configure FUSE
               run: sudo sed -i "/\\s*user_allow_other/s/^#//g" "/etc/fuse.conf"
