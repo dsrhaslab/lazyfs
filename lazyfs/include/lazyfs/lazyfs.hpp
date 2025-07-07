@@ -156,6 +156,7 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
 
   public:
 
+    // TO-DO: should be pair<regex,regex>
     /**
      * @brief Map of faults associated with each filesystem operation
      *
