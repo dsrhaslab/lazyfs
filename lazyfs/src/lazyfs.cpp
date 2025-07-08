@@ -1189,10 +1189,10 @@ int LazyFS::lfs_write (const char* path,
 
     // ----------------------------------------------------------------------------------
 
-    bool locked_this = this_ ()->FSCache->lockItemCheckExists (inode);
-
-    bool cache_had_owner   = this_ ()->FSCache->has_content_cached (inode);
     off_t FILE_SIZE_BEFORE = 0;
+
+    bool locked_this = this_ ()->FSCache->lockItemCheckExists (inode);
+    //bool cache_had_owner   = this_ ()->FSCache->has_content_cached (inode);
 
     if (!locked_this) {
 
@@ -1203,7 +1203,7 @@ int LazyFS::lfs_write (const char* path,
         Metadata* meta_now = this_ ()->FSCache->get_content_metadata (inode);
 
         if (meta_now != nullptr)
-            FILE_SIZE_BEFORE = this_ ()->FSCache->get_content_metadata (inode)->size;
+            FILE_SIZE_BEFORE = meta_now->size;
 
         this_ ()->FSCache->unlockItem (inode);
     }
