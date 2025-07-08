@@ -92,8 +92,8 @@ vector<string> LazyFS::add_torn_op_fault(string path, string parts, string parts
             faults->insert({path, {fault}});
         } else {
             //Only allows one fault per file
-            for (auto fault : it->second) {
-                if (dynamic_cast<faults::SplitWriteF*>(fault) != nullptr) {
+            for (auto f : it->second) {
+                if (dynamic_cast<faults::SplitWriteF*>(f) != nullptr) {
                     errors.push_back("Only one torn-op fault per file is allowed.");
                     valid_fault = false;
                 }
