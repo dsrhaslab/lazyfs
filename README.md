@@ -163,6 +163,10 @@ To **run the file system**, one could use the **mount-lazyfs.sh** script, which 
 ```bash
 cd lazyfs/
 
+# [Recommended] Running LazyFS in single-thread mode (add '-s')
+
+./scripts/mount-lazyfs.sh -c config/default.toml -m /tmp/lazyfs.mnt -r /tmp/lazyfs.root -s
+
 # Running LazyFS in the foreground (add '-f/--foregound')
 
 ./scripts/mount-lazyfs.sh -c config/default.toml -m /tmp/lazyfs.mnt -r /tmp/lazyfs.root -f
@@ -170,11 +174,6 @@ cd lazyfs/
 # Running LazyFS in the background
 
 ./scripts/mount-lazyfs.sh -c config/default.toml -m /tmp/lazyfs.mnt -r /tmp/lazyfs.root
-
-# [Recommended] Running LazyFS in single-thread mode (add '-s')
-
-./scripts/mount-lazyfs.sh -c config/default.toml -m /tmp/lazyfs.mnt -r /tmp/lazyfs.root -s
-
 
 # Umount with
 
