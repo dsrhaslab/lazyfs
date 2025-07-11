@@ -431,9 +431,10 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                     }
                 }
             
-            } else if (type == SYNC_PAGE) {
+
+            } else if (type == SYNC_PAGES) {
                 valid_fault = true;
-                error_msg = "The following errors were found in the configuration file for a fault of type " + std::string(SYNC_PAGE) + " : \n";
+                error_msg = "The following errors were found in the configuration file for a fault of type " + std::string(SYNC_PAGES) + " : \n";
 
                 int occurrence = 1;
                 if (injection.contains("occurrence"))               
@@ -442,14 +443,14 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                 string timing{};
                 if (!injection.contains("timing")) {
                     valid_fault = false;
-                    error_msg += "\tKey 'timing' for some injection of type " + std::string(SYNC_PAGE) + " is not defined in the configuration file.\n";
+                    error_msg += "\tKey 'timing' for some injection of type " + std::string(SYNC_PAGES) + " is not defined in the configuration file.\n";
                 } else 
                     timing = toml::find<string>(injection,"timing");
 
                 string op{};
                 if (!injection.contains("op")) {
                     valid_fault = false;
-                    error_msg += "\tKey 'op' for some injection of type " + std::string(SYNC_PAGE) + " is not defined in the configuration file.\n";
+                    error_msg += "\tKey 'op' for some injection of type " + std::string(SYNC_PAGES) + " is not defined in the configuration file.\n";
                 } else 
                     op = toml::find<string>(injection,"op");
 
@@ -460,25 +461,41 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                 string to = "none";
                 if (injection.contains("to")) 
                     to = toml::find<string>(injection,"to");
+                
+                bool ret = true;
+                if (injection.contains("return"))
+                    ret = toml::find<bool>(injection,"return");
+
+                bool crash = true;
+                if (injection.contains("crash")) 
+                    crash = toml::find<bool>(injection,"crash");
+
+                bool sync_other_files = false;
+                if (injection.contains("sync_other_files")) 
+                    sync_other_files = toml::find<bool>(injection,"sync_other_files");
 
                 string pages{};
-                if (!injection.contains("pages")) {
-                    valid_fault = false;
-                    error_msg += "\tKey 'pages' for some injection of type " + std::string(SYNC_PAGE) + " is not defined in the configuration file.\n";
-                } else 
+                vector<int> pages_numbers;
+                if (injection.contains("pages")) {
                     pages = toml::find<string>(injection,"pages");
-                
-                bool ret;
-                if (injection.contains("return")) {
-                    ret = toml::find<bool>(injection,"return");
+                } else if (injection.contains("pages_numbers")) {
+                    pages_numbers = toml::find<vector<int>>(injection,"pages_numbers");
                 } else {
-                    ret = true;
+                    error_msg += "\tKey 'pages' or 'pages_numbers' for some injection of type " + std::string(SYNC_PAGES) + " is not defined in the configuration file.\n";
+                    valid_fault = false;
                 }
 
-                faults::SyncPageF * fault = NULL;
+                faults::SyncPagesF * fault = nullptr;
                 vector<string> errors;
+
                 if (valid_fault) {
-                    fault = new faults::SyncPageF(timing,op,from,to,occurrence,pages,ret);
+                    if (!pages.empty()) { // Pages are defined as a string
+                        faults::SyncPagesPartsF::Pages pages_parts = faults::SyncPagesPartsF::string_to_pages(pages);
+
+                        fault = new faults::SyncPagesPartsF(timing,op,from,to,occurrence,crash,ret,sync_other_files,pages_parts);
+                    } else { // Pages are defined as a vector of integers
+                        fault = new faults::SyncPagesNumberedF(timing,op,from,to,occurrence,ret,crash,sync_other_files,pages_numbers);
+                    }
                     errors = fault->validate();
                 }
 
@@ -497,23 +514,25 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                         v_faults.push_back(fault);
                         faults[from] = v_faults;
                     } else {
-                        //At the moment, only one clear fault per file is acceptable.
                         for (faults::Fault* f : it->second) {
-                            faults::SyncPageF* clear_fault = dynamic_cast<faults::SyncPageF*>(f);
-                            if (clear_fault) {
-                                valid_fault = false;
-                                spdlog::error("It is only acceptable one " + std::string(SYNC_PAGE) + " fault per file.");
+                            faults::SyncPagesF* sync_pages_fault = dynamic_cast<faults::SyncPagesF*>(f);
+                            if (sync_pages_fault) {
+                                // Check if the fault is similar to an existing one
+                                if (sync_pages_fault->equal(*fault)) {
+                                    valid_fault = false;
+                                    spdlog::error("There is already a similar " + std::string(SYNC_PAGES) + " fault configured (same timing, op, from, to, occurrence).");
+                                    break;
+                                }
                             }
                         }
                         if (valid_fault) (it->second).push_back(fault);
                     }
                 }
 
-            } else {
+            } else 
                 spdlog::error("Key 'type' for some injection has an unknown value in the configuration file.");
-            }
+            
         }
-	
     }
     return faults;
 }
