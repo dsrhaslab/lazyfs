@@ -11,7 +11,7 @@
 #define TORN_OP "torn-op"
 #define TORN_SEQ "torn-seq"
 #define CLEAR "clear-cache"
-#define SYNC_PAGE "sync-pages"
+#define SYNC_PAGES "sync-pages"
 
 using namespace std;
 
@@ -55,6 +55,13 @@ class Fault {
      * @brief Default destructor for a Fault object.
      */
     virtual ~Fault();
+
+    /**
+     * @brief Check if two faults are equal.
+     * 
+     * @return True if they are similar and false otherwise.
+     */
+    virtual bool equal(const Fault& other); //const = 0;
 
     /**
      * @brief Print the fault.
@@ -256,7 +263,7 @@ class ClearF : public Fault {
     std::atomic_int counter;
 
     /**
-     * @brief If the fault is a crash fault.
+     * @brief If LazyFS should crash after the fault is injected.
     */
     bool crash;
 
@@ -297,10 +304,15 @@ class ClearF : public Fault {
 /*********************************************************************************************/
 
 /**
- * @brief Fault for persisting certain pages in LazyFS's cache in a specific point of execution and, optionally, crash the process.
+ * @brief Fault for persisting certain pages in LazyFS's cache in a specific point of execution.
 */
-class SyncPageF : public Fault {
+class SyncPagesF : public Fault {
   public:
+    /**
+     * @brief Path of the file where the fault will be injected.
+     */
+    string path;
+
     /**
      * @brief Timing of the fault ("before","after").
     */
@@ -332,9 +344,9 @@ class SyncPageF : public Fault {
     std::atomic_int counter;
 
     /**
-     * @brief Pages that will be cleared.
-    */
-    string pages;
+     * @brief If LazyFS should crash after the fault is injected.
+     */
+    bool crash;
 
     /**
      * @brief True if LazyFS crashes only after completing the current system call. False if otherwise.
@@ -345,39 +357,149 @@ class SyncPageF : public Fault {
      * @brief True if we want to fsync other files.
      */
     bool sync_other_files;
+
+    /**
+      * @brief Default constructor of a new SyncPagesF object.
+      */
+    SyncPagesF();
+
+    /**
+      * @brief Parameterized constructor of a new SyncPagesF object.
+      */
+    SyncPagesF(string timing, string op, string from, string to, int occurrence, bool crash, bool ret, bool sync_other_files);
     
     /**
-     * @brief Constructor for Fault.
-     * 
-     * @param timing Timing of the fault ("before","after").
-     * @param op System call (i.e. "write", ...).
-     * @param from Path of the system call.
-     * @param to Path when op requires two paths (e.g., rename system call).
-     * @param occurrence Occurrence of the op.
-     * @param crash If the fault is a crash fault.
-     * @param pages Pages to clear.
-     * @param ret If the current system call is finished before crashing.
-     * @param sync_other_files If we want to fsync other files.
-    */
-    SyncPageF(string timing, string op, string from, string to, int occurrence, string pages, bool ret, bool fsync_other_files = true);
-    
-    ~SyncPageF ();
+     * @brief Default destructor for a SyncPagesF object.
+     */
+    virtual ~SyncPagesF ();
 
     /**
      * @brief Check if the parameters have correct values for the fault.
      * 
      * @return Vector with errors.
     */
-    vector<string> validate();
+    virtual vector<string> validate();
+
+    /**
+     * @brief Compare if two SyncPagesF objects are similar. Two SyncPages faults are similar if they have the same timing, op, from and to. 
+     * If the fault type is SyncPagesPartsF or SyncPagesNumberedF, two faults with different pages will colide, so the pages are not considered in the comparison.
+     * 
+     * @param other Another SyncPagesF object to compare with.
+     * @return bool True if they're similar, false otherwise.
+     */
+    bool equal(const SyncPagesF& other) const;
+
+    /**
+     * @brief Print the fault.
+     */
+    virtual void pretty_print() const override;
+
+};
+
+class SyncPagesPartsF : public SyncPagesF {
+  public:
+    
+    enum class Pages {
+        ALL, // Sync all pages
+        FIRST_HALF, // Sync first half of the pages
+        SECOND_HALF, // Sync second half of the pages
+        FIRST, // Sync first page
+        LAST, // Sync last page
+        FIRST_AND_LAST, // Sync first and last pages
+        INTERLEAVED, // Sync interleaved pages
+        RANDOM // Sync random pages
+    };
+
+    /**
+     * @brief Pages to sync.
+     */
+    Pages pages;
+
+    /**
+     * @brief Default constructor of a new SyncPagesPartsF object.
+     */
+    SyncPagesPartsF();
+
+    /**
+     * @brief Parameterized constructor of a new SyncPagesPartsF object.
+     *
+     * @param timing Timing of the fault ("before","after").
+     * @param op System call (i.e. "write", ...).
+     * @param from Path of the system call.
+     * @param to Path when op requires two paths (e.g., rename system call).
+     * @param occurrence Occurrence of the op.
+     * @param ret If the current system call is finished before crashing.
+     * @param sync_other_files True if we want to fsync other files.
+     * @param pages Pages to sync.
+     */
+    SyncPagesPartsF(string timing, string op, string from, string to, int occurrence, bool ret, bool crash, bool sync_other_files, Pages pages);
+
+    /**
+     * @brief Default destructor for a SyncPagesPartsF object.
+     */
+    ~SyncPagesPartsF();
+
+    /**
+     * @brief Convert a string to a Pages enum.
+     * 
+     * @param page String representation of the page type.
+     * @return Pages enum value.
+     */
+    static Pages string_to_pages(string& pages);
+
+    /**
+     * @brief Check if the parameters have correct values for the fault.
+     * 
+     * @return Vector with errors.
+    */
+    vector<string> validate() override;
 
     /**
      * @brief Print the fault.
      */
     void pretty_print() const override;
-
 };
 
-// namespace faults
-}
+class SyncPagesNumberedF : public SyncPagesF {
+  public:
+    
+    /**
+     * @brief List of pages to sync.
+     */
+    vector<int> pages; // Vector of page numbers to sync
+
+    /**
+     * @brief Parameterized constructor of a new SyncPagesNumberedF object.
+     *
+     * @param timing Timing of the fault ("before","after").
+     * @param op System call (i.e. "write", ...).
+     * @param from Path of the system call.
+     * @param to Path when op requires two paths (e.g., rename system call).
+     * @param occurrence Occurrence of the op.
+     * @param ret If the current system call is finished before crashing.
+     * @param sync_other_files True if we want to fsync other files.
+     * @param pages Pages to sync.
+     */
+    SyncPagesNumberedF(string timing, string op, string from, string to, int occurrence, bool ret, bool crash, bool sync_other_files, vector<int> pages);
+
+    /**
+     * @brief Default destructor for a SyncPagesNumberedF object.
+     */
+    ~SyncPagesNumberedF();
+
+    /**
+     * @brief Check if the parameters have correct values for the fault.
+     * 
+     * @return Vector with errors.
+    */
+    vector<string> validate() override;
+
+    /**
+     * @brief Print the fault.
+     */
+    void pretty_print() const override;
+};
+
+} // namespace faults
 
 #endif // FAULTS_HPP

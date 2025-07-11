@@ -221,28 +221,28 @@ void ClearF::pretty_print() const {
 }
 
 
-// Clear page Fault
-SyncPageF::SyncPageF (string timing, string op, string from, string to, int occurrence, string pages, bool ret, bool sync_other_files) : Fault(CLEAR) {
+// Sync Pages Fault
+SyncPagesF::SyncPagesF(string timing, string op, string from, string to, int occurrence, bool crash, bool ret, bool sync_other_files) : Fault(SYNC_PAGES) {
     this->timing = timing;
     this->op = op;
     this->from = from;
     this->to = to;
     this->occurrence = occurrence;
-    this->pages = pages;
     (this->counter).store(0);
     this->ret = ret;
+    this->crash = crash;
     this->sync_other_files = sync_other_files;
 }
 
-SyncPageF::~SyncPageF(){}
+SyncPagesF::~SyncPagesF(){}
 
-vector<string> SyncPageF::validate() {
+vector<string> SyncPagesF::validate() {
     vector<string> errors;
     if (this->occurrence <= 0) {
         errors.push_back("Occurrence must be greater than 0.");
     }
 
-    if (SyncPageF::allow_crash_fs_operations.find(this->op) == SyncPageF::allow_crash_fs_operations.end()) {
+    if (SyncPagesF::allow_crash_fs_operations.find(this->op) == SyncPagesF::allow_crash_fs_operations.end()) {
         errors.push_back("Operation not available.");
     }
 
@@ -250,13 +250,9 @@ vector<string> SyncPageF::validate() {
         errors.push_back("Timing must be \"before\" or \"after\".");
     }
 
-    if (this->pages != "first" && this->pages != "last" && this->pages != "first-half" && this->pages != "last-half" && this->pages != "random") {
-        errors.push_back("Pages must be \"first\", \"last\", \"first-half\", \"last-half\" or \"random\".");
-    }
-
-    if (SyncPageF::fs_op_multi_path.find (this->op) != SyncPageF::fs_op_multi_path.end ()) {
+    if (SyncPagesF::fs_op_multi_path.find (this->op) != SyncPagesF::fs_op_multi_path.end ()) {
         if (this->from == "none" || this->to == "none") {
-            errors.push_back("\"from\" and \"to\" must be set defined operations with two paths.");
+            errors.push_back("\"from\" and \"to\" must be set on operations with two paths.");
         }
     } else {
         if (this->from == "none" || this->to != "none") {
@@ -267,16 +263,96 @@ vector<string> SyncPageF::validate() {
     return errors;
 }
 
-void SyncPageF::pretty_print() const {
+bool SyncPagesF::equal(const SyncPagesF& other) const {
+    return (this->timing == other.timing &&
+            this->op == other.op &&
+            this->from == other.from &&
+            this->to == other.to);
+}
+
+void SyncPagesF::pretty_print() const {
     Fault::pretty_print();
     cout << "  Timing: " << this->timing << endl;
     cout << "  Operation: " << this->op << endl;
     cout << "  From: " << this->from << endl;
     cout << "  To: " << this->to << endl;
     cout << "  Occurrence: " << this->occurrence << endl;
-    cout << "  Pages: " << this->pages << endl;
+    cout << "  Crash: " << (this->crash ? "true" : "false") << endl;
     cout << "  Return: " << (this->ret ? "true" : "false") << endl;
     cout << "  Sync other files: " << (this->sync_other_files ? "true" : "false") << endl;
+}
+
+// Sync pages with parts
+SyncPagesPartsF::SyncPagesPartsF(string timing, string op, string from, string to, int occurrence, bool crash, bool ret, bool sync_other_files, Pages pages) : SyncPagesF(timing, op, from, to, occurrence, crash, ret, sync_other_files) {
+    this->pages = pages;
+}
+
+SyncPagesPartsF::~SyncPagesPartsF(){}
+
+SyncPagesPartsF::Pages SyncPagesPartsF::string_to_pages(string& pages) {
+    if (pages == "all") return SyncPagesPartsF::Pages::ALL;
+    else if (pages == "first-half") return SyncPagesPartsF::Pages::FIRST_HALF;
+    else if (pages == "last-half") return SyncPagesPartsF::Pages::SECOND_HALF;
+    else if (pages == "first") return SyncPagesPartsF::Pages::FIRST;
+    else if (pages == "last") return SyncPagesPartsF::Pages::LAST;
+    else if (pages == "first-and-last") return SyncPagesPartsF::Pages::FIRST_AND_LAST;
+    else if (pages == "interleaved") return SyncPagesPartsF::Pages::INTERLEAVED;
+    else if (pages == "random") return SyncPagesPartsF::Pages::RANDOM;
+    else throw std::invalid_argument("Invalid page type: " + pages + ". Valid options are: all, first-half, last-half, first, last, first-and-last, interleaved, random.");
+}
+
+vector<string> SyncPagesPartsF::validate() {
+    return SyncPagesF::validate();
+}
+
+
+void SyncPagesPartsF::pretty_print() const {
+    SyncPagesF::pretty_print();
+    cout << "  Pages: ";
+    switch (this->pages) {
+        case Pages::ALL: cout << "ALL"; break;
+        case Pages::FIRST_HALF: cout << "FIRST_HALF"; break;
+        case Pages::SECOND_HALF: cout << "SECOND_HALF"; break;
+        case Pages::FIRST: cout << "FIRST"; break;
+        case Pages::LAST: cout << "LAST"; break;
+        case Pages::FIRST_AND_LAST: cout << "FIRST_AND_LAST"; break;
+        case Pages::INTERLEAVED: cout << "INTERLEAVED"; break;
+        case Pages::RANDOM: cout << "RANDOM"; break;
+    }
+    cout << endl;
+}
+
+
+// Sync pages numbered
+SyncPagesNumberedF::SyncPagesNumberedF(string timing, string op, string from, string to, int occurrence, bool ret, bool crash, bool sync_other_files, vector<int> pages) : SyncPagesF(timing, op, from, to, occurrence, crash, ret, sync_other_files) {
+    this->pages = pages;
+}
+
+SyncPagesNumberedF::~SyncPagesNumberedF(){}
+
+vector<string> SyncPagesNumberedF::validate() {
+    vector<string> errors = SyncPagesF::validate();
+
+    if (this->pages.empty()) {
+        errors.push_back("Pages to sync cannot be empty.");
+    } else {
+        for (const auto& page : this->pages) {
+            if (page < 0) {
+                errors.push_back("Page numbers must be non-negative.");
+                break;
+            }
+        }
+    }
+    return errors;
+}
+
+void SyncPagesNumberedF::pretty_print() const {
+    SyncPagesF::pretty_print();
+    cout << "  Pages: ";
+    for (const auto& page : this->pages) {
+        cout << page << " ";
+    }
+    cout << endl;
 }
 
 // namespace faults

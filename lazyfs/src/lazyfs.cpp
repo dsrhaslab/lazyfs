@@ -176,7 +176,7 @@ bool LazyFS::trigger_configured_clear_fault (string opname,
 
         for (auto fault : v_faults) {
             faults::ClearF* clear_fault   = dynamic_cast<faults::ClearF*> (fault);
-            faults::SyncPageF* page_fault = dynamic_cast<faults::SyncPageF*> (fault);
+            faults::SyncPagesF* page_fault = dynamic_cast<faults::SyncPagesF*> (fault);
 
             if (clear_fault && clear_fault->op == opname) {
 
@@ -761,21 +761,22 @@ void LazyFS::command_fault_sync_page (string path,
     if (lock_needed)
         std::unique_lock<std::shared_mutex> lock (cache_command_lock);
 
-    spdlog::warn ("[lazyfs.{}]: sync pages request submitted...", SYNC_PAGE);
+    spdlog::warn ("[lazyfs.{}]: sync pages request submitted...", SYNC_PAGES);
 
     string owner (path);
 
     bool synced = FSCache->partial_file_sync (owner, const_cast<char*> (path.c_str ()), parts);
 
     if (!synced)
-        spdlog::warn ("[lazyfs.{}]: sync pages went wrong!", SYNC_PAGE);
+        spdlog::warn ("[lazyfs.{}]: sync pages went wrong!", SYNC_PAGES);
     else {
-        spdlog::info ("[lazyfs.{}]: sync pages successfuly!", SYNC_PAGE);
+        spdlog::info ("[lazyfs.{}]: sync pages successfuly!", SYNC_PAGES);
 
         if (sync_other_files) {
             spdlog::warn (
                 "[lazyfs.{}]: sync other files is enabled, proceeding to sync other files...",
-                SYNC_PAGE);
+                SYNC_PAGES);
+                
             vector<string> inodes = FSCache->unsynced_inodes ();
 
             string path_inode = this_ ()->FSCache->get_original_inode (owner);
@@ -790,10 +791,10 @@ void LazyFS::command_fault_sync_page (string path,
                         synced =
                             FSCache->sync_owner (inode, true, const_cast<char*> (file.c_str ()));
                         if (!synced) {
-                            spdlog::warn ("[lazyfs.{}]: Failed to sync file: {}", SYNC_PAGE, file);
+                            spdlog::warn ("[lazyfs.{}]: Failed to sync file: {}", SYNC_PAGES, file);
                         } else {
                             spdlog::info ("[lazyfs.{}]: Successfully synced file: {}",
-                                          SYNC_PAGE,
+                                          SYNC_PAGES,
                                           file);
                         }
                     }
