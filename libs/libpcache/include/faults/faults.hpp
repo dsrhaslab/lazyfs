@@ -57,13 +57,6 @@ class Fault {
     virtual ~Fault();
 
     /**
-     * @brief Check if two faults are equal.
-     * 
-     * @return True if they are similar and false otherwise.
-     */
-    virtual bool equal(const Fault& other); //const = 0;
-
-    /**
      * @brief Print the fault.
      */
     virtual void pretty_print() const;
@@ -390,6 +383,14 @@ class SyncPagesF : public Fault {
     bool equal(const SyncPagesF& other) const;
 
     /**
+     * @brief Extract from a set of pages ids to a set of page ids to sync.
+     * 
+     * @param pages_id Set of all page ids.
+     * @return Set of page ids to sync.
+     */
+    virtual unordered_set<int> filter_pages_to_sync (unordered_set<int> pages_id) = 0; 
+
+    /**
      * @brief Print the fault.
      */
     virtual void pretty_print() const override;
@@ -448,6 +449,14 @@ class SyncPagesPartsF : public SyncPagesF {
     static Pages string_to_pages(string& pages);
 
     /**
+     * @brief Extract from a set of pages ids to a set of page ids to sync. In this case, the pages to sync are defined as a type (e.g., first half, interleaved, etc.).
+     * 
+     * @param pages_id Set of all page ids.
+     * @return Set of page ids to sync.
+     */
+    unordered_set<int> filter_pages_to_sync (unordered_set<int> pages_id) override;
+
+    /**
      * @brief Check if the parameters have correct values for the fault.
      * 
      * @return Vector with errors.
@@ -493,6 +502,14 @@ class SyncPagesNumberedF : public SyncPagesF {
      * @return Vector with errors.
     */
     vector<string> validate() override;
+
+    /**
+     * @brief Extract from a set of pages ids to a set of page ids to sync. In this case, only the pages specified in the pages vector will be synced.
+     * 
+     * @param pages_id Set of all page ids.
+     * @return Set of page ids to sync.
+     */
+    unordered_set<int> filter_pages_to_sync (unordered_set<int> pages_id) override;
 
     /**
      * @brief Print the fault.

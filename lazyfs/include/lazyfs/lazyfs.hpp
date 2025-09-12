@@ -235,13 +235,11 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      * @brief Fifo: (fault) Persist the cached pages requested.
      * Only use after obtaining lock on cache_command_lock.
      * 
-     * @param path Path of the file
-     * @param parts Pages to be persisted
-     * @param sync_other_files Indicates if other files should be synced
-     * @param lock_needed Indicates if the cache_command_lock should be locked. When this function is called inside a filesystem operation, it should be false, because all filesystem operations are already locked. When called from the fault handler, it should be true.
+     * @param sync_pages The sync-pages fault to be injected.
+     * @param lock_needed Indicates if the cache_command_lock should be locked. When this function is called inside a filesystem call (e.g., lfs_write), it should be false, because all filesystem calls are already locked. When called from the fault handler, it should be true.
      *
      */
-    void command_fault_sync_page (string path, string parts, bool sync_other_files, bool lock_needed = true);
+    void command_fault_sync_page (faults::SyncPagesF sync_pages, bool lock_needed = true);
 
     /**
      * @brief Fifo: (info) Display the cache usage

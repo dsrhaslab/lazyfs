@@ -109,6 +109,24 @@ void CustomCacheEngine::print_page_cache_engine () {
     cout << "----------------------------------------------------------------" << endl;
 }
 
+void CustomCacheEngine::print_page_cache () { //CHECK THIS LATER
+
+    cout << "---------------------------- PAGE CACHE ----------------------------" << endl;
+
+    for (auto const& it : this->owner_pages_mapping) {
+        cout << "------------------------------------------------------------" << endl;
+        cout << "OWNER: " << it.first << endl;
+        
+        for (const auto& page_id : it.second) {
+            cout << "-------------------------" << endl;
+            cout << "Page ID: " << page_id << endl;
+            cout << "-------------------------" << endl;
+        }
+        cout << "------------------------------------------------------------" << endl;
+    }
+
+} // namespace cache::engine::backends::custom
+
 Page* CustomCacheEngine::_get_page_ptr (int page_id) {
 
     if (this->search_index.find (page_id) != this->search_index.end ())
@@ -570,7 +588,7 @@ bool CustomCacheEngine::sync_pages (string owner, off_t size, char* orig_path) {
     return res;
 }
 
-bool CustomCacheEngine::partial_sync_pages (string owner, off_t last_size, char* orig_path, string parts) {
+bool CustomCacheEngine::partial_sync_pages (string owner, off_t last_size, char* orig_path, faults::SyncPagesF &sync_pages) {
 
     std::unique_lock<std::shared_mutex> lock (lock_cache_mtx);
 
@@ -584,54 +602,18 @@ bool CustomCacheEngine::partial_sync_pages (string owner, off_t last_size, char*
 
         auto& iterate_blocks = this->owner_ordered_pages_mapping.at (owner);
 
+        unordered_set<int> ids_pages_to_sync = sync_pages.filter_pages_to_sync (this->get_owner_dirty_pages_ids (owner));
+
         //<inode, <page id,page ptr,offsets>>
         map<int, tuple<int, Page*, pair<int, int>, bool>> new_iterate_blocks;
 
-        int size = iterate_blocks.size();
-        //spdlog::warn("SIZE = {}", size);
+        for (auto cit = iterate_blocks.begin (); cit != iterate_blocks.end (); cit++) {
+            auto page_id = std::get<0> (cit->second);
 
-        if (parts == "first") {
-
-            auto cit = iterate_blocks.begin();
-
-            auto pptr = std::get<1> (cit->second);
-            if (pptr->is_page_dirty ()) {
+            if (ids_pages_to_sync.find (page_id) != ids_pages_to_sync.end ()) {
                 new_iterate_blocks.insert ({cit->first, cit->second});
-                pptr->set_page_as_dirty (false);
-            }
 
-        } else if (parts == "last") {
-
-            auto cit = iterate_blocks.rbegin();
-
-            auto pptr = std::get<1> (cit->second);
-            if (pptr->is_page_dirty ()) {
-                new_iterate_blocks.insert ({cit->first, cit->second});
-                pptr->set_page_as_dirty (false);
-            }
-
-        } else if (parts == "first-half") {
-            
-            auto cit = iterate_blocks.begin ();
-            for (int i = 0; i < size/2; i++) {
-                auto pptr = std::get<1> (cit->second);
-                if (pptr->is_page_dirty ()) {
-                    new_iterate_blocks.insert ({cit->first, cit->second});
-                    pptr->set_page_as_dirty (false);
-                }
-                cit++;
-            }
-
-        } else if (parts == "last-half") {
-            
-            auto cit = iterate_blocks.rbegin ();
-            for (int i = size/2; i <= size; i++) {
-                auto pptr = std::get<1> (cit->second);
-                if (pptr->is_page_dirty ()) {
-                    new_iterate_blocks.insert ({cit->first, cit->second});
-                    pptr->set_page_as_dirty (false);
-                }
-                cit++;
+                auto page_ptr = std::get<1> (cit->second);
             }
         }
 
@@ -646,6 +628,7 @@ bool CustomCacheEngine::partial_sync_pages (string owner, off_t last_size, char*
             auto current_block_id     = it->first;
             auto const& next_block_id = std::next (it, 1)->first;
 
+            // Check if we can minimize the number of writev calls
             if ((page_streak < (__IOV_MAX - 1)) && (it != prev (new_iterate_blocks.end (), 1)) &&
                 (current_block_id == (next_block_id - 1))) {
 
@@ -686,7 +669,7 @@ bool CustomCacheEngine::partial_sync_pages (string owner, off_t last_size, char*
                 }
 
                 wrote_bytes += pwritev (fd, iov, page_streak, page_streak_last_offset);
-
+                
                 if (wrote_bytes < 0) {
                     spdlog::warn ("[cache] pwritev of partial sync failed");
                     res = false;
@@ -706,6 +689,44 @@ bool CustomCacheEngine::partial_sync_pages (string owner, off_t last_size, char*
     }
 
     close (fd);
+
+    return res;
+}
+
+unordered_set<int> CustomCacheEngine::get_owner_cached_pages_ids (string owner) {
+    
+    std::shared_lock<std::shared_mutex> lock (lock_cache_mtx);
+
+    unordered_set<int> res;
+
+    if (this->owner_pages_mapping.find (owner) != this->owner_pages_mapping.end ()) {
+
+        res = this->owner_pages_mapping.at (owner);
+            
+        }
+
+    return res;
+}
+
+unordered_set<int> CustomCacheEngine::get_owner_dirty_pages_ids (string owner) {
+    
+    std::shared_lock<std::shared_mutex> lock (lock_cache_mtx);
+
+    unordered_set<int> res;
+
+    if (this->owner_pages_mapping.find (owner) != this->owner_pages_mapping.end ()) {
+
+        auto owner_pgs = this->owner_pages_mapping.at (owner);
+
+        for (auto page_it = owner_pgs.begin (); page_it != owner_pgs.end (); page_it++) {
+
+            Page* page_ptr = _get_page_ptr (*page_it);
+
+            if (page_ptr->is_page_dirty ())
+                res.insert (*page_it);
+            
+        }
+    }
 
     return res;
 }

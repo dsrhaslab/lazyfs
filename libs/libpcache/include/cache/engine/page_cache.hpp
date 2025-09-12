@@ -102,14 +102,15 @@ class PageCacheEngine {
      * @param block_id the block id
      * @param offset the max readable offset
      */
-    virtual void
-    make_block_readable_to_offset (string cid, int page_id, int block_id, int offset) = 0;
+    virtual void make_block_readable_to_offset (string cid, int page_id, int block_id, int offset) = 0;
 
     /**
      * @brief Pretty prints the page cache contents
      *
      */
     virtual void print_page_cache_engine () = 0;
+
+    virtual void print_page_cache () = 0;
 
     /**
      * @brief Get the engine usage percentage (used pages / total pages)
@@ -149,11 +150,11 @@ class PageCacheEngine {
      * @param owner the content id
      * @param size final file size
      * @param orig_path original file name to sync data
-     * @param parts blocks to sync
+     * @param pages pages to sync
      * @return true the pages were synced
      * @return false the content was not found
      */
-    virtual bool partial_sync_pages (string owner, off_t size, char* orig_path, string parts) = 0;
+    virtual bool partial_sync_pages (string owner, off_t size, char* orig_path, faults::SyncPagesF& sync_pages) = 0;
 
     /**
      * @brief Checks if the owner is synced with the underlying filesystem
@@ -163,6 +164,22 @@ class PageCacheEngine {
      * @return false the owner is not synced
      */
     virtual bool is_owner_synced (string owner) = 0;
+    
+    /**
+     * @brief Gets the list of pages ids cached for an owner
+     *
+     * @param owner the content id
+     * @return the list of ids of cached pages
+     */
+    virtual unordered_set<int> get_owner_cached_pages_ids (string owner) = 0;
+    
+    /**
+     * @brief Gets the list of dirty pages ids cached for an owner
+     *
+     * @param owner the content id
+     * @return the list of ids of dirty cached pages
+     */
+    virtual unordered_set<int> get_owner_dirty_pages_ids (string owner) = 0;
 
     /**
      * @brief Renames the content associated with an owner to the new owner

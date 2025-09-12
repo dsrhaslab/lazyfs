@@ -68,7 +68,13 @@ void Cache::print_cache () {
     cout << "---------------------------------------------------------------" << endl;
 }
 
-void Cache::print_engine () { this->engine->print_page_cache_engine (); }
+void Cache::print_all_engine () { this->engine->print_page_cache_engine (); }
+
+void Cache::print_occupied_engine() { this->engine->print_page_cache (); } // CHECK THIS LATER
+
+int Cache::get_page_size () {
+    return this->cache_config->CACHE_PAGE_SIZE;
+}
 
 string Cache::get_original_inode (string path) {
     lock_guard<std::shared_mutex> lock (lock_cache_mtx);
@@ -397,6 +403,36 @@ bool Cache::sync_owner (string owner, bool only_sync_data, char* orig_path) {
     return res;
 }
 
+bool Cache::partial_file_sync (string owner, faults::SyncPagesF &sync_pages) {
+
+    std::unique_lock<shared_mutex> lock (lock_cache_mtx, std::defer_lock);
+    lock.lock ();
+
+    if (!has_content_cached (owner)) {
+
+        lock.unlock ();
+        return -1;
+    }
+
+    lockItem (owner);
+    lock.unlock ();
+
+    off_t last_size = get_content_metadata (owner)->size;
+
+    //spdlog::info ("[CACHE]: partial file sync for inode: {} path: {} parts: {}", inode, path, parts);
+
+    char * path = new char[sync_pages.path.length() + 1];
+    strcpy(path, sync_pages.path.c_str());
+
+    bool res = this->engine->partial_sync_pages (owner, last_size, path, sync_pages);
+
+    //if (this->engine->is_owner_synced (inode)) {
+    //    _get_content_ptr (inode)->set_data_sync_flag (true);
+    //}
+    
+    return true;
+}
+
 bool Cache::rename_item (string old_cid, string new_cid) {
 
     bool return_val = true;
@@ -563,20 +599,13 @@ void Cache::full_checkpoint () {
         this->sync_owner (it.second, false, (char*)it.first.c_str ());
 }
 
-bool Cache::partial_file_sync (string owner, char* path, string parts) {
+void Cache::partial_checkpoint (string owner_to_exclude) {
 
-    string inode = get_original_inode (owner);
-    off_t last_size = get_content_metadata (inode)->size;
-
-    //spdlog::info ("[CACHE]: partial file sync for inode: {} path: {} parts: {}", inode, path, parts);
-
-    bool res = this->engine->partial_sync_pages (inode, last_size, path, parts);
-
-    if (this->engine->is_owner_synced (inode)) {
-        _get_content_ptr (inode)->set_data_sync_flag (true);
+    for (auto const& it : this->file_inode_mapping) {
+        if (it.first != owner_to_exclude) {
+            this->sync_owner (it.second, true, (char*)it.first.c_str ());
+        }
     }
-    
-    return res;
 }
 
 std::vector<tuple<string, size_t, vector<tuple<int, pair<int, int>, int>>>>
