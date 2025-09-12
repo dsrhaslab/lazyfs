@@ -301,6 +301,50 @@ SyncPagesPartsF::Pages SyncPagesPartsF::string_to_pages(string& pages) {
     else throw std::invalid_argument("Invalid page type: " + pages + ". Valid options are: all, first-half, last-half, first, last, first-and-last, interleaved, random.");
 }
 
+unordered_set<int> SyncPagesPartsF::filter_pages_to_sync (unordered_set<int> pages_id) {
+    unordered_set<int> pages_id_filtered;
+    int total_pages = pages_id.size();
+    
+    switch (this->pages) {
+        case SyncPagesPartsF::Pages::ALL:
+            for (int i = 0; i < total_pages; ++i) {
+                pages_id_filtered.insert(i);
+            }
+            break;
+        case SyncPagesPartsF::Pages::FIRST_HALF:
+            for (int i = 0; i < total_pages / 2; ++i) {
+                pages_id_filtered.insert(i);
+            }
+            break;
+        case SyncPagesPartsF::Pages::SECOND_HALF:
+            for (int i = total_pages / 2; i < total_pages; ++i) {
+                pages_id_filtered.insert(i);
+            }
+            break;
+        case SyncPagesPartsF::Pages::FIRST:
+            pages_id_filtered.insert(0);
+            break;
+        case SyncPagesPartsF::Pages::LAST:
+            pages_id_filtered.insert(total_pages - 1);
+            break;
+        case SyncPagesPartsF::Pages::FIRST_AND_LAST:
+            pages_id_filtered.insert(0);
+            pages_id_filtered.insert(total_pages - 1);
+            break;
+        case SyncPagesPartsF::Pages::INTERLEAVED:
+            for (int i = 0; i < total_pages; i += 2) {
+                pages_id_filtered.insert(i);
+            }
+            break;
+        case SyncPagesPartsF::Pages::RANDOM:
+            // Random logic can be implemented here
+            // TO-DO
+            break;
+    }
+
+    return pages_id_filtered;
+}
+
 vector<string> SyncPagesPartsF::validate() {
     return SyncPagesF::validate();
 }
@@ -329,6 +373,17 @@ SyncPagesNumberedF::SyncPagesNumberedF(string timing, string op, string from, st
 }
 
 SyncPagesNumberedF::~SyncPagesNumberedF(){}
+
+unordered_set<int> SyncPagesNumberedF::filter_pages_to_sync (unordered_set<int> pages_id) {
+    unordered_set<int> pages_id_filtered;
+
+    for (const auto& page : this->pages) {
+        if (pages_id.find(page) != pages_id.end()) {
+            pages_id_filtered.insert(page);
+        }
+    }
+    return pages_id_filtered;
+}
 
 vector<string> SyncPagesNumberedF::validate() {
     vector<string> errors = SyncPagesF::validate();

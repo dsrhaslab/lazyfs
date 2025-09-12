@@ -257,6 +257,7 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                             }
                         }
                         if (valid_fault) (it->second).push_back(fault);
+                        else delete fault; // Delete the fault if it is not valid
                     }
 
                 }
@@ -352,6 +353,7 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                             }
                         }
                         if (valid_fault) (it->second).push_back(fault);
+                        else delete fault; // Delete the fault if it is not valid
                     }
                 }
 
@@ -428,6 +430,7 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                             }
                         }
                         if (valid_fault) (it->second).push_back(fault);
+                        else delete fault; // Delete the fault if it is not valid
                     }
                 }
             
@@ -493,8 +496,10 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                         faults::SyncPagesPartsF::Pages pages_parts = faults::SyncPagesPartsF::string_to_pages(pages);
 
                         fault = new faults::SyncPagesPartsF(timing,op,from,to,occurrence,crash,ret,sync_other_files,pages_parts);
+
                     } else { // Pages are defined as a vector of integers
                         fault = new faults::SyncPagesNumberedF(timing,op,from,to,occurrence,ret,crash,sync_other_files,pages_numbers);
+
                     }
                     errors = fault->validate();
                 }
@@ -525,7 +530,8 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
                                 }
                             }
                         }
-                        if (valid_fault) (it->second).push_back(fault);
+                        if (valid_fault) (it->second).push_back(fault); 
+                        else delete fault; // Delete the fault if it is not valid
                     }
                 }
 

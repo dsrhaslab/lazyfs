@@ -105,6 +105,11 @@ class Cache {
     ~Cache ();
 
     /**
+     * @brief Gets the page size of the cache.
+     */
+    int get_page_size ();
+
+    /**
      * @brief Creates an empty item with the specified id.
      *
      * @param cid the content id
@@ -142,7 +147,7 @@ class Cache {
     bool update_content_metadata (string cid, Metadata new_meta, vector<string> values_to_update);
 
     /**
-     * @brief Get the content metadata object
+     * @brief Get the content metadata object.
      *
      * @param cid the content id
      * @return Metadata* a reference to the content metadata
@@ -182,16 +187,23 @@ class Cache {
     bool is_block_cached (string cid, int blk_id);
 
     /**
-     * @brief Pretty prints a cache object
+     * @brief Pretty prints a cache object.
      *
      */
     void print_cache ();
 
     /**
-     * @brief Calls Engine pretty print method
+     * @brief Calls Engine pretty print method on all page cache. 
+     * @note: This will print all page cache pages, even those that are free. 
      *
      */
-    void print_engine ();
+    void print_all_engine ();
+
+
+      /**
+       * @brief Calls Engine pretty print method. 
+       */
+    void print_occupied_engine ();
 
     /**
      * @brief Locks an Item (assuming it exists)
@@ -277,15 +289,21 @@ class Cache {
     void full_checkpoint ();
 
     /**
-     * @brief Performs a partial checkpoint for uncached data based on input from user
+     * @brief Performs a partial checkpoint for uncached data, excluding the specified owner
+     *
+     * @param owner_to_exclude the content id to exclude from checkpoint.
+     */
+    void partial_checkpoint (string owner_to_exclude);
+
+    /**
+     * @brief Performs a partial sync for cached data.
      *
      * @param owner the content id
-     * @param path original path name
-     * @param parts parts from file that will be removed
+     * @param pages partial pages sync fault
      * @return bool true if parts were synced
      * 
      */
-    bool partial_file_sync (string owner, char* path, string parts);
+    bool partial_file_sync (string owner, faults::SyncPagesF& pages);
 
     /**
      * @brief Gets the list of files that have unsynced data, mapped to

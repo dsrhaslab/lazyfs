@@ -251,10 +251,10 @@ bool LazyFS::trigger_configured_clear_fault (string opname,
                             this_ ()->command_unsynced_data_report (this->injecting_fault);
                             this->injecting_fault_lock.unlock ();
 
-                            this_ ()->command_fault_sync_page (from_path,
-                                                               page_fault->pages,
-                                                               page_fault->sync_other_files,
-                                                               lock_needed);
+                            //this_ ()->command_fault_sync_page (from_path,
+                             //                                  "helo" //page_fault->pages, // remove§
+                              //                                 page_fault->sync_other_files,
+                               //                                lock_needed);
 
                             if (optiming == "after" && page_fault->ret) {
                                 this_ ()->kill_before.store (true);
@@ -753,30 +753,28 @@ void LazyFS::command_fault_clear_cache (bool lock_needed) {
     spdlog::warn ("[lazyfs.cmds]: cache is cleared.");
 }
 
-void LazyFS::command_fault_sync_page (string path,
-                                      string parts,
-                                      bool sync_other_files,
-                                      bool lock_needed) {
+void LazyFS::command_fault_sync_page (faults::SyncPagesF sync_pages, bool lock_needed) {
 
     if (lock_needed)
         std::unique_lock<std::shared_mutex> lock (cache_command_lock);
 
-    spdlog::warn ("[lazyfs.{}]: sync pages request submitted...", SYNC_PAGES);
+    spdlog::warn ("[lazyfs.cmds]: sync pages request submitted...");
 
-    string owner (path);
+    string owner (sync_pages.path);
 
-    bool synced = FSCache->partial_file_sync (owner, const_cast<char*> (path.c_str ()), parts);
+    bool synced = FSCache->partial_file_sync (owner, sync_pages);
 
     if (!synced)
-        spdlog::warn ("[lazyfs.{}]: sync pages went wrong!", SYNC_PAGES);
+        spdlog::warn ("[lazyfs.cmd]: sync pages went wrong!");
     else {
-        spdlog::info ("[lazyfs.{}]: sync pages successfuly!", SYNC_PAGES);
+        spdlog::info ("[lazyfs.cmd]: sync pages successfuly!");
 
-        if (sync_other_files) {
+        if (sync_pages.sync_other_files) {
             spdlog::warn (
                 "[lazyfs.{}]: sync other files is enabled, proceeding to sync other files...",
                 SYNC_PAGES);
-                
+            
+
             vector<string> inodes = FSCache->unsynced_inodes ();
 
             string path_inode = this_ ()->FSCache->get_original_inode (owner);
