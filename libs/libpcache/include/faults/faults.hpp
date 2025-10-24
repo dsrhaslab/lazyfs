@@ -5,8 +5,10 @@
 #include <vector>
 #include <optional>
 #include <atomic>
+#include <map>
 #include <unordered_map>
 #include <unordered_set>
+#include <variant>
 
 #define TORN_OP "torn-op"
 #define TORN_SEQ "torn-seq"
@@ -14,6 +16,7 @@
 #define SYNC_PAGES "sync-pages"
 
 using namespace std;
+using FaultParam = std::variant<int, double, bool, string, std::vector<int>>;
 
 namespace faults {
 /**
@@ -31,7 +34,7 @@ class Fault {
      * @brief Map of allowed operations to have a crash fault
      *
      */
-    static const std::unordered_set<string> allow_crash_fs_operations;
+    static const std::unordered_set<string> allow_clear_fs_operations;
 
     /**
      * @brief Map of operations that have two paths
@@ -183,7 +186,6 @@ class ReorderF : public Fault {
      * @brief True if LazyFS crashes only after completing the current system call. False if otherwise.
      */
     bool ret;
-
   
     /**
      * @brief Construct a new Fault object.
@@ -287,6 +289,27 @@ class ClearF : public Fault {
     */
     vector<string> validate();
 
+    template<typename T> T getParam (
+        const unordered_map<std::string, FaultParam>& params,
+        const std::string& key,
+        bool required = true,
+        bool (*validator) (const T&) = nullptr,
+        T (*converter) (const std::string&) = nullptr    
+    );
+
+    static bool timing_validator (const string& s);
+
+    static bool string_validator (const string& s);
+
+    static bool op_validator (const string& s);
+
+    static bool from_validator (const string& s);
+    static bool to_validator (const string& s, const string& op);
+    static bool occurrence_validator (const int& i);
+    static bool bool_converter (const string& s);
+    static int int_converter (const string& s);
+
+
     /**
      * @brief Print the fault.
      */
@@ -301,13 +324,8 @@ class ClearF : public Fault {
 */
 class SyncPagesF : public Fault {
   public:
-    /**
-     * @brief Path of the file where the fault will be injected.
-     */
-    string path;
-
-    /**
-     * @brief Timing of the fault ("before","after").
+    /** 
+       * @brief Timing of the fault ("before","after").
     */
     string timing;
 
@@ -338,7 +356,7 @@ class SyncPagesF : public Fault {
 
     /**
      * @brief If LazyFS should crash after the fault is injected.
-     */
+    */
     bool crash;
 
     /**
@@ -346,6 +364,11 @@ class SyncPagesF : public Fault {
      */
     bool ret;
 
+    /**
+     * @brief Path of the file where the fault will be injected.
+     */
+    string file;
+    
     /**
      * @brief True if we want to fsync other files.
      */
@@ -359,12 +382,20 @@ class SyncPagesF : public Fault {
     /**
       * @brief Parameterized constructor of a new SyncPagesF object.
       */
-    SyncPagesF(string timing, string op, string from, string to, int occurrence, bool crash, bool ret, bool sync_other_files);
+    SyncPagesF(string file, string timing, string op, string from, string to, int occurrence, bool crash, bool ret, bool sync_other_files);
     
     /**
      * @brief Default destructor for a SyncPagesF object.
      */
     virtual ~SyncPagesF ();
+
+    /**
+     * @brief Create a SyncPagesF object from a map of parameters.
+     * 
+     * @param params_map Map of parameters.
+     * @return SyncPagesF* Pointer to the created SyncPagesF object.
+     */
+    static SyncPagesF* SyncPagesF::tryCreate(std::unordered_map<std::string,FaultParam>& params_map);
 
     /**
      * @brief Check if the parameters have correct values for the fault.
@@ -374,8 +405,14 @@ class SyncPagesF : public Fault {
     virtual vector<string> validate();
 
     /**
+     * @brief Check if the parameters have correct values for the fault.
+     * @param params_map Map of parameters.
+     */
+    virtual vector<string> validate(std::unordered_map<std::string,FaultParam>& params_map);
+
+    /**
      * @brief Compare if two SyncPagesF objects are similar. Two SyncPages faults are similar if they have the same timing, op, from and to. 
-     * If the fault type is SyncPagesPartsF or SyncPagesNumberedF, two faults with different pages will colide, so the pages are not considered in the comparison.
+     * If the fault type is SyncPagesPartsF or SyncPagesNumberedF, two faults with different pages will colide.
      * 
      * @param other Another SyncPagesF object to compare with.
      * @return bool True if they're similar, false otherwise.
@@ -417,6 +454,11 @@ class SyncPagesPartsF : public SyncPagesF {
     Pages pages;
 
     /**
+     * @brief Allowed options for pages.
+     */
+    static const unordered_set<string> pages_options;
+
+    /**
      * @brief Default constructor of a new SyncPagesPartsF object.
      */
     SyncPagesPartsF();
@@ -424,16 +466,18 @@ class SyncPagesPartsF : public SyncPagesF {
     /**
      * @brief Parameterized constructor of a new SyncPagesPartsF object.
      *
+     * @param file Path of the file where the fault will be injected.
      * @param timing Timing of the fault ("before","after").
      * @param op System call (i.e. "write", ...).
      * @param from Path of the system call.
      * @param to Path when op requires two paths (e.g., rename system call).
      * @param occurrence Occurrence of the op.
+     * @param crash If the fault is a crash fault.
      * @param ret If the current system call is finished before crashing.
      * @param sync_other_files True if we want to fsync other files.
      * @param pages Pages to sync.
      */
-    SyncPagesPartsF(string timing, string op, string from, string to, int occurrence, bool ret, bool crash, bool sync_other_files, Pages pages);
+    SyncPagesPartsF(string file, string timing, string op, string from, string to, int occurrence, bool crash, bool ret, bool sync_other_files, Pages pages);
 
     /**
      * @brief Default destructor for a SyncPagesPartsF object.
@@ -446,7 +490,7 @@ class SyncPagesPartsF : public SyncPagesF {
      * @param page String representation of the page type.
      * @return Pages enum value.
      */
-    static Pages string_to_pages(string& pages);
+    static Pages pages_parts_converter(const string& pages);
 
     /**
      * @brief Extract from a set of pages ids to a set of page ids to sync. In this case, the pages to sync are defined as a type (e.g., first half, interleaved, etc.).
@@ -462,6 +506,9 @@ class SyncPagesPartsF : public SyncPagesF {
      * @return Vector with errors.
     */
     vector<string> validate() override;
+
+    vector<string> validate(unordered_map<string,FaultParam>& params_map) override;
+
 
     /**
      * @brief Print the fault.
@@ -480,6 +527,7 @@ class SyncPagesNumberedF : public SyncPagesF {
     /**
      * @brief Parameterized constructor of a new SyncPagesNumberedF object.
      *
+     * @param file Path of the file where the fault will be injected.
      * @param timing Timing of the fault ("before","after").
      * @param op System call (i.e. "write", ...).
      * @param from Path of the system call.
@@ -489,7 +537,7 @@ class SyncPagesNumberedF : public SyncPagesF {
      * @param sync_other_files True if we want to fsync other files.
      * @param pages Pages to sync.
      */
-    SyncPagesNumberedF(string timing, string op, string from, string to, int occurrence, bool ret, bool crash, bool sync_other_files, vector<int> pages);
+    SyncPagesNumberedF(string file, string timing, string op, string from, string to, int occurrence, bool ret, bool crash, bool sync_other_files, vector<int> pages);
 
     /**
      * @brief Default destructor for a SyncPagesNumberedF object.
@@ -503,6 +551,8 @@ class SyncPagesNumberedF : public SyncPagesF {
     */
     vector<string> validate() override;
 
+    vector<string> validate(unordered_map<string,FaultParam>& params_map) override;
+
     /**
      * @brief Extract from a set of pages ids to a set of page ids to sync. In this case, only the pages specified in the pages vector will be synced.
      * 
@@ -515,7 +565,20 @@ class SyncPagesNumberedF : public SyncPagesF {
      * @brief Print the fault.
      */
     void pretty_print() const override;
+
+
+/*********************************************************************************************/
+
 };
+
+/**
+ * @brief Exception for invalid faults.
+ */
+  class InvalidFault : public runtime_error {
+  public:
+    explicit InvalidFault(const string& message);
+  };
+
 
 } // namespace faults
 

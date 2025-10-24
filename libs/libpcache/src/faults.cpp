@@ -1,12 +1,16 @@
 #include <faults/faults.hpp>
 #include <iostream>
+#include <variant>
+#include <algorithm>
+#include <cctype>
+#include <memory>
 
 using namespace std;
 
 
 namespace faults {
 
-const unordered_set<string> Fault::allow_crash_fs_operations = {"unlink",
+const unordered_set<string> Fault::allow_clear_fs_operations = {"unlink",
                                                                 "truncate",
                                                                 "fsync",
                                                                 "write",
@@ -17,7 +21,21 @@ const unordered_set<string> Fault::allow_crash_fs_operations = {"unlink",
                                                                 "rename",
                                                                 "link",
                                                                 "symlink"};
+
 const unordered_set<string> Fault::fs_op_multi_path = {"rename", "link", "symlink"};
+
+const unordered_set<string> SyncPagesPartsF::pages_options = {
+        "all",
+        "first-half",
+        "second-half",
+        "first",
+        "last",
+        "first-and-last",
+        "interleaved",
+        "random"};
+
+
+/*******************************************************************************************************************/
 
 Fault::Fault(string type) {
     this->type = type;
@@ -188,7 +206,7 @@ vector<string> ClearF::validate() {
         errors.push_back("Occurrence must be greater than 0.");
     }
 
-    if (ClearF::allow_crash_fs_operations.find(this->op) == ClearF::allow_crash_fs_operations.end()) {
+    if (ClearF::allow_clear_fs_operations.find(this->op) == ClearF::allow_clear_fs_operations.end()) {
         errors.push_back("Operation not available.");
     }
 
@@ -222,7 +240,8 @@ void ClearF::pretty_print() const {
 
 
 // Sync Pages Fault
-SyncPagesF::SyncPagesF(string timing, string op, string from, string to, int occurrence, bool crash, bool ret, bool sync_other_files) : Fault(SYNC_PAGES) {
+SyncPagesF::SyncPagesF(string file, string timing, string op, string from, string to, int occurrence, bool crash, bool ret, bool sync_other_files) : Fault(SYNC_PAGES) {
+    this->file = file;
     this->timing = timing;
     this->op = op;
     this->from = from;
@@ -242,7 +261,7 @@ vector<string> SyncPagesF::validate() {
         errors.push_back("Occurrence must be greater than 0.");
     }
 
-    if (SyncPagesF::allow_crash_fs_operations.find(this->op) == SyncPagesF::allow_crash_fs_operations.end()) {
+    if (SyncPagesF::allow_clear_fs_operations.find(this->op) == SyncPagesF::allow_clear_fs_operations.end()) {
         errors.push_back("Operation not available.");
     }
 
@@ -263,8 +282,173 @@ vector<string> SyncPagesF::validate() {
     return errors;
 }
 
+
+template<typename T> optional<T> getParam (
+    const unordered_map<std::string, FaultParam>& params,
+    const std::string& key,
+    bool required = true,
+    bool (*validator) (const T&) = nullptr,
+    T (*converter) (const std::string&) = nullptr) {
+
+    optional<T> res = nullopt;
+
+    auto it = params.find(key);
+    if (it == params.end()) {
+        if (required) throw InvalidFault("Missing parameter: " + key);
+    }
+
+    if (auto p = std::get_if<T>(&it->second)) {
+        if (!validator || validator(*p)) return *p;
+        throw InvalidFault("Invalid value for: " + key );
+
+    } else if (converter) {
+        if (auto p_str = std::get_if<string>(&it->second)) {
+            try {
+                T converted = converter(*p_str);
+                if (!validator || validator(converted)) return converted;
+                 throw InvalidFault("Invalid value for: " + key );
+            } catch (invalid_argument& e) {
+                throw InvalidFault("Conversion error for parameter: " + key);
+            }
+        }
+    }
+
+    if (required) throw InvalidFault("Wrong type for parameter: " + key);
+    return res;
+}
+
+bool timing_validator (const string& s) { 
+    string lower_s = s;
+    transform(lower_s.begin(), lower_s.end(), lower_s.begin(), ::tolower);
+    return lower_s == "before" || lower_s == "after"; 
+}
+
+bool string_validator (const string& s) { 
+    return !s.empty() && s != "none";
+}
+
+bool pages_numbered_validator (const vector<int>& v) {
+    if (v.empty()) return false;
+    for (const auto& p : v) {
+        if (p <= 0) return false;
+    }
+    return true;
+}
+
+bool to_validator (const string& s, const string& op) { 
+    if (SyncPagesF::fs_op_multi_path.find(op) != SyncPagesF::fs_op_multi_path.end()) {
+        return !s.empty() && s != "none"; 
+    }
+    throw InvalidFault("The specified \"to\" parameter is not needed for the specified operation.");
+}
+
+bool occurrence_validator (const int& i) { 
+    return i > 0; 
+}   
+
+bool bool_converter (const string& s) {
+    string s_lower = s;
+    transform(s_lower.begin(), s_lower.end(), s_lower.begin(), ::tolower);
+    if (s_lower == "true") return true;
+    if (s_lower == "false") return false;
+    throw InvalidFault("Conversion error from string to bool.");
+}
+
+int int_converter (const string& s) {
+    try {
+        return stoi(s);
+    } catch (invalid_argument& e) {
+        throw InvalidFault("Conversion error from string to int.");
+    }
+}
+
+vector<int> vector_converter (const string& s) {
+    vector<int> result;
+    size_t start = 0;
+    size_t end = s.find(',');
+    while (end != string::npos) {
+        string token = s.substr(start, end - start);
+        try {
+            int value = stoi(token);
+            result.push_back(value);
+        } catch (invalid_argument& e) {
+            throw InvalidFault("Conversion errorfrom string to vector<int>.");
+        }
+        start = end + 1;
+        end = s.find(',', start);
+    }
+    string token = s.substr(start);
+    try {
+        int value = stoi(token);
+        result.push_back(value);
+    } catch (invalid_argument& e) {
+        throw InvalidFault("Conversion error from string to vector<int>.");
+    }
+    return result;
+}
+
+SyncPagesF* SyncPagesF::tryCreate(std::unordered_map<std::string,FaultParam>& params_map) {
+    try {
+        auto file = getParam<string>(params_map, "file", true, ClearF::string_validator , nullptr);
+
+        auto timing = getParam<string>(params_map, "timing", true, ClearF::timing_validator, nullptr);
+
+        auto crash = getParam<bool>(params_map, "crash", true, nullptr, ClearF::bool_converter);
+
+        auto ret = getParam<bool>(params_map, "ret", false, nullptr, ClearF::bool_converter).value_or(true);
+
+        auto occurrence = getParam<int>(params_map, "occurrence", true, ClearF::occurrence_validator, ClearF::int_converter);
+
+        auto op = getParam<string>(params_map, "op", true, ClearF::op_validator, nullptr);
+
+        auto from = getParam<string>(params_map, "from", true, ClearF::string_validator, nullptr);
+ 
+        auto to = getParam<string>(params_map, "to", false, ClearF::string_validator, nullptr).value_or("none");
+
+        if (op) {
+            bool is_multi_path = (SyncPagesF::fs_op_multi_path.find(op.value()) != SyncPagesF::fs_op_multi_path.end());
+            if (is_multi_path != (to != "none")) {
+            throw InvalidFault(is_multi_path ?
+                "The parameter \"to\" is needed for the specified \"op\"." :
+                "The parameter \"to\" is not needed for the specified \"op\".");
+            }
+        }
+
+        auto sync_other_files = getParam<bool>(params_map, "sync_other_files", false, nullptr, ClearF::bool_converter).value_or(true);
+
+        auto pages_parts = getParam<SyncPagesPartsF::Pages>(params_map, "pages", false, nullptr, SyncPagesPartsF::pages_parts_converter);
+
+        auto pages_numbered = getParam<vector<int>>(params_map, "pages", false, pages_numbered_validator, vector_converter);
+
+        if (file.has_value() && timing.has_value() && crash.has_value() && occurrence.has_value() && op.has_value() && from.has_value()) {
+            if (pages_parts.has_value() && pages_numbered.has_value()) {
+                throw InvalidFault("Parameters \"pages\" (as parts) and \"pages\" (as numbered) are mutually exclusive.");
+            } else if (pages_parts.has_value()) {
+
+                SyncPagesPartsF * fault = new SyncPagesPartsF(file.value(), timing.value(), op.value(), from.value(), to, occurrence.value(), crash.value(), ret, sync_other_files, pages_parts.value());
+                return fault;
+
+            } else if (pages_numbered.has_value()) {
+
+                SyncPagesNumberedF * fault = new SyncPagesNumberedF(file.value(), timing.value(), op.value(), from.value(), to, occurrence.value(), crash.value(), ret, sync_other_files, pages_numbered.value());
+                return fault;
+
+            } else {
+                throw InvalidFault("Missing required parameter for SyncPages fault. You must specify either \"pages_parts\" (as parts) or \"pages_numbered\" (as numbered).");
+            }
+
+        } else {
+            throw InvalidFault("Missing required parameters for SyncPages fault.");
+        }
+
+    } catch (const InvalidFault& e) {
+        throw e;
+    }
+}
+
 bool SyncPagesF::equal(const SyncPagesF& other) const {
-    return (this->timing == other.timing &&
+    return (this->file == other.file &&
+            this->timing == other.timing &&
             this->op == other.op &&
             this->from == other.from &&
             this->to == other.to);
@@ -283,13 +467,13 @@ void SyncPagesF::pretty_print() const {
 }
 
 // Sync pages with parts
-SyncPagesPartsF::SyncPagesPartsF(string timing, string op, string from, string to, int occurrence, bool crash, bool ret, bool sync_other_files, Pages pages) : SyncPagesF(timing, op, from, to, occurrence, crash, ret, sync_other_files) {
+SyncPagesPartsF::SyncPagesPartsF(string file, string timing, string op, string from, string to, int occurrence, bool crash, bool ret, bool sync_other_files, Pages pages) : SyncPagesF(file, timing, op, from, to, occurrence, crash, ret, sync_other_files) {
     this->pages = pages;
 }
 
 SyncPagesPartsF::~SyncPagesPartsF(){}
 
-SyncPagesPartsF::Pages SyncPagesPartsF::string_to_pages(string& pages) {
+SyncPagesPartsF::Pages SyncPagesPartsF::pages_parts_converter(const string& pages) {
     if (pages == "all") return SyncPagesPartsF::Pages::ALL;
     else if (pages == "first-half") return SyncPagesPartsF::Pages::FIRST_HALF;
     else if (pages == "last-half") return SyncPagesPartsF::Pages::SECOND_HALF;
@@ -368,7 +552,7 @@ void SyncPagesPartsF::pretty_print() const {
 
 
 // Sync pages numbered
-SyncPagesNumberedF::SyncPagesNumberedF(string timing, string op, string from, string to, int occurrence, bool ret, bool crash, bool sync_other_files, vector<int> pages) : SyncPagesF(timing, op, from, to, occurrence, crash, ret, sync_other_files) {
+SyncPagesNumberedF::SyncPagesNumberedF(string file, string timing, string op, string from, string to, int occurrence, bool ret, bool crash, bool sync_other_files, vector<int> pages) : SyncPagesF(file, timing, op, from, to, occurrence, crash, ret, sync_other_files) {
     this->pages = pages;
 }
 
@@ -401,6 +585,8 @@ vector<string> SyncPagesNumberedF::validate() {
     return errors;
 }
 
+
+
 void SyncPagesNumberedF::pretty_print() const {
     SyncPagesF::pretty_print();
     cout << "  Pages: ";
@@ -409,6 +595,8 @@ void SyncPagesNumberedF::pretty_print() const {
     }
     cout << endl;
 }
+
+InvalidFault::InvalidFault(const std::string& msg): std::runtime_error("Invalid Fault: " + msg) {}
 
 // namespace faults
 };
