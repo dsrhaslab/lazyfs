@@ -169,7 +169,7 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      * @brief Map of allowed operations to have a crash fault
      *
      */
-    /*std::unordered_set<string> allow_crash_fs_operations = {"unlink",
+    /*std::unordered_set<string> allow_clear_fs_operations = {"unlink",
                                                             "truncate",
                                                             "fsync",
                                                             "write",
@@ -417,7 +417,7 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      * @brief Adds a crash fault to the faults map
      *
      * @param crash_timing 'before' or 'after'
-     * @param crash_operation one of 'allow_crash_fs_operations'
+     * @param crash_operation one of 'allow_clear_fs_operations'
      * @param crash_regex_from a regex indicating the source fault path
      * @param crash_regex_to a regex indicating the destination fault path (for some operations like
      * rename, link...)
@@ -453,7 +453,7 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
     /**
      * @brief Kills lazyfs with SIGKILL if any fault condition verifies
      *
-     * @param opname one of 'allow_crash_fs_operations'
+     * @param opname one of 'allow_clear_fs_operations'
      * @param optiming timing for triggering fault operation ('before' or 'after' a given system call)
      * @param from_op_path source path specified in the operation
      * @param dest_op_path destination path specified in the operation

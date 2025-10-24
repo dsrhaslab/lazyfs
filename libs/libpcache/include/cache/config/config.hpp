@@ -146,6 +146,14 @@ class Config {
     void print_config ();
 
     /**
+     * @brief Converts a toml::value to a FaultParam variant.
+     * 
+     * @param v The toml::value to convert.
+     * @return The corresponding FaultParam variant.
+     */
+    FaultParam tomlValueToParam(const toml::value& v);
+
+    /**
      * @brief Loads and constructs a Config object from the LazyFS config file.
      *
      * @param filename Filename to read the config from

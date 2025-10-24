@@ -32,6 +32,7 @@ target_sources(
     ${CMAKE_PROJECT_NAME}
     PUBLIC
     ${PROJECT_SOURCE_DIR}/include/lazyfs/lazyfs.hpp
+    ${PROJECT_SOURCE_DIR}/include/faults_handler.hpp
     ${PROJECT_SOURCE_DIR}/include/lazyfs/fusepp/Fuse.cpp
     ${PROJECT_SOURCE_DIR}/include/lazyfs/fusepp/Fuse-impl.h
     ${PROJECT_SOURCE_DIR}/include/lazyfs/fusepp/Fuse.h
@@ -43,6 +44,7 @@ target_sources(
     src/lazyfs.cpp
     src/main.cpp
     src/write_handler.cpp
+    src/faults_handler.cpp
 )
 
 target_link_libraries(${CMAKE_PROJECT_NAME} fuse3 Threads::Threads libpcache.so)

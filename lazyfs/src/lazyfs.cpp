@@ -67,7 +67,7 @@ LazyFS::LazyFS (Cache* cache,
     this->kill_before.          store (false);
     this->snapshot_counter.     store(0); 
 
-    for (auto const& it : faults::Fault::allow_crash_fs_operations) {
+    for (auto const& it : faults::Fault::allow_clear_fs_operations) {
         this->crash_faults_before_map.insert ({it, {}});
         this->crash_faults_after_map.insert ({it, {}});
     }
@@ -760,7 +760,7 @@ void LazyFS::command_fault_sync_page (faults::SyncPagesF sync_pages, bool lock_n
 
     spdlog::warn ("[lazyfs.cmds]: sync pages request submitted...");
 
-    string owner (sync_pages.path);
+    string owner (sync_pages.file);
 
     bool synced = FSCache->partial_file_sync (owner, sync_pages);
 

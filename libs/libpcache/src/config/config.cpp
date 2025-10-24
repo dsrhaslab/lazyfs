@@ -61,6 +61,29 @@ void Config::setup_config_by_size (size_t prealloc_bytes, int nr_blocks_per_page
 
 Config::~Config () {}
 
+FaultParam tomlValueToParam(const toml::value& v) {
+    if (v.is_string()) {
+        return v.as_string();
+    } 
+    else if (v.is_integer()) {
+        return static_cast<int>(v.as_integer());  
+    } 
+    else if (v.is_boolean()) {
+        return v.as_boolean();
+    } 
+    else if (v.is_array()) {
+        const auto& arr = v.as_array();
+        if (!arr.empty() && arr[0].is_integer()) {
+            std::vector<int> vec;
+            for (const auto& elem : arr) vec.push_back(static_cast<int>(elem.as_integer()));
+            return vec;
+        } else {
+            throw faults::InvalidFault("Unsupported array type for parameter.");
+        }
+    }
+    throw faults::InvalidFault("Unsupported parameter type.");
+}
+
 unordered_map<string,vector<faults::Fault*>> Config::load_config (string filename) {
 
     const auto data = toml::parse (filename);
@@ -436,103 +459,38 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
             
 
             } else if (type == SYNC_PAGES) {
-                valid_fault = true;
-                error_msg = "The following errors were found in the configuration file for a fault of type " + std::string(SYNC_PAGES) + " : \n";
+                unordered_map<std::string, FaultParam> params_map;
 
-                int occurrence = 1;
-                if (injection.contains("occurrence"))               
-                    occurrence = toml::find<int>(injection,"occurrence");
-
-                string timing{};
-                if (!injection.contains("timing")) {
-                    valid_fault = false;
-                    error_msg += "\tKey 'timing' for some injection of type " + std::string(SYNC_PAGES) + " is not defined in the configuration file.\n";
-                } else 
-                    timing = toml::find<string>(injection,"timing");
-
-                string op{};
-                if (!injection.contains("op")) {
-                    valid_fault = false;
-                    error_msg += "\tKey 'op' for some injection of type " + std::string(SYNC_PAGES) + " is not defined in the configuration file.\n";
-                } else 
-                    op = toml::find<string>(injection,"op");
-
-                string from = "none";
-                if (injection.contains("from")) 
-                    from = toml::find<string>(injection,"from");
-
-                string to = "none";
-                if (injection.contains("to")) 
-                    to = toml::find<string>(injection,"to");
-                
-                bool ret = true;
-                if (injection.contains("return"))
-                    ret = toml::find<bool>(injection,"return");
-
-                bool crash = true;
-                if (injection.contains("crash")) 
-                    crash = toml::find<bool>(injection,"crash");
-
-                bool sync_other_files = false;
-                if (injection.contains("sync_other_files")) 
-                    sync_other_files = toml::find<bool>(injection,"sync_other_files");
-
-                string pages{};
-                vector<int> pages_numbers;
-                if (injection.contains("pages")) {
-                    pages = toml::find<string>(injection,"pages");
-                } else if (injection.contains("pages_numbers")) {
-                    pages_numbers = toml::find<vector<int>>(injection,"pages_numbers");
-                } else {
-                    error_msg += "\tKey 'pages' or 'pages_numbers' for some injection of type " + std::string(SYNC_PAGES) + " is not defined in the configuration file.\n";
-                    valid_fault = false;
+                for (const auto& [key, val] : injection.as_table()) {
+                    params_map[key] = tomlValueToParam(val);
                 }
 
-                faults::SyncPagesF * fault = nullptr;
-                vector<string> errors;
+                try {
+                    faults::SyncPagesF* sync_fault = faults::SyncPagesF::tryCreate(params_map);
 
-                if (valid_fault) {
-                    if (!pages.empty()) { // Pages are defined as a string
-                        faults::SyncPagesPartsF::Pages pages_parts = faults::SyncPagesPartsF::string_to_pages(pages);
+                    auto it = faults.find(sync_fault->from);
+                    bool can_add = true;
 
-                        fault = new faults::SyncPagesPartsF(timing,op,from,to,occurrence,crash,ret,sync_other_files,pages_parts);
-
-                    } else { // Pages are defined as a vector of integers
-                        fault = new faults::SyncPagesNumberedF(timing,op,from,to,occurrence,ret,crash,sync_other_files,pages_numbers);
-
-                    }
-                    errors = fault->validate();
-                }
-
-                if (!valid_fault || errors.size() > 0) {
-                    for (string error : errors) {
-                        error_msg +=  "\t" + error + "\n";
-                    }
-                    spdlog::error(error_msg);
-                    delete fault;
-
-                } else {
-
-                    auto it = faults.find(from);
-                    if (it == faults.end()) {
-                        vector<faults::Fault*> v_faults;
-                        v_faults.push_back(fault);
-                        faults[from] = v_faults;
-                    } else {
-                        for (faults::Fault* f : it->second) {
-                            faults::SyncPagesF* sync_pages_fault = dynamic_cast<faults::SyncPagesF*>(f);
-                            if (sync_pages_fault) {
-                                // Check if the fault is similar to an existing one
-                                if (sync_pages_fault->equal(*fault)) {
-                                    valid_fault = false;
-                                    spdlog::error("There is already a similar " + std::string(SYNC_PAGES) + " fault configured (same timing, op, from, to, occurrence).");
-                                    break;
-                                }
+                    if (it != faults.end()) {
+                        for (auto& fptr : it->second) {
+                            auto* existing = dynamic_cast<faults::SyncPagesF*>(fptr);
+                            if (existing && existing->equal(*sync_fault)) {
+                                can_add = false;
+                                spdlog::error("A similar SyncPages fault already exists for file '{}'.", sync_fault->from);
+                                break;
                             }
                         }
-                        if (valid_fault) (it->second).push_back(fault); 
-                        else delete fault; // Delete the fault if it is not valid
                     }
+
+                    if (can_add) {
+                        faults[sync_fault->from].push_back(sync_fault);  
+                    } else {
+                        delete sync_fault;
+                    }
+                
+                } catch (const std::exception& e) {
+                    spdlog::error("Error creating SyncPages fault: {}", e.what());
+                    continue;
                 }
 
             } else 
