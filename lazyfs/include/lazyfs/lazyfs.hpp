@@ -103,7 +103,7 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
     /**
      * @brief Faults programmed in the configuration file.
      */
-    unordered_map<string,vector<faults::Fault*>>* faults;
+    unordered_map<string,vector<faults::Fault*>>* faults; 
 
     /**
      * @brief FUSE mount directory.
@@ -114,14 +114,6 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      * @brief FUSE root directory. 
      */
     string root_dir;
-
-
-    /**
-     * @brief Faults of LazyFS crash injected during runtime.
-     *
-     * obsolete!
-     */
-    std::unordered_map<string, unordered_set<string>> crash_faults;
 
     /**
      * @brief Number of snapshots taken.
