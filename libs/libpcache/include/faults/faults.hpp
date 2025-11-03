@@ -16,7 +16,9 @@
 #define SYNC_PAGES "sync-pages"
 
 using namespace std;
+
 using FaultParam = std::variant<int, double, bool, string, std::vector<int>>;
+using FaultParamsMap = std::unordered_map<std::string, FaultParam>;
 
 namespace faults {
 /**
@@ -63,6 +65,7 @@ class Fault {
      * @brief Print the fault.
      */
     virtual void pretty_print() const;
+
 };
 
 /*********************************************************************************************/
@@ -289,27 +292,6 @@ class ClearF : public Fault {
     */
     vector<string> validate();
 
-    template<typename T> T getParam (
-        const unordered_map<std::string, FaultParam>& params,
-        const std::string& key,
-        bool required = true,
-        bool (*validator) (const T&) = nullptr,
-        T (*converter) (const std::string&) = nullptr    
-    );
-
-    static bool timing_validator (const string& s);
-
-    static bool string_validator (const string& s);
-
-    static bool op_validator (const string& s);
-
-    static bool from_validator (const string& s);
-    static bool to_validator (const string& s, const string& op);
-    static bool occurrence_validator (const int& i);
-    static bool bool_converter (const string& s);
-    static int int_converter (const string& s);
-
-
     /**
      * @brief Print the fault.
      */
@@ -360,7 +342,8 @@ class SyncPagesF : public Fault {
     bool crash;
 
     /**
-     * @brief True if LazyFS crashes only after completing the current system call. False if otherwise.
+     * IF WE CAN CONFIGURE TO "BEFORE" THE NEXT SYSCALL, WE DON'T NEED THIS
+     * @brief True if LazyFS crashes only after completing the current system call. False if otherwise. 
      */
     bool ret;
 
@@ -395,20 +378,14 @@ class SyncPagesF : public Fault {
      * @param params_map Map of parameters.
      * @return SyncPagesF* Pointer to the created SyncPagesF object.
      */
-    static SyncPagesF* SyncPagesF::tryCreate(std::unordered_map<std::string,FaultParam>& params_map);
+  static SyncPagesF* tryCreate(const std::unordered_map<std::string,FaultParam>& params_map);
 
     /**
      * @brief Check if the parameters have correct values for the fault.
      * 
      * @return Vector with errors.
     */
-    virtual vector<string> validate();
-
-    /**
-     * @brief Check if the parameters have correct values for the fault.
-     * @param params_map Map of parameters.
-     */
-    virtual vector<string> validate(std::unordered_map<std::string,FaultParam>& params_map);
+    virtual vector<string> validate() ;
 
     /**
      * @brief Compare if two SyncPagesF objects are similar. Two SyncPages faults are similar if they have the same timing, op, from and to. 
@@ -448,15 +425,11 @@ class SyncPagesPartsF : public SyncPagesF {
         RANDOM // Sync random pages
     };
 
+
     /**
      * @brief Pages to sync.
      */
     Pages pages;
-
-    /**
-     * @brief Allowed options for pages.
-     */
-    static const unordered_set<string> pages_options;
 
     /**
      * @brief Default constructor of a new SyncPagesPartsF object.
@@ -485,6 +458,15 @@ class SyncPagesPartsF : public SyncPagesF {
     ~SyncPagesPartsF();
 
     /**
+     * @brief Check if a string is a valid pages option.
+     * 
+     * @param s String to check.
+     * @return true If the string is a valid pages option.
+     * @return false Otherwise.
+     */
+    static bool is_pages(const string& s);
+
+    /**
      * @brief Convert a string to a Pages enum.
      * 
      * @param page String representation of the page type.
@@ -507,13 +489,11 @@ class SyncPagesPartsF : public SyncPagesF {
     */
     vector<string> validate() override;
 
-    vector<string> validate(unordered_map<string,FaultParam>& params_map) override;
-
-
     /**
      * @brief Print the fault.
      */
     void pretty_print() const override;
+
 };
 
 class SyncPagesNumberedF : public SyncPagesF {
@@ -551,8 +531,6 @@ class SyncPagesNumberedF : public SyncPagesF {
     */
     vector<string> validate() override;
 
-    vector<string> validate(unordered_map<string,FaultParam>& params_map) override;
-
     /**
      * @brief Extract from a set of pages ids to a set of page ids to sync. In this case, only the pages specified in the pages vector will be synced.
      * 
@@ -580,6 +558,35 @@ class SyncPagesNumberedF : public SyncPagesF {
   };
 
 
+bool timing_validator (const string& s);
+bool string_validator (const string& s);
+bool vector_validator (const vector<int>& v);
+bool to_validator (const string& s, const string& op);
+bool occurrence_validator (const int& i);
+bool bool_converter (const string& s);
+int  int_converter (const string& s);
+vector<int> vector_converter (const string& s);
+
+/**
+ * @brief Get a parameter from the parameters map, validate and convert it.
+ * 
+ * @tparam T Type of the parameter.
+ * @param params Map of parameters.
+ * @param key Key of the parameter.
+ * @param required True if the parameter is required.
+ * @param validator Function to validate the parameter.
+ * @param converter Function to convert the parameter.
+ * @return optional<T> Optional with the parameter value.
+ */
+template<typename T> optional<T> getParam (
+                      const unordered_map<std::string, FaultParam>& params,
+                      const std::string& key,
+                      bool required,
+                      bool (*validator) (const T&),
+                      T (*converter) (const std::string&));
+
 } // namespace faults
+
+
 
 #endif // FAULTS_HPP

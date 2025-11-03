@@ -421,8 +421,8 @@ bool Cache::partial_file_sync (string owner, faults::SyncPagesF &sync_pages) {
 
     //spdlog::info ("[CACHE]: partial file sync for inode: {} path: {} parts: {}", inode, path, parts);
 
-    char * path = new char[sync_pages.path.length() + 1];
-    strcpy(path, sync_pages.path.c_str());
+    char * path = new char[sync_pages.file.length() + 1];
+    strcpy(path, sync_pages.file.c_str());
 
     bool res = this->engine->partial_sync_pages (owner, last_size, path, sync_pages);
 

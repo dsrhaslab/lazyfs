@@ -16,6 +16,7 @@
 #include <cache/engine/backends/custom/custom_cache.hpp>
 #include <lazyfs/fusepp/Fuse-impl.h>
 #include <lazyfs/fusepp/Fuse.h>
+#include <faults/faults.hpp>
 #include <regex>
 #include <thread>
 #include <vector>
@@ -223,15 +224,15 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      */
     void command_fault_clear_cache (bool lock_needed = true);
 
+  void trigger_sync_pages_fault(faults::SyncPagesF &sync_pages);
+
     /**
      * @brief Fifo: (fault) Persist the cached pages requested.
      * Only use after obtaining lock on cache_command_lock.
      * 
      * @param sync_pages The sync-pages fault to be injected.
-     * @param lock_needed Indicates if the cache_command_lock should be locked. When this function is called inside a filesystem call (e.g., lfs_write), it should be false, because all filesystem calls are already locked. When called from the fault handler, it should be true.
-     *
      */
-    void command_fault_sync_page (faults::SyncPagesF sync_pages, bool lock_needed = true);
+  void command_fault_sync_pages (faults::SyncPagesF &sync_pages);
 
     /**
      * @brief Fifo: (info) Display the cache usage
@@ -418,6 +419,9 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
                           string crash_operation,
                           string crash_regex_from,
                           string crash_regex_to);
+    
+
+  void add_sync_pages_fault(const FaultParamsMap& params_map);
 
     /**
      * @brief Adds a torn-seq fault to the faults map. Returns a vector with errors if any.
