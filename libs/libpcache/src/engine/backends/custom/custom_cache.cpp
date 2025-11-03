@@ -613,7 +613,7 @@ bool CustomCacheEngine::partial_sync_pages (string owner, off_t last_size, char*
             if (ids_pages_to_sync.find (page_id) != ids_pages_to_sync.end ()) {
                 new_iterate_blocks.insert ({cit->first, cit->second});
 
-                auto page_ptr = std::get<1> (cit->second);
+                //auto page_ptr = std::get<1> (cit->second);
             }
         }
 

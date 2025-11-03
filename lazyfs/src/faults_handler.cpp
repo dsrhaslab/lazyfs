@@ -11,10 +11,10 @@
 // LazyFS specific imports
 #include <faults/faults.hpp>
 #include <lazyfs/lazyfs.hpp>
+#include <faults_handler.hpp>
+
 
 using namespace lazyfs;
-
-namespace lazyfs_api {
 
 bool parse_crash (string command_str,
                   string& crash_timing,
@@ -27,10 +27,10 @@ bool parse_crash (string command_str,
     std::sregex_token_iterator iter_glob (command_str.begin (), command_str.end (), rgx_global, -1);
     std::sregex_token_iterator end;
 
-    string crash_operation = "none";
-    string crash_timing    = "none";
-    string crash_from_rgx  = "none";
-    string crash_to_rgx    = "none";
+    crash_timing    = "none";
+    crash_operation = "none";
+    crash_from_rgx  = "none";
+    crash_to_rgx    = "none";
 
     bool valid_fault = true;
     vector<string> errors;
@@ -349,96 +349,36 @@ bool parse_snapshot (string  command_str,
     return valid_command;
 }
 
-void params_map_to_fault(const std::map<std::string,std::string>& params_map) {
-    for (const auto& [key, value] : params_map) {
-        switch ()
-    }
-}
+FaultParamsMap parse_fault_command (string command_str) {
 
-bool parse_sync_pages(string command_str,
-                      string& path, 
-                      string& timing, 
-                      string& op, 
-                      string& from, 
-                      string& to, 
-                      string& crash, 
-                      string& ret, 
-                      string& sync_other_files, 
-                      string& parts, 
-                      string& num_parts) {
+    FaultParamsMap params_map;
 
-    
-    std::map<std::string, std::string> fault_params;
     std::regex rgx_global ("::");
     std::regex rgx_attrib ("=");
 
     std::sregex_token_iterator iter_glob (command_str.begin (), command_str.end (), rgx_global, -1);
     std::sregex_token_iterator end;
-
-    for (; iter_glob != end; ++iter_glob) {
-        std::string token = iter_glob->str();
-        if (token.empty()) continue;
-
-        auto pos = token.find('=');
-        if (pos != std::string::npos) {
-            std::string key   = token.substr(0, pos);
-            std::string value = token.substr(pos + 1);
-            fault_params[key] = value;
-        }
-    }
-
-
-
-    std::regex rgx_global ("::");
-    std::regex rgx_attrib ("=");
-    std::sregex_token_iterator iter_glob (command_str.begin (), command_str.end (), rgx_global, -1);
-    std::sregex_token_iterator end;
-
-    bool valid_fault = true;
-    vector<string> errors;
 
     for (; iter_glob != end; ++iter_glob) {
 
         string current = string (*iter_glob);
 
-        if (current.rfind ("file=", 0) == 0) {
+        std::sregex_token_iterator iter_attr (current.begin(), current.end(), rgx_attrib, -1);
 
-            string tmp_path = current.erase (0, current.find ("=") + 1);
+        for (; iter_attr != end; ++iter_attr) {
+            string key = string(*iter_attr);
+            string value = "";
 
-        } else if (current.rfind ("op=", 0) == 0) {
-
-            string tmp_op = current.erase (0, current.find ("=") + 1);
-
-            if (tmp_op.length () != 0)
-                op = tmp_op;
-            else {
-                errors.push_back ("operation not available");
-                valid_fault = false;
+            if (++iter_attr != end) {
+                value = string(*iter_attr);
             }
 
-        } else if (current.rfind ("return=", 0) == 0) {
-
-            string tmp_ret = current.erase (0, current.find ("=") + 1);
-            std::regex pattern (R"([Tt]rue|[Ff]alse)");
-
-            if (std::regex_match (tmp_ret, pattern))
-                ret = tmp_ret;
-            else {
-                errors.push_back ("return should be a boolean");
-                valid_fault = false;
-            }
-
-        } else if (current != "lazyfs" && current != "torn-seq") {
-            errors.push_back ("unknown attribute");
-            valid_fault = false;
+            if (!value.empty()) params_map[key] = value;
         }
     }
 
-
-
-    return valid_fault;   
-
+    return params_map;
 }
-                    
 
-} // namespace lazyfs_api
+
+

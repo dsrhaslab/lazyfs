@@ -281,6 +281,55 @@ bool LazyFS::trigger_configured_clear_fault (string opname,
     return false;
 }
 
+void LazyFS::trigger_sync_pages_fault(faults::SyncPagesF &sync_pages) {
+
+    string owner (sync_pages.file);
+
+    bool synced = FSCache->partial_file_sync (owner, sync_pages);
+
+    if (!synced)
+        spdlog::warn ("[lazyfs.cmd]: sync pages went wrong!");
+    else {
+        spdlog::info ("[lazyfs.cmd]: sync pages successfull!");
+
+        if (sync_pages.sync_other_files) {
+            spdlog::warn (
+                "[lazyfs.{}]: sync other files is enabled, proceeding to sync other files...",
+                SYNC_PAGES);
+            
+            vector<string> inodes = FSCache->unsynced_inodes ();
+
+            for (const auto& inode : inodes) {
+                if (inode != owner) {
+
+                    const auto& files = FSCache->find_files_mapped_to_inode (inode);
+
+                    for (const auto& file : files) {
+
+                        synced = FSCache->sync_owner (inode, true, const_cast<char*> (file.c_str ()));
+
+                        if (!synced) {
+                            spdlog::warn ("[lazyfs.{}]: Failed to sync file: {}", SYNC_PAGES, file);
+                        } else {
+                            spdlog::info ("[lazyfs.{}]: Successfully synced file: {}",
+                                          SYNC_PAGES,
+                                          file);
+                        }
+                    }
+                }
+            }
+        }
+
+        if (sync_pages.crash) {
+            pid_t lazyfs_pid = getpid ();
+            spdlog::critical ("Killing LazyFS pid {} after sync-pages!", lazyfs_pid);
+            kill (lazyfs_pid, SIGKILL);
+        }
+    }
+}
+
+
+
 void LazyFS::add_crash_fault (string crash_timing,
                               string crash_operation,
                               string crash_regex_from,
@@ -300,6 +349,43 @@ void LazyFS::add_crash_fault (string crash_timing,
         crash_regex_list.push_back ({from_rgx, crash_regex_to});
     }
 }
+
+void LazyFS::add_sync_pages_fault(const FaultParamsMap& params_map) {
+    try {
+        faults::SyncPagesF* sync_fault = faults::SyncPagesF::tryCreate(params_map);
+
+        if (!sync_fault) {
+            spdlog::error("Error creating SyncPages fault: returned null pointer.");
+            return;
+        }
+
+        auto it = this->faults->find(sync_fault->from);
+        bool can_add = true;
+
+        if (it != this->faults->end()) {
+            for (auto& fptr : it->second) {
+                auto* existing = dynamic_cast<faults::SyncPagesF*>(fptr);
+                if (existing && existing->equal(*sync_fault)) {
+                    can_add = false;
+                    spdlog::error("A similar SyncPages fault already exists for file '{}'.",
+                                  sync_fault->from);
+                    break;
+                }
+            }
+        }
+
+        if (can_add) {
+            (*this->faults)[sync_fault->from].push_back(sync_fault);
+        } else {
+            delete sync_fault;
+        }
+
+    } catch (const std::exception& e) {
+        spdlog::error("Error creating SyncPages fault: {}", e.what());
+        return;
+    }
+}
+
 
 off_t LazyFS::get_file_size (string path) {
 
@@ -753,57 +839,16 @@ void LazyFS::command_fault_clear_cache (bool lock_needed) {
     spdlog::warn ("[lazyfs.cmds]: cache is cleared.");
 }
 
-void LazyFS::command_fault_sync_page (faults::SyncPagesF sync_pages, bool lock_needed) {
+void LazyFS::command_fault_sync_pages (faults::SyncPagesF &sync_pages) {
 
-    if (lock_needed)
-        std::unique_lock<std::shared_mutex> lock (cache_command_lock);
+    std::unique_lock<std::shared_mutex> lock (cache_command_lock);
 
     spdlog::warn ("[lazyfs.cmds]: sync pages request submitted...");
 
-    string owner (sync_pages.file);
+    trigger_sync_pages_fault(sync_pages);
 
-    bool synced = FSCache->partial_file_sync (owner, sync_pages);
+    spdlog::warn ("[lazyfs.cmds]: sync pages requested finished.");
 
-    if (!synced)
-        spdlog::warn ("[lazyfs.cmd]: sync pages went wrong!");
-    else {
-        spdlog::info ("[lazyfs.cmd]: sync pages successfuly!");
-
-        if (sync_pages.sync_other_files) {
-            spdlog::warn (
-                "[lazyfs.{}]: sync other files is enabled, proceeding to sync other files...",
-                SYNC_PAGES);
-            
-
-            vector<string> inodes = FSCache->unsynced_inodes ();
-
-            string path_inode = this_ ()->FSCache->get_original_inode (owner);
-
-            for (const auto& inode : inodes) {
-                if (inode != path_inode) {
-
-                    const auto& files = FSCache->find_files_mapped_to_inode (inode);
-
-                    for (const auto& file : files) {
-
-                        synced =
-                            FSCache->sync_owner (inode, true, const_cast<char*> (file.c_str ()));
-                        if (!synced) {
-                            spdlog::warn ("[lazyfs.{}]: Failed to sync file: {}", SYNC_PAGES, file);
-                        } else {
-                            spdlog::info ("[lazyfs.{}]: Successfully synced file: {}",
-                                          SYNC_PAGES,
-                                          file);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    spdlog::warn ("[lazyfs.cmds]: pages requested synced.");
-
-    command_unsynced_data_report ({});
 }
 
 void LazyFS::command_display_cache_usage (bool lock_needed) {

@@ -61,7 +61,7 @@ void Config::setup_config_by_size (size_t prealloc_bytes, int nr_blocks_per_page
 
 Config::~Config () {}
 
-FaultParam tomlValueToParam(const toml::value& v) {
+FaultParam Config::tomlValueToParam(const toml::value& v) {
     if (v.is_string()) {
         return v.as_string();
     } 
@@ -467,6 +467,11 @@ unordered_map<string,vector<faults::Fault*>> Config::load_config (string filenam
 
                 try {
                     faults::SyncPagesF* sync_fault = faults::SyncPagesF::tryCreate(params_map);
+
+                    if (sync_fault) {
+                        spdlog::error("Error creating SyncPages fault: returned null pointer.");
+                        continue;
+                    }
 
                     auto it = faults.find(sync_fault->from);
                     bool can_add = true;

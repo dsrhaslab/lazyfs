@@ -23,7 +23,6 @@
 #include <faults/faults.hpp>
 
 using namespace lazyfs;
-using namespace lazyfs_api;
 
 #define MAX_READ_CHUNK 255
 
@@ -143,6 +142,30 @@ void fht_worker (LazyFS* filesystem) {
                     }
                 } // else, errors already printed by parse_torn_seq
 
+            } else if (command_str.rfind ("lazyfs::sync-pages", 0) == 0) {
+
+                FaultParamsMap params_map = parse_fault_command(command_str);
+
+                try {
+                    faults::SyncPagesF* sync_fault = faults::SyncPagesF::tryCreate(params_map);
+
+                    if (!sync_fault) {
+                        spdlog::error("[lazyfs.faults.worker]: error creating SyncPages fault: returned null pointer.");
+                        continue;
+                    }
+
+                    if (sync_fault->timing == "now") {
+                        filesystem->command_fault_sync_pages(*sync_fault);
+                    } else {
+                        filesystem->add_sync_pages_fault(params_map);
+                    }
+
+                } catch (const std::exception& e) {
+                    spdlog::error("[lazyfs.faults.worker]: error creating SyncPages fault: {}", e.what());
+                    continue;
+                }
+
+                                        
             } else if (command_str.rfind ("lazyfs::snapshot", 0) == 0) {
 
                 string files = "none";
@@ -189,7 +212,9 @@ void fht_worker (LazyFS* filesystem) {
             }
 
         } else
-            break;
+            spdlog::error ("[lazyfs.faults.worker]: failed to read from fifo (error: {})",
+                           strerror (errno));
+            
     }
 
     spdlog::info ("[lazyfs.faults.worker]: worker stopped");

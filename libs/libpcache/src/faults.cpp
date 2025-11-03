@@ -5,7 +5,7 @@
 #include <cctype>
 #include <memory>
 
-using namespace std;
+using namespace std; 
 
 
 namespace faults {
@@ -23,17 +23,6 @@ const unordered_set<string> Fault::allow_clear_fs_operations = {"unlink",
                                                                 "symlink"};
 
 const unordered_set<string> Fault::fs_op_multi_path = {"rename", "link", "symlink"};
-
-const unordered_set<string> SyncPagesPartsF::pages_options = {
-        "all",
-        "first-half",
-        "second-half",
-        "first",
-        "last",
-        "first-and-last",
-        "interleaved",
-        "random"};
-
 
 /*******************************************************************************************************************/
 
@@ -283,162 +272,99 @@ vector<string> SyncPagesF::validate() {
 }
 
 
-template<typename T> optional<T> getParam (
-    const unordered_map<std::string, FaultParam>& params,
-    const std::string& key,
-    bool required = true,
-    bool (*validator) (const T&) = nullptr,
-    T (*converter) (const std::string&) = nullptr) {
+SyncPagesF* SyncPagesF::tryCreate(const std::unordered_map<std::string,FaultParam>& params_map) {
+    try {
+        auto file = getParam<string>(params_map, "file", true, string_validator , nullptr);
 
-    optional<T> res = nullopt;
+        auto timing = getParam<string>(params_map, "timing", true, timing_validator, nullptr);
 
-    auto it = params.find(key);
-    if (it == params.end()) {
-        if (required) throw InvalidFault("Missing parameter: " + key);
-    }
-
-    if (auto p = std::get_if<T>(&it->second)) {
-        if (!validator || validator(*p)) return *p;
-        throw InvalidFault("Invalid value for: " + key );
-
-    } else if (converter) {
-        if (auto p_str = std::get_if<string>(&it->second)) {
-            try {
-                T converted = converter(*p_str);
-                if (!validator || validator(converted)) return converted;
-                 throw InvalidFault("Invalid value for: " + key );
-            } catch (invalid_argument& e) {
-                throw InvalidFault("Conversion error for parameter: " + key);
-            }
+        if (!file.has_value() || !timing.has_value()) {
+            throw InvalidFault("Missing required parameters for SyncPages fault: \"file\" and \"timing\".");
         }
-    }
 
-    if (required) throw InvalidFault("Wrong type for parameter: " + key);
-    return res;
-}
+        auto crash = getParam<bool>(params_map, "crash", false, nullptr, bool_converter);
 
-bool timing_validator (const string& s) { 
-    string lower_s = s;
-    transform(lower_s.begin(), lower_s.end(), lower_s.begin(), ::tolower);
-    return lower_s == "before" || lower_s == "after"; 
-}
+        auto ret = getParam<bool>(params_map, "ret", false, nullptr, bool_converter);
 
-bool string_validator (const string& s) { 
-    return !s.empty() && s != "none";
-}
+        auto occurrence = getParam<int>(params_map, "occurrence", false, occurrence_validator, int_converter);
 
-bool pages_numbered_validator (const vector<int>& v) {
-    if (v.empty()) return false;
-    for (const auto& p : v) {
-        if (p <= 0) return false;
-    }
-    return true;
-}
+        auto op = getParam<string>(params_map, "op", false, string_validator, nullptr);
 
-bool to_validator (const string& s, const string& op) { 
-    if (SyncPagesF::fs_op_multi_path.find(op) != SyncPagesF::fs_op_multi_path.end()) {
-        return !s.empty() && s != "none"; 
-    }
-    throw InvalidFault("The specified \"to\" parameter is not needed for the specified operation.");
-}
-
-bool occurrence_validator (const int& i) { 
-    return i > 0; 
-}   
-
-bool bool_converter (const string& s) {
-    string s_lower = s;
-    transform(s_lower.begin(), s_lower.end(), s_lower.begin(), ::tolower);
-    if (s_lower == "true") return true;
-    if (s_lower == "false") return false;
-    throw InvalidFault("Conversion error from string to bool.");
-}
-
-int int_converter (const string& s) {
-    try {
-        return stoi(s);
-    } catch (invalid_argument& e) {
-        throw InvalidFault("Conversion error from string to int.");
-    }
-}
-
-vector<int> vector_converter (const string& s) {
-    vector<int> result;
-    size_t start = 0;
-    size_t end = s.find(',');
-    while (end != string::npos) {
-        string token = s.substr(start, end - start);
-        try {
-            int value = stoi(token);
-            result.push_back(value);
-        } catch (invalid_argument& e) {
-            throw InvalidFault("Conversion errorfrom string to vector<int>.");
-        }
-        start = end + 1;
-        end = s.find(',', start);
-    }
-    string token = s.substr(start);
-    try {
-        int value = stoi(token);
-        result.push_back(value);
-    } catch (invalid_argument& e) {
-        throw InvalidFault("Conversion error from string to vector<int>.");
-    }
-    return result;
-}
-
-SyncPagesF* SyncPagesF::tryCreate(std::unordered_map<std::string,FaultParam>& params_map) {
-    try {
-        auto file = getParam<string>(params_map, "file", true, ClearF::string_validator , nullptr);
-
-        auto timing = getParam<string>(params_map, "timing", true, ClearF::timing_validator, nullptr);
-
-        auto crash = getParam<bool>(params_map, "crash", true, nullptr, ClearF::bool_converter);
-
-        auto ret = getParam<bool>(params_map, "ret", false, nullptr, ClearF::bool_converter).value_or(true);
-
-        auto occurrence = getParam<int>(params_map, "occurrence", true, ClearF::occurrence_validator, ClearF::int_converter);
-
-        auto op = getParam<string>(params_map, "op", true, ClearF::op_validator, nullptr);
-
-        auto from = getParam<string>(params_map, "from", true, ClearF::string_validator, nullptr);
+        auto from = getParam<string>(params_map, "from", false, string_validator, nullptr);
  
-        auto to = getParam<string>(params_map, "to", false, ClearF::string_validator, nullptr).value_or("none");
+        auto to = getParam<string>(params_map, "to", false, string_validator, nullptr);
 
-        if (op) {
+        if (timing.value() == "after" || timing.value() == "before") {
+            if (!op.has_value() || !from.has_value()) {
+                throw InvalidFault("The parameter \"op\" and \"from\" must be specified and valid for SyncPages faults with timing set to \"before\" or \"after\".");
+            }
+        } else if (timing.value() == "now") {
+            if (op.has_value() || from.has_value() || occurrence.has_value()) {
+                throw InvalidFault("The parameters \"op\" and \"from\" must not be specified for SyncPages faults with timing set to \"now\".");
+            }
+        } else {
+            throw InvalidFault("The parameter \"timing\" must be either \"before\", \"after\" or \"now\".");
+        }
+
+        if (op.has_value()) {
             bool is_multi_path = (SyncPagesF::fs_op_multi_path.find(op.value()) != SyncPagesF::fs_op_multi_path.end());
-            if (is_multi_path != (to != "none")) {
-            throw InvalidFault(is_multi_path ?
-                "The parameter \"to\" is needed for the specified \"op\"." :
-                "The parameter \"to\" is not needed for the specified \"op\".");
+            if (is_multi_path != (to.has_value())) {
+                throw InvalidFault(is_multi_path ?
+                    "The parameter \"to\" is needed for the specified \"op\"." :
+                    "The parameter \"to\" is not needed for the specified \"op\".");
             }
         }
 
-        auto sync_other_files = getParam<bool>(params_map, "sync_other_files", false, nullptr, ClearF::bool_converter).value_or(true);
+        auto sync_other_files = getParam<bool>(params_map, "sync_other_files", false, nullptr, bool_converter);
+
+        /***** default values *****/
+        if (!crash.has_value()) crash = false;
+        if (!ret.has_value()) ret = false;
+        if (!occurrence.has_value()) occurrence = 1;
+        if (!sync_other_files.has_value()) sync_other_files = true;
+        if (!to.has_value()) to = "";
+        if (!op.has_value()) op = "";
+        if (!from.has_value()) from = "";
 
         auto pages_parts = getParam<SyncPagesPartsF::Pages>(params_map, "pages", false, nullptr, SyncPagesPartsF::pages_parts_converter);
 
-        auto pages_numbered = getParam<vector<int>>(params_map, "pages", false, pages_numbered_validator, vector_converter);
+        auto pages_numbered = getParam<vector<int>>(params_map, "pages", false, vector_validator, vector_converter);
 
-        if (file.has_value() && timing.has_value() && crash.has_value() && occurrence.has_value() && op.has_value() && from.has_value()) {
-            if (pages_parts.has_value() && pages_numbered.has_value()) {
-                throw InvalidFault("Parameters \"pages\" (as parts) and \"pages\" (as numbered) are mutually exclusive.");
-            } else if (pages_parts.has_value()) {
+        if (pages_parts.has_value() && pages_numbered.has_value()) {
+            throw InvalidFault ("Parameters \"pages\" as parts and \"pages\" as numbered are "
+                                "mutually exclusive.");
+        } else if (pages_parts.has_value ()) {
 
-                SyncPagesPartsF * fault = new SyncPagesPartsF(file.value(), timing.value(), op.value(), from.value(), to, occurrence.value(), crash.value(), ret, sync_other_files, pages_parts.value());
-                return fault;
+            SyncPagesPartsF* fault = new SyncPagesPartsF (file.value (),
+                                                          timing.value (),
+                                                          op.value (),
+                                                          from.value (),
+                                                          to.value (),
+                                                          occurrence.value (),
+                                                          crash.value (),
+                                                          ret.value (),
+                                                          sync_other_files.value (),
+                                                          pages_parts.value ());
+            return fault;
 
-            } else if (pages_numbered.has_value()) {
+        } else if (pages_numbered.has_value ()) {
 
-                SyncPagesNumberedF * fault = new SyncPagesNumberedF(file.value(), timing.value(), op.value(), from.value(), to, occurrence.value(), crash.value(), ret, sync_other_files, pages_numbered.value());
-                return fault;
-
-            } else {
-                throw InvalidFault("Missing required parameter for SyncPages fault. You must specify either \"pages_parts\" (as parts) or \"pages_numbered\" (as numbered).");
-            }
+            SyncPagesNumberedF* fault = new SyncPagesNumberedF (file.value (),
+                                                                timing.value (),
+                                                                op.value (),
+                                                                from.value (),
+                                                                to.value (),
+                                                                occurrence.value (),
+                                                                ret.value (),
+                                                                crash.value (),
+                                                                sync_other_files.value (),
+                                                                pages_numbered.value ());
+            return fault;
 
         } else {
-            throw InvalidFault("Missing required parameters for SyncPages fault.");
+            throw InvalidFault (
+                "Missing required parameter for SyncPages fault. You must specify either "
+                "\"pages_parts\" (as parts) or \"pages_numbered\" (as numbered).");
         }
 
     } catch (const InvalidFault& e) {
@@ -596,7 +522,152 @@ void SyncPagesNumberedF::pretty_print() const {
     cout << endl;
 }
 
+/************************************************************************************************/
+
 InvalidFault::InvalidFault(const std::string& msg): std::runtime_error("Invalid Fault: " + msg) {}
 
-// namespace faults
-};
+bool timing_validator (const string& s) {
+    string lower_s = s;
+    transform (lower_s.begin (), lower_s.end (), lower_s.begin (), ::tolower);
+    return lower_s == "before" || lower_s == "after" || lower_s == "now";
+}
+
+bool string_validator (const string& s) { return !s.empty () && s != "none"; }
+
+bool vector_validator (const vector<int>& v) {
+    if (v.empty ())
+        return false;
+    for (const auto& p : v) {
+        if (p <= 0)
+            return false;
+    }
+    return true;
+}
+
+bool to_validator (const string& s, const string& op) {
+    if (faults::SyncPagesF::fs_op_multi_path.find (op) != faults::SyncPagesF::fs_op_multi_path.end ()) {
+        return !s.empty () && s != "none";
+    }
+    throw InvalidFault (
+        "The specified \"to\" parameter is not needed for the specified operation.");
+}
+
+bool occurrence_validator (const int& i) { return i > 0; }
+
+bool bool_converter (const string& s) {
+    string s_lower = s;
+    transform (s_lower.begin (), s_lower.end (), s_lower.begin (), ::tolower);
+    if (s_lower == "true")
+        return true;
+    if (s_lower == "false")
+        return false;
+    throw InvalidFault ("Conversion error from string to bool.");
+}
+
+int int_converter (const string& s) {
+    try {
+        return stoi (s);
+    } catch (invalid_argument& e) {
+        throw InvalidFault ("Conversion error from string to int.");
+    }
+}
+
+vector<int> vector_converter (const string& s) {
+    vector<int> result;
+    size_t start = 0;
+    size_t end   = s.find (',');
+    while (end != string::npos) {
+        string token = s.substr (start, end - start);
+        try {
+            int value = stoi (token);
+            result.push_back (value);
+        } catch (invalid_argument& e) {
+            throw InvalidFault ("Conversion errorfrom string to vector<int>.");
+        }
+        start = end + 1;
+        end   = s.find (',', start);
+    }
+    string token = s.substr (start);
+    try {
+        int value = stoi (token);
+        result.push_back (value);
+    } catch (invalid_argument& e) {
+        throw InvalidFault ("Conversion error from string to vector<int>.");
+    }
+    return result;
+}
+
+template <typename T, typename... Ts>
+constexpr bool is_one_of_v = (std::is_same_v<T, Ts> || ...);
+
+template <typename T>
+optional<T> getParam(const FaultParamsMap& params,
+                     const std::string& key,
+                     bool required,
+                     bool (*validator)(const T&),
+                     T (*converter)(const std::string&)) {
+
+    optional<T> res = std::nullopt;
+
+    auto it = params.find(key);
+    if (it == params.end()) {
+        if (required)
+            throw InvalidFault("Missing parameter: " + key);
+        return res;
+    }
+
+    const FaultParam& fp = it->second;
+
+    // Are we asking for a type that's actually stored in the variant?
+    if constexpr (is_one_of_v<T, int, double, bool, std::string, std::vector<int>>) {
+        // safe to call std::get_if<T>
+        if (auto p = std::get_if<T>(&fp)) {
+            if (!validator || validator(*p))
+                return *p;
+            throw InvalidFault("Invalid value for: " + key);
+        }
+        // if the variant doesn't hold T now, maybe it's a string convertible to T
+        if constexpr (!std::is_same_v<T, std::string>) {
+            if (converter) {
+                if (auto p_str = std::get_if<std::string>(&fp)) {
+                    try {
+                        T converted = converter(*p_str);
+                        if (!validator || validator(converted))
+                            return converted;
+                        throw InvalidFault("Invalid value for: " + key);
+                    } catch (const std::invalid_argument&) {
+                        throw InvalidFault("Conversion error for parameter: " + key);
+                    }
+                }
+            }
+        }
+    } else {
+        // T is NOT an alternative of FaultParam.
+        // We cannot call std::get_if<T> (would be a hard compile error).
+        // Only option: try converting from stored string (if converter provided).
+        if (converter) {
+            if (auto p_str = std::get_if<std::string>(&fp)) {
+                try {
+                    T converted = converter(*p_str);
+                    if (!validator || validator(converted))
+                        return converted;
+                    throw InvalidFault("Invalid value for: " + key);
+                } catch (const std::invalid_argument&) {
+                    throw InvalidFault("Conversion error for parameter: " + key);
+                }
+            }
+        }
+        // Parameter existed but wasn't convertible from stored type or converter missing.
+        if (required)
+            throw InvalidFault("Wrong type for parameter: " + key);
+        return res;
+    }
+
+    // if we fell through here: parameter exists but wrong type and not required
+    if (required)
+        throw InvalidFault("Wrong type for parameter: " + key);
+    return res;
+
+    }
+} // namespace faults
+

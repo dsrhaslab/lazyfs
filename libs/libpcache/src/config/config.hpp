@@ -21,7 +21,6 @@
 #include <toml.hpp>
 
 
-
 using namespace std;
 
 namespace cache::config {

@@ -4,7 +4,6 @@
 #include <string>
 #include <vector>
 
-namespace lazyfs_api {
 
 /**
  * @brief Parses a clear-cache command string.
@@ -57,6 +56,13 @@ bool parse_snapshot (std::string command_str,
                      std::regex&  files_rgx, 
                      std::string& save);
 
-} // namespace lazyfs_api
+
+/**
+ * @brief Parses a fault command string and returns a FaultParamsMap.
+ */
+FaultParamsMap parse_fault_command (const std::string command_str);
+
+
+
 
 #endif // FAULTS_HANDLER_HPP
