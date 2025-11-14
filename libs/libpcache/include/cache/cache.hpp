@@ -303,7 +303,7 @@ class Cache {
      * @return bool true if parts were synced
      * 
      */
-    bool partial_file_sync (string owner, faults::SyncPagesF& pages);
+    bool partial_sync_owner (string owner, faults::SyncPagesF& pages);
 
     /**
      * @brief Gets the list of files that have unsynced data, mapped to

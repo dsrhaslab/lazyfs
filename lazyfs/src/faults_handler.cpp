@@ -349,32 +349,35 @@ bool parse_snapshot (string  command_str,
     return valid_command;
 }
 
-FaultParamsMap parse_fault_command (string command_str) {
-
+FaultParamsMap parse_fault_command(std::string command_str) {
     FaultParamsMap params_map;
 
-    std::regex rgx_global ("::");
-    std::regex rgx_attrib ("=");
+    std::regex rgx_global("::");
+    std::regex rgx_attrib("=");
 
-    std::sregex_token_iterator iter_glob (command_str.begin (), command_str.end (), rgx_global, -1);
+    std::sregex_token_iterator iter_glob(command_str.begin(), command_str.end(), rgx_global, -1);
     std::sregex_token_iterator end;
 
     for (; iter_glob != end; ++iter_glob) {
+        std::string current = *iter_glob;
 
-        string current = string (*iter_glob);
+        // split on the first '=' without using token iterators
+        auto pos = current.find('=');
+        std::string key;
+        std::string value;
 
-        std::sregex_token_iterator iter_attr (current.begin(), current.end(), rgx_attrib, -1);
-
-        for (; iter_attr != end; ++iter_attr) {
-            string key = string(*iter_attr);
-            string value = "";
-
-            if (++iter_attr != end) {
-                value = string(*iter_attr);
-            }
-
-            if (!value.empty()) params_map[key] = value;
+        if (pos == std::string::npos) {
+            key = current;
+            value = "";
+        } else {
+            key = current.substr(0, pos);
+            value = current.substr(pos + 1);
         }
+
+        printf("Key: '%s' Value: '%s'\n", key.c_str(), value.c_str());
+
+        if (!value.empty())
+            params_map[key] = value;
     }
 
     return params_map;

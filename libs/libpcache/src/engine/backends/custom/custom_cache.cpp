@@ -591,30 +591,66 @@ bool CustomCacheEngine::sync_pages (string owner, off_t size, char* orig_path) {
 bool CustomCacheEngine::partial_sync_pages (string owner, off_t last_size, char* orig_path, faults::SyncPagesF &sync_pages) {
 
     std::unique_lock<std::shared_mutex> lock (lock_cache_mtx);
-
     bool res = true;
+
     int fd = open (orig_path, O_WRONLY);
 
-    if (this->owner_pages_mapping.find (owner) != this->owner_pages_mapping.end ()) {
+    spdlog::info ("[DEBUG] CustomCacheEngine::partial_sync_pages -- performing partial sync for owner {}", owner);
+
+    if ( this->owner_pages_mapping.find (owner) != this->owner_pages_mapping.end ()) {
+
+        //< block, < page id, page ptr, offsets , dirty > >
+        auto& iterate_blocks = this->owner_ordered_pages_mapping.at (owner);
+
+        // Extract dirty page ids from owner_ordered_pages_mapping, ordered by block offsets 
+        vector<int> dirty_blocks_ids;
+        unordered_set<int> seen_pages_ids;
+
+        for (auto cit = iterate_blocks.begin (); cit != iterate_blocks.end (); cit++) {
+            auto page_id = std::get<0> (cit->second);
+            auto is_dirty = std::get<3> (cit->second); //this is wrong
+            auto another_is_dirty = std::get<1> (cit->second)->is_page_dirty();
+
+            spdlog::info ("[DEBUG] CustomCacheEngine::partial_sync_pages -- examining block {} with is_dirty1 {} and 2 {}", cit->first, is_dirty, another_is_dirty);
+
+            if (seen_pages_ids.find (page_id) == seen_pages_ids.end () && another_is_dirty) {
+                dirty_blocks_ids.push_back (cit->first);
+            } else {
+                seen_pages_ids.insert (page_id);
+            }
+        }
+
+        {
+            std::string dbg = "[DEBUG] dirty_blocks_ids (count=" + std::to_string(dirty_blocks_ids.size()) + "): ";
+            for (size_t i = 0; i < dirty_blocks_ids.size(); ++i) {
+                if (i) dbg += ", ";
+                dbg += std::to_string(dirty_blocks_ids[i]);
+            }
+            spdlog::info(dbg);
+        }
+        
+        unordered_set<int> ids_blocks_to_sync = sync_pages.filter_pages_to_sync (dirty_blocks_ids);
 
         off_t wrote_bytes = 0;
         off_t page_streak = 0;
 
-        auto& iterate_blocks = this->owner_ordered_pages_mapping.at (owner);
-
-        unordered_set<int> ids_pages_to_sync = sync_pages.filter_pages_to_sync (this->get_owner_dirty_pages_ids (owner));
-
-        //<inode, <page id,page ptr,offsets>>
+        //<block, <page id,page ptr,offsets>>
         map<int, tuple<int, Page*, pair<int, int>, bool>> new_iterate_blocks;
 
+        // Match pages to sync with owner_ordered_pages_mapping
         for (auto cit = iterate_blocks.begin (); cit != iterate_blocks.end (); cit++) {
-            auto page_id = std::get<0> (cit->second);
+            auto block_id = cit->first;
+            auto page_ptr = std::get<1> (cit->second);
 
-            if (ids_pages_to_sync.find (page_id) != ids_pages_to_sync.end ()) {
+            if (ids_blocks_to_sync.find (block_id) != ids_blocks_to_sync.end ()) {
                 new_iterate_blocks.insert ({cit->first, cit->second});
-
+                page_ptr->set_page_as_dirty (false);
                 //auto page_ptr = std::get<1> (cit->second);
             }
+        }
+
+        for (auto& block_id : new_iterate_blocks) {
+            spdlog::info ("[DEBUG] persist CustomCacheEngine::partial_sync_pages blocks {}", block_id.first);
         }
 
         off_t page_streak_last_offset =
@@ -669,6 +705,7 @@ bool CustomCacheEngine::partial_sync_pages (string owner, off_t last_size, char*
                 }
 
                 wrote_bytes += pwritev (fd, iov, page_streak, page_streak_last_offset);
+                spdlog::info ("[DEBUG] CustomCacheEngine::partial_sync_pages -- pwritev called for owner {} , wrote_bytes: {}", owner, wrote_bytes);
                 
                 if (wrote_bytes < 0) {
                     spdlog::warn ("[cache] pwritev of partial sync failed");
@@ -684,8 +721,10 @@ bool CustomCacheEngine::partial_sync_pages (string owner, off_t last_size, char*
         }
     }
 
-    if (ftruncate (fd, last_size) < 0) {
-        spdlog::warn ("[cache] ftruncate of partial sync failed");
+    if (sync_pages.keep_size) {
+        if (ftruncate (fd, last_size) < 0) {
+            spdlog::warn ("[cache] ftruncate of partial sync failed");
+        }
     }
 
     close (fd);

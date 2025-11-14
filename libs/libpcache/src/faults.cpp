@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cctype>
 #include <memory>
+#include <spdlog/spdlog.h>
 
 using namespace std; 
 
@@ -229,7 +230,7 @@ void ClearF::pretty_print() const {
 
 
 // Sync Pages Fault
-SyncPagesF::SyncPagesF(string file, string timing, string op, string from, string to, int occurrence, bool crash, bool ret, bool sync_other_files) : Fault(SYNC_PAGES) {
+SyncPagesF::SyncPagesF(string file, string timing, string op, string from, string to, int occurrence, bool crash, bool ret, bool sync_other_files, bool keep_size) : Fault(SYNC_PAGES) {
     this->file = file;
     this->timing = timing;
     this->op = op;
@@ -240,6 +241,7 @@ SyncPagesF::SyncPagesF(string file, string timing, string op, string from, strin
     this->ret = ret;
     this->crash = crash;
     this->sync_other_files = sync_other_files;
+    this->keep_size = keep_size;
 }
 
 SyncPagesF::~SyncPagesF(){}
@@ -286,6 +288,8 @@ SyncPagesF* SyncPagesF::tryCreate(const std::unordered_map<std::string,FaultPara
 
         auto ret = getParam<bool>(params_map, "ret", false, nullptr, bool_converter);
 
+        auto keep_size = getParam<bool>(params_map, "keep_size", false, nullptr, bool_converter);
+
         auto occurrence = getParam<int>(params_map, "occurrence", false, occurrence_validator, int_converter);
 
         auto op = getParam<string>(params_map, "op", false, string_validator, nullptr);
@@ -317,18 +321,21 @@ SyncPagesF* SyncPagesF::tryCreate(const std::unordered_map<std::string,FaultPara
 
         auto sync_other_files = getParam<bool>(params_map, "sync_other_files", false, nullptr, bool_converter);
 
-        /***** default values *****/
         if (!crash.has_value()) crash = false;
         if (!ret.has_value()) ret = false;
         if (!occurrence.has_value()) occurrence = 1;
         if (!sync_other_files.has_value()) sync_other_files = true;
+        if (!keep_size.has_value()) keep_size = false;
         if (!to.has_value()) to = "";
         if (!op.has_value()) op = "";
         if (!from.has_value()) from = "";
 
         auto pages_parts = getParam<SyncPagesPartsF::Pages>(params_map, "pages", false, nullptr, SyncPagesPartsF::pages_parts_converter);
 
-        auto pages_numbered = getParam<vector<int>>(params_map, "pages", false, vector_validator, vector_converter);
+        std::optional<vector<int>> pages_numbered;
+        if (!pages_parts.has_value()) {
+            pages_numbered = getParam<vector<int>>(params_map, "pages", false, vector_validator, vector_converter);
+        }
 
         if (pages_parts.has_value() && pages_numbered.has_value()) {
             throw InvalidFault ("Parameters \"pages\" as parts and \"pages\" as numbered are "
@@ -344,6 +351,7 @@ SyncPagesF* SyncPagesF::tryCreate(const std::unordered_map<std::string,FaultPara
                                                           crash.value (),
                                                           ret.value (),
                                                           sync_other_files.value (),
+                                                          keep_size.value (),
                                                           pages_parts.value ());
             return fault;
 
@@ -358,6 +366,7 @@ SyncPagesF* SyncPagesF::tryCreate(const std::unordered_map<std::string,FaultPara
                                                                 ret.value (),
                                                                 crash.value (),
                                                                 sync_other_files.value (),
+                                                                keep_size.value (),
                                                                 pages_numbered.value ());
             return fault;
 
@@ -393,63 +402,77 @@ void SyncPagesF::pretty_print() const {
 }
 
 // Sync pages with parts
-SyncPagesPartsF::SyncPagesPartsF(string file, string timing, string op, string from, string to, int occurrence, bool crash, bool ret, bool sync_other_files, Pages pages) : SyncPagesF(file, timing, op, from, to, occurrence, crash, ret, sync_other_files) {
+SyncPagesPartsF::SyncPagesPartsF(string file, string timing, string op, string from, string to, int occurrence, bool crash, bool ret, bool sync_other_files, bool keep_size, Pages pages) : SyncPagesF(file, timing, op, from, to, occurrence, crash, ret, sync_other_files, keep_size) {
     this->pages = pages;
 }
 
 SyncPagesPartsF::~SyncPagesPartsF(){}
 
 SyncPagesPartsF::Pages SyncPagesPartsF::pages_parts_converter(const string& pages) {
-    if (pages == "all") return SyncPagesPartsF::Pages::ALL;
-    else if (pages == "first-half") return SyncPagesPartsF::Pages::FIRST_HALF;
-    else if (pages == "last-half") return SyncPagesPartsF::Pages::SECOND_HALF;
-    else if (pages == "first") return SyncPagesPartsF::Pages::FIRST;
-    else if (pages == "last") return SyncPagesPartsF::Pages::LAST;
-    else if (pages == "first-and-last") return SyncPagesPartsF::Pages::FIRST_AND_LAST;
-    else if (pages == "interleaved") return SyncPagesPartsF::Pages::INTERLEAVED;
-    else if (pages == "random") return SyncPagesPartsF::Pages::RANDOM;
+    string lower_pages = pages;
+    transform(lower_pages.begin(), lower_pages.end(), lower_pages.begin(),
+              [](unsigned char c){ return static_cast<char>(std::tolower(c)); });
+
+    if (lower_pages == "all") return SyncPagesPartsF::Pages::ALL;
+    else if (lower_pages == "first-half" || lower_pages == "first_half") return SyncPagesPartsF::Pages::FIRST_HALF;
+    else if (lower_pages == "second-half" || lower_pages == "second_half") return SyncPagesPartsF::Pages::SECOND_HALF;
+    else if (lower_pages == "first") return SyncPagesPartsF::Pages::FIRST;
+    else if (lower_pages == "last") return SyncPagesPartsF::Pages::LAST;
+    else if (lower_pages == "first-and-last" || lower_pages == "first_and_last") return SyncPagesPartsF::Pages::FIRST_AND_LAST;
+    else if (lower_pages == "interleaved") return SyncPagesPartsF::Pages::INTERLEAVED;
+    else if (lower_pages == "random") return SyncPagesPartsF::Pages::RANDOM;
     else throw std::invalid_argument("Invalid page type: " + pages + ". Valid options are: all, first-half, last-half, first, last, first-and-last, interleaved, random.");
 }
 
-unordered_set<int> SyncPagesPartsF::filter_pages_to_sync (unordered_set<int> pages_id) {
+unordered_set<int> SyncPagesPartsF::filter_pages_to_sync (vector<int> pages_id) {
     unordered_set<int> pages_id_filtered;
     int total_pages = pages_id.size();
+
+    spdlog::info ("[DEBUG] SyncPagesPartsF::filter_pages_to_sync -- total pages: {}", total_pages);
     
     switch (this->pages) {
         case SyncPagesPartsF::Pages::ALL:
             for (int i = 0; i < total_pages; ++i) {
-                pages_id_filtered.insert(i);
+                pages_id_filtered.insert(pages_id[i]);
             }
             break;
         case SyncPagesPartsF::Pages::FIRST_HALF:
             for (int i = 0; i < total_pages / 2; ++i) {
-                pages_id_filtered.insert(i);
+                pages_id_filtered.insert(pages_id[i]);
             }
             break;
         case SyncPagesPartsF::Pages::SECOND_HALF:
             for (int i = total_pages / 2; i < total_pages; ++i) {
-                pages_id_filtered.insert(i);
+                pages_id_filtered.insert(pages_id[i]);
             }
             break;
         case SyncPagesPartsF::Pages::FIRST:
-            pages_id_filtered.insert(0);
+            pages_id_filtered.insert(pages_id[0]);
             break;
         case SyncPagesPartsF::Pages::LAST:
-            pages_id_filtered.insert(total_pages - 1);
+            pages_id_filtered.insert(pages_id[total_pages - 1]);
             break;
         case SyncPagesPartsF::Pages::FIRST_AND_LAST:
-            pages_id_filtered.insert(0);
-            pages_id_filtered.insert(total_pages - 1);
+            pages_id_filtered.insert(pages_id[0]);
+            pages_id_filtered.insert(pages_id[total_pages - 1]);
             break;
         case SyncPagesPartsF::Pages::INTERLEAVED:
             for (int i = 0; i < total_pages; i += 2) {
-                pages_id_filtered.insert(i);
+                pages_id_filtered.insert(pages_id[i]);
             }
             break;
         case SyncPagesPartsF::Pages::RANDOM:
             // Random logic can be implemented here
             // TO-DO
             break;
+    }
+
+    for (const auto& page : pages_id) {
+        printf("Available page: %d\n", page);
+    }
+    
+    for (const auto& page : pages_id_filtered) {
+        printf("Filtered page: %d\n", page);
     }
 
     return pages_id_filtered;
@@ -478,17 +501,17 @@ void SyncPagesPartsF::pretty_print() const {
 
 
 // Sync pages numbered
-SyncPagesNumberedF::SyncPagesNumberedF(string file, string timing, string op, string from, string to, int occurrence, bool ret, bool crash, bool sync_other_files, vector<int> pages) : SyncPagesF(file, timing, op, from, to, occurrence, crash, ret, sync_other_files) {
+SyncPagesNumberedF::SyncPagesNumberedF(string file, string timing, string op, string from, string to, int occurrence, bool ret, bool crash, bool sync_other_files, bool keep_size, vector<int> pages) : SyncPagesF(file, timing, op, from, to, occurrence, crash, ret, sync_other_files, keep_size) {
     this->pages = pages;
 }
 
 SyncPagesNumberedF::~SyncPagesNumberedF(){}
 
-unordered_set<int> SyncPagesNumberedF::filter_pages_to_sync (unordered_set<int> pages_id) {
+unordered_set<int> SyncPagesNumberedF::filter_pages_to_sync (vector<int> pages_id) {
     unordered_set<int> pages_id_filtered;
 
     for (const auto& page : this->pages) {
-        if (pages_id.find(page) != pages_id.end()) {
+        if (std::find(pages_id.begin(), pages_id.end(), page) != pages_id.end()) {
             pages_id_filtered.insert(page);
         }
     }
