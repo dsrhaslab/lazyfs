@@ -358,6 +358,11 @@ class SyncPagesF : public Fault {
     bool sync_other_files;
 
     /**
+     * @brief True if we want to keep the file size after syncing pages.
+     */
+    bool keep_size;
+
+    /**
       * @brief Default constructor of a new SyncPagesF object.
       */
     SyncPagesF();
@@ -365,7 +370,7 @@ class SyncPagesF : public Fault {
     /**
       * @brief Parameterized constructor of a new SyncPagesF object.
       */
-    SyncPagesF(string file, string timing, string op, string from, string to, int occurrence, bool crash, bool ret, bool sync_other_files);
+    SyncPagesF(string file, string timing, string op, string from, string to, int occurrence, bool crash, bool ret, bool sync_other_files, bool keep_size);
     
     /**
      * @brief Default destructor for a SyncPagesF object.
@@ -402,7 +407,7 @@ class SyncPagesF : public Fault {
      * @param pages_id Set of all page ids.
      * @return Set of page ids to sync.
      */
-    virtual unordered_set<int> filter_pages_to_sync (unordered_set<int> pages_id) = 0; 
+    virtual unordered_set<int> filter_pages_to_sync (vector<int> pages_id) = 0; 
 
     /**
      * @brief Print the fault.
@@ -448,9 +453,10 @@ class SyncPagesPartsF : public SyncPagesF {
      * @param crash If the fault is a crash fault.
      * @param ret If the current system call is finished before crashing.
      * @param sync_other_files True if we want to fsync other files.
+     * @param keep_size True if we want to keep file size.
      * @param pages Pages to sync.
      */
-    SyncPagesPartsF(string file, string timing, string op, string from, string to, int occurrence, bool crash, bool ret, bool sync_other_files, Pages pages);
+    SyncPagesPartsF(string file, string timing, string op, string from, string to, int occurrence, bool crash, bool ret, bool sync_other_files, bool keep_size, Pages pages);
 
     /**
      * @brief Default destructor for a SyncPagesPartsF object.
@@ -480,7 +486,7 @@ class SyncPagesPartsF : public SyncPagesF {
      * @param pages_id Set of all page ids.
      * @return Set of page ids to sync.
      */
-    unordered_set<int> filter_pages_to_sync (unordered_set<int> pages_id) override;
+    unordered_set<int> filter_pages_to_sync (vector<int> pages_id) override;
 
     /**
      * @brief Check if the parameters have correct values for the fault.
@@ -515,9 +521,10 @@ class SyncPagesNumberedF : public SyncPagesF {
      * @param occurrence Occurrence of the op.
      * @param ret If the current system call is finished before crashing.
      * @param sync_other_files True if we want to fsync other files.
+     * @param keep_size True if we want to keep the current file size.
      * @param pages Pages to sync.
      */
-    SyncPagesNumberedF(string file, string timing, string op, string from, string to, int occurrence, bool ret, bool crash, bool sync_other_files, vector<int> pages);
+    SyncPagesNumberedF(string file, string timing, string op, string from, string to, int occurrence, bool ret, bool crash, bool sync_other_files, bool keep_size, vector<int> pages);
 
     /**
      * @brief Default destructor for a SyncPagesNumberedF object.
@@ -537,7 +544,7 @@ class SyncPagesNumberedF : public SyncPagesF {
      * @param pages_id Set of all page ids.
      * @return Set of page ids to sync.
      */
-    unordered_set<int> filter_pages_to_sync (unordered_set<int> pages_id) override;
+    unordered_set<int> filter_pages_to_sync (vector<int> pages_id) override;
 
     /**
      * @brief Print the fault.

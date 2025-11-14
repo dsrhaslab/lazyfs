@@ -24,7 +24,7 @@
 
 using namespace lazyfs;
 
-#define MAX_READ_CHUNK 255
+#define MAX_READ_CHUNK 1024
 
 cache::config::Config std_config;
 std::thread faults_handler_thread;
@@ -155,7 +155,12 @@ void fht_worker (LazyFS* filesystem) {
                     }
 
                     if (sync_fault->timing == "now") {
+                        spdlog::info("[DEBUG]: triggering sync pages immediately for file: {}", sync_fault->file);
                         filesystem->command_fault_sync_pages(*sync_fault);
+
+                        // Delete the fault after use
+                        delete sync_fault;
+                        
                     } else {
                         filesystem->add_sync_pages_fault(params_map);
                     }

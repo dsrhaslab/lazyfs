@@ -283,9 +283,14 @@ bool LazyFS::trigger_configured_clear_fault (string opname,
 
 void LazyFS::trigger_sync_pages_fault(faults::SyncPagesF &sync_pages) {
 
-    string owner (sync_pages.file);
+    string inode =  this->FSCache->get_original_inode (sync_pages.file);
 
-    bool synced = FSCache->partial_file_sync (owner, sync_pages);
+    if (inode.empty ()) {
+        spdlog::error ("[lazyfs.cmd]: sync pages fault: file {} has no inode mapping!", sync_pages.file);
+        return;
+    }
+
+    bool synced = this->FSCache->partial_sync_owner (inode, sync_pages);
 
     if (!synced)
         spdlog::warn ("[lazyfs.cmd]: sync pages went wrong!");
@@ -299,14 +304,14 @@ void LazyFS::trigger_sync_pages_fault(faults::SyncPagesF &sync_pages) {
             
             vector<string> inodes = FSCache->unsynced_inodes ();
 
-            for (const auto& inode : inodes) {
-                if (inode != owner) {
+            for (const auto& unsynced_inode : inodes) {
+                if (unsynced_inode != inode) {
 
-                    const auto& files = FSCache->find_files_mapped_to_inode (inode);
+                    const auto& files = FSCache->find_files_mapped_to_inode (unsynced_inode);
 
                     for (const auto& file : files) {
 
-                        synced = FSCache->sync_owner (inode, true, const_cast<char*> (file.c_str ()));
+                        synced = FSCache->sync_owner (unsynced_inode, true, const_cast<char*> (file.c_str ()));
 
                         if (!synced) {
                             spdlog::warn ("[lazyfs.{}]: Failed to sync file: {}", SYNC_PAGES, file);

@@ -394,7 +394,7 @@ bool Cache::sync_owner (string owner, bool only_sync_data, char* orig_path) {
         TIMESPEC_TO_TIMEVAL (&times[0], &(meta->atim));
         TIMESPEC_TO_TIMEVAL (&times[1], &(meta->mtim));
 
-        const char* path = owner.c_str ();
+        const char* path = owner.c_str ();  // TO CHECK: should be orig_path?
         utimes (path, times);
     }
 
@@ -403,10 +403,12 @@ bool Cache::sync_owner (string owner, bool only_sync_data, char* orig_path) {
     return res;
 }
 
-bool Cache::partial_file_sync (string owner, faults::SyncPagesF &sync_pages) {
+bool Cache::partial_sync_owner (string owner, faults::SyncPagesF &sync_pages) {
 
     std::unique_lock<shared_mutex> lock (lock_cache_mtx, std::defer_lock);
     lock.lock ();
+
+    spdlog::debug ("[DEBUG][cache][partial_sync_owner] called for inode '{}'", owner);
 
     if (!has_content_cached (owner)) {
 
@@ -419,16 +421,28 @@ bool Cache::partial_file_sync (string owner, faults::SyncPagesF &sync_pages) {
 
     off_t last_size = get_content_metadata (owner)->size;
 
-    //spdlog::info ("[CACHE]: partial file sync for inode: {} path: {} parts: {}", inode, path, parts);
-
     char * path = new char[sync_pages.file.length() + 1];
     strcpy(path, sync_pages.file.c_str());
 
     bool res = this->engine->partial_sync_pages (owner, last_size, path, sync_pages);
 
-    //if (this->engine->is_owner_synced (inode)) {
-    //    _get_content_ptr (inode)->set_data_sync_flag (true);
-    //}
+    // Update sync flag if succeeded
+    if (res && this->engine->is_owner_synced (owner)) {
+        _get_content_ptr (owner)->set_data_sync_flag (true);
+    }
+
+    // Sync metadata
+    Metadata* meta = _get_content_ptr (owner)->get_metadata ();
+    struct timeval times[2];
+
+    TIMESPEC_TO_TIMEVAL (&times[0], &(meta->atim));
+    TIMESPEC_TO_TIMEVAL (&times[1], &(meta->mtim));
+
+    utimes (path, times);
+
+    // Clean up
+    unlockItem (owner);   
+    delete[] path;
     
     return true;
 }
