@@ -136,6 +136,8 @@ I recommend following the `simple` cache configuration (indicating the cache siz
 -   **torn-op**: This fault type involves dividing a write system call into smaller parts, with some of these parts being persisted while others are not. In the example, the fifth write issued (the number of the write is defined by the parameter `occurrence`) to the file "output1.txt" will be divided into three equal parts if the `parts` parameter is used, or into customizable-sized parts if the `parts_bytes` parameter is defined. In the commented code, there's an example of using `parts_bytes`, where the write will be torn into three parts: the first with 4096 bytes, the second with 3600 bytes, and the last with 1200 bytes. The `persist` vector determines which parts will be persisted. After the persistence of these parts, LazyFS will crash.
 -   **clear-cache**: Clears unsynced data in a certain point of the execution. In the example above, this fault will be injected after (`timing`) the sixth (`occurrence`) `fsync` (`op`) to the file "f1.txt" (`from`). The `op` parameter must be a system call, and if it involves two paths (such as `rename`), the `to` parameter should also be specified. The `crash` parameter determines whether LazyFS should crash after the fault injection.
 
+In torn-seq and torn-op faults, configure parameter `file` with the absolute path using the root directory of LazyFS.
+
 Other parameters:
 
 - **fifo_path**: The absolute path where the faults FIFO should be created.
@@ -146,16 +148,21 @@ Other parameters:
 
 To **run the file system**, one could use the **mount-lazyfs.sh** script, which calls FUSE with the correct parameters:
 
+- `-m` : FUSE mount directory.
+- `-r` : FUSE root directory.
+- `-f` : Foreground mode.
+- `-s` : FUSE single thread mode.
+
 ```bash
 cd lazyfs/
 
 # Running LazyFS in the foreground (add '-f/--foregound')
 
-./scripts/mount-lazyfs.sh -c config/default.toml -m /tmp/lazyfs.mnt -r /tmp/lazyfs.root -f
+./scripts/mount-lazyfs.sh -c config/default.toml -m /tmp/lazyfs.mnt -r /tmp/lazyfs.root -f -s
 
 # Running LazyFS in the background
 
-./scripts/mount-lazyfs.sh -c config/default.toml -m /tmp/lazyfs.mnt -r /tmp/lazyfs.root
+./scripts/mount-lazyfs.sh -c config/default.toml -m /tmp/lazyfs.mnt -r /tmp/lazyfs.root -s
 
 # Umount with
 
@@ -251,6 +258,11 @@ Finally, one can control LazyFS by echoing the following commands to the configu
         echo "lazyfs::torn-seq::op=...::file=...::persist=...::occurrence=..." > /my/path/faults.fifo
         ```
 
+After a LazyFS crash, the mount directory may be left in an undefined state. In that case, run:
+
+```bash
+fusermount -uz <mount-directory>
+```
 
 LazyFS expects that every buffer written to the FIFO file terminates with a new line character (**echo** does this by default). Thus, if using `pwrite`, for example, make sure you end the buffer with `\n`.
 
