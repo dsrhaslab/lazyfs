@@ -10,9 +10,8 @@
 
 // LazyFS specific imports
 #include <faults/faults.hpp>
-#include <lazyfs/lazyfs.hpp>
 #include <faults_handler.hpp>
-
+#include <lazyfs/lazyfs.hpp>
 
 using namespace lazyfs;
 
@@ -295,10 +294,7 @@ bool parse_torn_seq (string command_str, string& file, string& op, string& persi
     return valid_fault;
 }
 
-bool parse_snapshot (string  command_str, 
-                     string& files,
-                     regex&  files_rgx, 
-                     string& save) {
+bool parse_snapshot (string command_str, string& files, regex& files_rgx, string& save) {
 
     std::regex rgx_global ("::");
     std::regex rgx_attrib ("=");
@@ -383,5 +379,200 @@ FaultParamsMap parse_fault_command(std::string command_str) {
     return params_map;
 }
 
+void fht_worker (LazyFS* filesystem, cache::config::Config* std_config) {
+    int fd_fifo, fd_fifo_completed;
+    std::shared_mutex fifo_lock;
+
+    fd_fifo = open (std_config->FIFO_PATH.c_str (), O_RDWR);
+    if (fd_fifo < 0) {
+        spdlog::critical ("[lazyfs.fifo]: failed to open fifo '{}' (error: {})",
+                          std_config->FIFO_PATH.c_str (),
+                          strerror (errno));
+        return;
+    }
+
+    bool completed_fault_fifo = (std_config->FIFO_PATH_COMPLETED != "");
+
+    if (completed_fault_fifo) {
+        fd_fifo_completed = open (std_config->FIFO_PATH_COMPLETED.c_str (), O_WRONLY);
+        if (fd_fifo_completed < 0) {
+            spdlog::critical ("[lazyfs.fifo]: failed to open fifo '{}' (error: {})",
+                            std_config->FIFO_PATH_COMPLETED.c_str (),
+                            strerror (errno));
+            return;
+        }
+    }
+
+    spdlog::info ("[lazyfs.faults.worker]: waiting for fault commands...");
+
+    char buffer[MAX_READ_CHUNK];
+    int ret;
+    while (true) {
+        if ((ret = read (fd_fifo, &buffer, MAX_READ_CHUNK)) > 0) {
+
+            buffer[ret - 1] = '\0';
+
+            std::string command_str = string (buffer);
+            spdlog::info ("[lazyfs.faults.worker]: received '{}'", command_str);
+
+            if (command_str.rfind ("lazyfs::crash", 0) == 0) {
+
+                string crash_operation = "none";
+                string crash_timing    = "none";
+                string crash_from_rgx  = "none";
+                string crash_to_rgx    = "none";
+                
+                if (parse_crash(command_str, crash_timing, crash_operation, crash_from_rgx, crash_to_rgx)) {
+
+                    filesystem->add_crash_fault (crash_timing, crash_operation, crash_from_rgx, crash_to_rgx);
+
+                }
+
+            } else if (command_str.rfind ("lazyfs::clear-cache", 0) == 0) {
+
+                spdlog::info ("[lazyfs.faults.worker]: received '{}'", string (buffer));
+                filesystem->command_fault_clear_cache ();
+                
+                if (completed_fault_fifo) {
+                    const char* clear_cache = "finished::clear-cache\n";
+                    fifo_lock.lock();
+                    if ((ret = write(fd_fifo_completed, clear_cache, strlen(clear_cache))) < 0) {
+                        spdlog::warn ("[lazyfs.faults.worker]: failed to write to notifier fifo");
+                    };
+                    fifo_lock.unlock();
+                }
+
+            } else if (command_str.rfind ("lazyfs::torn-op", 0) == 0) {
+
+                string file        = "none";
+                string parts       = "none";
+                string parts_bytes = "none";
+                string persist     = "none";
+                string ret         = "none";
+
+                if (parse_torn_op(command_str, file, parts, parts_bytes, persist, ret)) {
+
+                    vector<string> errors_add_torn_op;
+                    errors_add_torn_op = filesystem->add_torn_op_fault (file, parts, parts_bytes, persist, ret);
+
+                    if (errors_add_torn_op.size () == 0)
+                        spdlog::critical ("[lazyfs.faults.worker]: received VALID torn-op fault.");
+
+                    else {
+                        spdlog::error ("[lazyfs.faults.worker]: received: INVALID torn-op fault:");
+
+                        for (auto const err : errors_add_torn_op) {
+                            spdlog::error ("[lazyfs.faults.worker]: torn-op fault error: {}", err);
+                        }
+                    }
+                } // else, errors already printed by parse_torn_op                            
+                
+            } else if (command_str.rfind ("lazyfs::torn-seq", 0) == 0) {
+                
+                string file    = "none";    
+                string op      = "none";
+                string persist = "none";
+                string ret     = "none";
+
+                if (parse_torn_seq(command_str, file, op, persist, ret)) {
+                    
+                    vector<string> errors_add_torn_seq;
+                    errors_add_torn_seq = filesystem->add_torn_seq_fault(file, op, persist, ret);
+
+                    if (errors_add_torn_seq.size() == 0)
+                            spdlog::critical ("[lazyfs.faults.worker]: received VALID torn-seq fault.");
+
+                    else {  
+                            spdlog::error ("[lazyfs.faults.worker]: received: INVALID torn-seq fault:");
+
+                            for (auto const err : errors_add_torn_seq) {
+                                spdlog::error ("[lazyfs.faults.worker]: torn-seq fault error: {}", err);
+                            }
+                    }  
+                } // else, errors already printed by parse_torn_seq
+
+            } else if (command_str.rfind ("lazyfs::sync-pages", 0) == 0) {
+
+                FaultParamsMap params_map = parse_fault_command(command_str);
+
+                try {
+                    faults::SyncPagesF* sync_fault = faults::SyncPagesF::tryCreate(params_map);
+
+                    if (!sync_fault) {
+                        spdlog::error("[lazyfs.faults.worker]: error creating SyncPages fault: returned null pointer.");
+                        continue;
+                    }
+
+                    if (sync_fault->timing == "now") {
+                        spdlog::info("[DEBUG]: triggering sync pages immediately for file: {}", sync_fault->file);
+                        filesystem->command_fault_sync_pages(*sync_fault);
+
+                        // Delete the fault after use
+                        delete sync_fault;
+                        
+                    } else {
+                        filesystem->add_sync_pages_fault(params_map);
+                    }
+
+                } catch (const std::exception& e) {
+                    spdlog::error("[lazyfs.faults.worker]: error creating SyncPages fault: {}", e.what());
+                    continue;
+                }
+
+                                        
+            } else if (command_str.rfind ("lazyfs::snapshot", 0) == 0) {
+
+                string files = "none";
+                regex files_rgx;
+                string save  = "none";
+
+                if (parse_snapshot(command_str, files, files_rgx, save)) 
+                    filesystem->command_snapshot_files(files_rgx, save);
 
 
+            } else if (!strcmp (buffer, "lazyfs::display-cache-usage")) {
+
+                filesystem->command_display_cache_usage ();
+
+            } else if (!strcmp (buffer, "lazyfs::cache-checkpoint")) {
+
+                filesystem->command_checkpoint ();
+
+            } else if (!strcmp (buffer, "lazyfs::unsynced-data-report")) {
+
+                vector<string> injecting_fault = filesystem->get_injecting_fault ();
+                filesystem->command_unsynced_data_report (injecting_fault);
+                
+            } else if (!strcmp (buffer, "lazyfs::help")) { //UPDATE
+
+                spdlog::info ("[lazyfs.faults.worker]: <" + string (buffer) + ">");
+
+                spdlog::info (
+                    "[lazyfs.faults.worker] help: 'lazyfs::clear-cache' => clears un-fsynced data");
+                spdlog::info (
+                    "[lazyfs.faults.worker] help: 'lazyfs::display-cache-usage' => shows the "
+                    "cache usage (#pages)");
+                spdlog::info ("[lazyfs.faults.worker] help: 'lazyfs::cache-checkpoint' => writes "
+                              "all cached data");
+                spdlog::info (
+                    "[lazyfs.faults.worker] help: 'lazyfs::unsynced-data-report' => reports which "
+                    "files have un-fsynced data");
+                spdlog::info (
+                    "[lazyfs.faults.worker] help: 'lazyfs::help' => displays this message");
+
+            } else {
+
+                spdlog::info ("[lazyfs.faults.worker]: command unknown '{}'", string (buffer));
+            }
+
+        } else
+            spdlog::error ("[lazyfs.faults.worker]: failed to read from fifo (error: {})",
+                           strerror (errno));
+            
+    }
+
+    spdlog::info ("[lazyfs.faults.worker]: worker stopped");
+
+    close (fd_fifo);   
+    if (completed_fault_fifo) close(fd_fifo_completed);
+}
