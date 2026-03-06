@@ -66,7 +66,7 @@ class Write {
     /**
      * @brief Destroy the Write object
      *
-     */   
+     */
     ~Write ();
 
 };
@@ -96,15 +96,9 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
     std::thread* faults_handler_thread;
 
     /**
-     * @brief Faults handler method to run inside the thread.
-     *
-     */
-    void (*fht_worker) (LazyFS* filesystem);
-
-    /**
      * @brief Faults programmed in the configuration file.
      */
-    unordered_map<string,vector<faults::Fault*>>* faults; 
+    unordered_map<string,vector<faults::Fault*>>* faults;
 
     /**
      * @brief FUSE mount directory.
@@ -112,7 +106,7 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
     string mount_dir;
 
     /**
-     * @brief FUSE root directory. 
+     * @brief FUSE root directory.
      */
     string root_dir;
 
@@ -174,7 +168,7 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
                                                             "link",
                                                             "symlink"};
     */
-   
+
     /**
      * @brief Map of operations that have two paths
      *
@@ -201,7 +195,6 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
     LazyFS (Cache* cache,
             cache::config::Config* config,
             std::thread* faults_handler_thread,
-            void (*fht_worker) (LazyFS* filesystem),
             unordered_map<string,vector<faults::Fault*>>* faults,
             string mount_dir,
             string root_dir);
@@ -219,7 +212,7 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
 
     /**
      * @brief Fifo: (fault) Clear the cached contents
-     * 
+     *
      * @param lock_needed Indicates if the cache_command_lock should be locked. When this function is called inside a filesystem operation, it should be false, because all filesystem operations are already locked. When called from the fault handler, it should be true.
      */
     void command_fault_clear_cache (bool lock_needed = true);
@@ -229,14 +222,14 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
     /**
      * @brief Fifo: (fault) Persist the cached pages requested.
      * Only use after obtaining lock on cache_command_lock.
-     * 
+     *
      * @param sync_pages The sync-pages fault to be injected.
      */
   void command_fault_sync_pages (faults::SyncPagesF &sync_pages);
 
     /**
      * @brief Fifo: (info) Display the cache usage
-     * 
+     *
      * @param lock_needed Indicates if the cache_command_lock should be locked. When this function is called inside a filesystem operation, it should be false, because all filesystem operations are already locked. When called from the fault handler, it should be true.
      *
      */
@@ -244,7 +237,7 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
 
     /**
      * @brief Fifo: (sync) Sync all cached data with the underlying FS
-     * 
+     *
      * @param lock_needed Indicates if the cache_command_lock should be locked. When this function is called inside a filesystem operation, it should be false, because all filesystem operations are already locked. When called from the fault handler, it should be true.
      *
      */
@@ -267,7 +260,7 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
 
     /**
      * @brief Checks if a programmed reorder fault for the given path and operation exists. If so, updates the counter and returns the fault.
-     * @param path Path of the file 
+     * @param path Path of the file
      * @param op Operation ('write','fsync',...)
      * @return Pointer to the ReorderF object
     */
@@ -291,7 +284,7 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
     void restart_counter(string path, string op);
 
     /**
-     * @brief Checks the existence of a pending write (a write that could be persisted if it is followed by another one) and deletes it if it exists. 
+     * @brief Checks the existence of a pending write (a write that could be persisted if it is followed by another one) and deletes it if it exists.
      * @param path Path of the file
      */
     bool check_and_delete_pendingwrite(const char* path);
@@ -419,15 +412,15 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
                           string crash_operation,
                           string crash_regex_from,
                           string crash_regex_to);
-    
+
 
   void add_sync_pages_fault(const FaultParamsMap& params_map);
 
     /**
      * @brief Adds a torn-seq fault to the faults map. Returns a vector with errors if any.
-     * 
+     *
      * @param path path of the fault
-     * @param op system call 
+     * @param op system call
      * @param persist which parts of the write to persist
      * @param ret_ if the current system call is finished before crashing
      * @return errors
@@ -436,7 +429,7 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
 
     /**
      * @brief Adds a torn-op fault to the faults map. Returns a vector with errors if any.
-     * 
+     *
      * @param path path of the fault
      * @param parts which parts of the write to persist
      * @param parts_bytes division of the write in bytes

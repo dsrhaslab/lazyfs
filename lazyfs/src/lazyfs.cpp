@@ -33,6 +33,7 @@
 #include <cache/engine/backends/custom/custom_cache.hpp>
 #include <lazyfs/fusepp/Fuse-impl.h>
 #include <lazyfs/lazyfs.hpp>
+#include <faults_handler.hpp>
 
 using namespace std;
 using namespace cache;
@@ -49,7 +50,6 @@ LazyFS::LazyFS () {}
 LazyFS::LazyFS (Cache* cache,
                 cache::config::Config* config,
                 std::thread* faults_handler_thread,
-                void (*fht_worker) (LazyFS* filesystem),
                 unordered_map<string, vector<faults::Fault*>>* faults,
                 string mount_dir,
                 string root_dir) {
@@ -57,7 +57,6 @@ LazyFS::LazyFS (Cache* cache,
     this->FSConfig              = config;
     this->FSCache               = cache;
     this->faults_handler_thread = faults_handler_thread;
-    this->fht_worker            = fht_worker;
     this->faults                = faults;
     this->mount_dir             = mount_dir;
     this->root_dir              = root_dir;
@@ -65,7 +64,7 @@ LazyFS::LazyFS (Cache* cache,
 
     this->pending_write         = NULL;
     this->kill_before.          store (false);
-    this->snapshot_counter.     store(0); 
+    this->snapshot_counter.     store(0);
 
     for (auto const& it : faults::Fault::allow_clear_fs_operations) {
         this->crash_faults_before_map.insert ({it, {}});
@@ -167,7 +166,7 @@ bool LazyFS::trigger_configured_clear_fault (string opname,
                                              string from_path,
                                              string to_path,
                                              bool lock_needed) {
-                                                
+
 
     auto it = faults->find (from_path);
 
@@ -301,7 +300,7 @@ void LazyFS::trigger_sync_pages_fault(faults::SyncPagesF &sync_pages) {
             spdlog::warn (
                 "[lazyfs.{}]: sync other files is enabled, proceeding to sync other files...",
                 SYNC_PAGES);
-            
+
             vector<string> inodes = FSCache->unsynced_inodes ();
 
             for (const auto& unsynced_inode : inodes) {
@@ -409,7 +408,7 @@ off_t LazyFS::get_file_size (string path) {
 
     if (inode.empty ()) {
         inode = to_string (stbuf.st_ino);
-    } 
+    }
 
     bool locked = this->FSCache->lockItemCheckExists (inode);
 
@@ -451,7 +450,7 @@ int LazyFS::read_file (const char * path, char* buf, size_t size, off_t offset) 
     if (inode.empty ()) {
         // File is not cached, will read it directly from the file system
         return pread (fd, buf, size, offset);
-    } 
+    }
 
     int IO_BLOCK_SIZE = this->FSConfig->IO_BLOCK_SIZE;
 
@@ -473,7 +472,7 @@ int LazyFS::read_file (const char * path, char* buf, size_t size, off_t offset) 
     Metadata meta;
 
     if (not cache_had_owner) {
-        
+
         // File is not cached, will read it directly from the file system
         return pread (fd, buf, size, offset);
 
@@ -643,13 +642,13 @@ int LazyFS::read_file (const char * path, char* buf, size_t size, off_t offset) 
         res = -errno;
 
     close (fd);
-    
+
     return res;
 }
 
 int LazyFS::copy_file (string file, string destination) {
     struct stat file_stat;
-    int size;    
+    int size;
 
     spdlog::info("[lazyfs.cmds]: Snapshotting file {} to {}", file, destination);
 
@@ -682,13 +681,13 @@ int LazyFS::copy_file (string file, string destination) {
         spdlog::error("[lazyfs.cmds]: Error snapshotting file {}: {}", file, (errno));
         delete [] buf;
         return -errno;
-    } 
+    }
 
     if (write(fd, buf, file_size) != file_size) {
         spdlog::error("[lazyfs.cmds]: Error snapshotting file {}: {}", file, (errno));
         delete [] buf;
         return -errno;
-    } 
+    }
 
     delete [] buf;
 
@@ -697,7 +696,6 @@ int LazyFS::copy_file (string file, string destination) {
 
 void LazyFS::command_snapshot_files(regex files_rgx, string save_dir, bool lock_needed) {
     if (regex_match("", files_rgx) || save_dir == "") return;
-
     bool found_path = false;
     string destination = save_dir + "/snapshot" + to_string(this->snapshot_counter.load());
 
@@ -710,6 +708,7 @@ void LazyFS::command_snapshot_files(regex files_rgx, string save_dir, bool lock_
     } else {
         for (const auto& entry : filesystem::recursive_directory_iterator(this->root_dir)) {
             if (filesystem::is_regular_file(entry.path())) {
+
                 if (regex_match(entry.path().string(), files_rgx)) {
                     if (!found_path) {
                         filesystem::create_directory(destination);
@@ -720,12 +719,12 @@ void LazyFS::command_snapshot_files(regex files_rgx, string save_dir, bool lock_
                     string dest = destination + "/" + entry.path().filename().string();
                     tuple <std::string, std::string> src_dest = make_tuple(src, dest);
 
-                    files_to_copy.push_back(src_dest);     
-                }  
-            } 
-        } 
+                    files_to_copy.push_back(src_dest);
+                }
+            }
+        }
     }
-    
+
     for (auto const& it : files_to_copy) {
         copy_file(get<0>(it), get<1>(it));
     }
@@ -832,13 +831,13 @@ void LazyFS::command_fault_clear_cache (bool lock_needed) {
 
     spdlog::warn ("[lazyfs.cmds]: clear cache request submitted...");
 
-    //Taking snapshots 
-    if (this->snapshot_counter.load () >= 0) 
+    //Taking snapshots
+    if (this->snapshot_counter.load () >= 0)
         command_snapshot_files (regex(FSConfig->SNAPSHOT_FILES), FSConfig->SNAPSHOT_SAVE, lock_needed);
 
     FSCache->clear_all_cache ();
 
-    if (this->snapshot_counter.load () >= 0) 
+    if (this->snapshot_counter.load () >= 0)
         command_snapshot_files (regex(FSConfig->SNAPSHOT_FILES), FSConfig->SNAPSHOT_SAVE, lock_needed);
 
     spdlog::warn ("[lazyfs.cmds]: cache is cleared.");
@@ -888,12 +887,12 @@ void* LazyFS::lfs_init (struct fuse_conn_info* conn, struct fuse_config* cfg) {
     cfg->use_ino          = 1;
     // cfg->direct_io        = 1;
 
-    new (this_ ()->faults_handler_thread) std::thread (this_ ()->fht_worker, this_ ());
+    new (this_ ()->faults_handler_thread) std::thread (fht_worker, this_ (), this_ ()->FSConfig);
 
     // Checking snapshot folders to get the next snapshot index
     if (this_ ()->FSConfig->SNAPSHOT_SAVE != "") {
         int maxIndex = -1;
-        regex snapshot_save_regex(R"(snapshot(\d+))"); 
+        regex snapshot_save_regex(R"(snapshot(\d+))");
 
         for (const auto& entry : filesystem::directory_iterator(this_ ()->FSConfig->SNAPSHOT_SAVE)) {
             if (entry.is_directory()) {
@@ -905,10 +904,10 @@ void* LazyFS::lfs_init (struct fuse_conn_info* conn, struct fuse_config* cfg) {
                 }
             }
         }
-    
+
         if (maxIndex == -1)
             this_ ()->snapshot_counter.store(0);
-        else    
+        else
             this_ ()->snapshot_counter.store(maxIndex + 1);
 
         //Taking snapshots when starting LazyFS
@@ -920,7 +919,7 @@ void* LazyFS::lfs_init (struct fuse_conn_info* conn, struct fuse_config* cfg) {
     return this_ ();
 }
 
-void LazyFS::lfs_destroy (void*) { 
+void LazyFS::lfs_destroy (void*) {
     if (this_ ()->snapshot_counter.load () >= 0)
         this_ ()->command_snapshot_files (regex(this_ ()->FSConfig->SNAPSHOT_FILES), this_ ()->FSConfig->SNAPSHOT_SAVE);
     spdlog::info ("[lazyfs]: stopping LazyFS...");
@@ -952,7 +951,7 @@ int LazyFS::lfs_getattr (const char* path, struct stat* stbuf, struct fuse_file_
     if (inode.empty ()) {
         inode = to_string (stbuf->st_ino);
         this_ ()->FSCache->insert_inode_mapping (content_owner, inode, false);
-    } 
+    }
 
     bool locked = this_ ()->FSCache->lockItemCheckExists (inode);
 
@@ -1537,7 +1536,7 @@ int LazyFS::lfs_write (const char* path,
 
     // res should be = actual bytes written as pwrite could fail...
     res = size;
-    
+
     if (res == -1)
         res = -errno;
 
