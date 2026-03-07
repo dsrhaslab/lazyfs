@@ -77,7 +77,7 @@ int main (int argc, char* argv[]) {
 
     // Load LazyFS's config
 
-    unordered_map<string,vector<faults::Fault*>> faults = std_config.load_config (config_path);
+    unordered_map<string,vector<faults::Fault*>> faults = load_config (config_path, std_config);
 
     // Setup logger
     bool only_console_sink = false;
