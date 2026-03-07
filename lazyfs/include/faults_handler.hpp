@@ -1,11 +1,15 @@
 #ifndef FAULTS_HANDLER_HPP
 #define FAULTS_HANDLER_HPP
 
-#include "cache/config/config.hpp"
-#include "faults/faults.hpp"
-#include "lazyfs/lazyfs.hpp"
 #include <string>
 #include <vector>
+#include <unordered_map>
+#include <regex>
+
+#include <cache/config/config.hpp>
+#include <faults/faults.hpp>
+#include <lazyfs/lazyfs.hpp>
+#include <toml.hpp>
 
 #define MAX_READ_CHUNK 100
 
@@ -67,5 +71,23 @@ bool parse_snapshot (std::string command_str,
 FaultParamsMap parse_fault_command (const std::string command_str);
 
 void fht_worker (lazyfs::LazyFS* filesystem, cache::config::Config* std_config);
+
+/**
+ * @brief Converts a toml::value to a FaultParam variant.
+ *
+ * @param v The toml::value to convert.
+ * @return The corresponding FaultParam variant.
+ */
+FaultParam tomlValueToParam (const toml::value& v);
+
+/**
+ * @brief Loads and constructs a Config object from the LazyFS config file,
+ * and returns the map of programmed fault injections.
+ *
+ * @param filename Path to the config file.
+ * @param config Reference to the Config object to populate.
+ * @return Map from files to programmed faults for those files.
+ */
+std::unordered_map<std::string, std::vector<faults::Fault*>> load_config (std::string filename, cache::config::Config& config);
 
 #endif // FAULTS_HANDLER_HPP

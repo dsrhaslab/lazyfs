@@ -147,21 +147,7 @@ class Config {
      */
     void print_config ();
 
-    /**
-     * @brief Converts a toml::value to a FaultParam variant.
-     * 
-     * @param v The toml::value to convert.
-     * @return The corresponding FaultParam variant.
-     */
-    FaultParam tomlValueToParam(const toml::value& v);
 
-    /**
-     * @brief Loads and constructs a Config object from the LazyFS config file.
-     *
-     * @param filename Filename to read the config from
-     * @return Map from files to programmed faults for those files
-     */
-    unordered_map<string,vector<faults::Fault*>> load_config (string filename);
 };
 
 } // namespace cache::config

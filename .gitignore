@@ -54,3 +54,7 @@ build/
 
 # tests/filebench: output files
 outputs*
+
+# Cache folders
+lazyfs/.cache/
+libs/libpcache/.cache/
