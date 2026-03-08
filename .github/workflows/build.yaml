@@ -9,7 +9,7 @@ on:
       - '.github/workflows/**'
 jobs:
     build-repo:
-        runs-on: ubuntu-20.04
+        runs-on: ubuntu-22.04
         env:
           LAZYFS_TEST_MOUNT_DIR: "/tmp/lfs.mnt/"
           LAZYFS_TEST_ROOT_DIR: "/tmp/lfs.root/"
@@ -36,7 +36,7 @@ jobs:
 
             - name: Build lazyfs (and tests)
               run: |
-                sed -i 's/cmake \-DLAZYFS\_BUILD\_TESTS\=OFF \.\./cmake \-DLAZYFS\_\BUILD\_\TESTS\=ON \.\./g' lazyfs/build.sh
+                sed -i 's/LAZYFS_BUILD_TESTS=OFF/LAZYFS_BUILD_TESTS=ON/' lazyfs/build.sh
                 cd lazyfs && ./build.sh && cd -
                 cd tests/lfscheck && ./build.sh && cd -
 

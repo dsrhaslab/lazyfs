@@ -8,6 +8,7 @@
 #include <map>
 #include <unordered_map>
 #include <unordered_set>
+#include <stdexcept>
 #include <variant>
 
 #define TORN_OP "torn-op"
