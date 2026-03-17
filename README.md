@@ -264,6 +264,10 @@ Finally, one can control LazyFS by echoing the following commands to the configu
 
     > Kills LazyFS before executing a link operation to the file pattern 'fileabd'.
 
+    > [!WARNING]
+    > After killing LazyFS, the mount point will be unmount from the filesystem. You need to run `fusermount -u /my/path/mnt` to properly unmount the filesystem and then you can run LazyFS again to continue running tests.
+
+
 -   **Kill the filesystem** after injecting `torn-op` or `torn-seq`faults:
 
     The parameters are the same as the ones presented in the above configuration file. Parameters that have multiple values, must be specified without the parenthesis (e.g., `persist=1,2` ).
@@ -283,6 +287,20 @@ fusermount -uz <mount-directory>
 ```
 
 LazyFS expects that every buffer written to the FIFO file terminates with a new line character (**echo** does this by default). Thus, if using `pwrite`, for example, make sure you end the buffer with `\n`.
+
+-   **Sync pages** - flushes pages for a given file:
+
+    ```bash
+    echo "lazyfs::sync-pages::timing=...::pages=...::file=... > /my/path/faults.fifo
+    ```
+
+| Parameter | Description | Options |
+|---|---|---|
+| timing | When to sync pages. | `now`, `after`, `before` |
+| pages | Which pages to sync  | `all`, `first`, `last`, `first-half`, `second-half`, `first-and-last`, `interleaved`, `random`|
+| file | Path to the file for which to sync pages |
+
+
 
 ## Contact
 
