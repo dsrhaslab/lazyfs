@@ -34,7 +34,8 @@ file(GLOB SOURCES "src/*.cpp")
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
-
-add_executable(lfscheck ${SOURCES})
-
-target_link_libraries(lfscheck spdlog argparse Threads::Threads)
+foreach(src ${SOURCES})
+    get_filename_component(target ${src} NAME_WE)
+    add_executable(${target} ${src})
+    target_link_libraries(${target} PRIVATE spdlog argparse Threads::Threads)
+endforeach()
