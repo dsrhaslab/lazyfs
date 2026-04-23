@@ -8,16 +8,16 @@ on:
       - '.github/workflows/**'
 jobs:
     build-repo:
-        runs-on: ubuntu-22.04
+        runs-on: ubuntu-24.04
         env:
           LAZYFS_TEST_MOUNT_DIR: "/tmp/lfs.mnt/"
           LAZYFS_TEST_ROOT_DIR: "/tmp/lfs.root/"
         steps:
             - name: Check out repository code
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
 
             - name: Set up cache
-              uses: actions/cache@v4
+              uses: actions/cache@v5
               with:
                   path: ~/build
                   key: build-lazyfs
