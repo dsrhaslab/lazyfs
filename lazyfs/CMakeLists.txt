@@ -46,6 +46,13 @@ target_sources(
     ${CMAKE_PROJECT_NAME}
     PRIVATE
     src/lazyfs.cpp
+    src/lazyfs_faults.cpp
+    src/lazyfs_commands.cpp
+    src/lazyfs_ops.cpp
+    src/lazyfs_ops_dir.cpp
+    src/lazyfs_ops_write.cpp
+    src/lazyfs_ops_read.cpp
+    src/lazyfs_ops_attr.cpp
     src/main.cpp
     src/write_handler.cpp
     src/faults_handler.cpp

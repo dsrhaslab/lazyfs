@@ -473,6 +473,14 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
     int copy_file (string file, string destination);
     off_t get_file_size (string file);
     int read_file (const char* file, char* buf, size_t size, off_t offset);
+
+  private:
+    off_t write_get_file_size_before (const string& inode, const struct stat& stats);
+    void write_handle_sparse_gap (const char* path, off_t file_size_before, off_t offset, struct fuse_file_info* fi);
+    void write_update_metadata (const string& inode, off_t offset, size_t size, off_t file_size_before);
+    Metadata read_get_file_meta (const char* path, const string& inode);
+    bool handle_clear_fault (faults::ClearF* clear_fault, const string& opname, const string& optiming, const string& to_path, bool lock_needed);
+    bool handle_sync_pages_configured_fault (faults::SyncPagesF* page_fault, const string& opname, const string& optiming, const string& to_path, bool lock_needed);
 };
 
 } // namespace lazyfs

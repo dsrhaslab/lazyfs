@@ -489,6 +489,36 @@ void CustomCacheEngine::make_block_readable_to_offset (string cid,
     }
 }
 
+off_t CustomCacheEngine::flush_page_streak (int fd,
+                                            vector<tuple<int, Page*, pair<int, int>, bool>>& page_chunk,
+                                            off_t page_streak, off_t current_block_id,
+                                            map<int, tuple<int, Page*, pair<int, int>, bool>>& iterate_blocks,
+                                            off_t& page_streak_last_offset) {
+    struct iovec iov[page_streak];
+
+    page_streak_last_offset = (current_block_id - page_streak + 1) * this->config->IO_BLOCK_SIZE;
+
+    for (int p_id = 0; p_id < page_streak; p_id++) {
+        int streak_block = current_block_id - page_streak + p_id + 1;
+
+        auto const& streak_pair    = page_chunk[p_id];
+        Page* page_ptr             = get<1> (streak_pair);
+        auto const& block_data_offs = get<2> (streak_pair);
+        iov[p_id].iov_base         = page_ptr->data + block_data_offs.first;
+        if (p_id == page_streak - 1) {
+            iov[p_id].iov_len = page_ptr->allocated_block_ids.get_readable_to (streak_block) + 1;
+        } else {
+            iov[p_id].iov_len = this->config->IO_BLOCK_SIZE;
+        }
+
+        std::get<3> (iterate_blocks.at (streak_block)) = true;
+    }
+
+    off_t written = pwritev (fd, iov, page_streak, page_streak_last_offset);
+    page_streak_last_offset = (current_block_id + 1) * this->config->IO_BLOCK_SIZE;
+    return written;
+}
+
 bool CustomCacheEngine::sync_pages (string owner, off_t size, char* orig_path) {
 
     std::unique_lock<std::shared_mutex> lock (lock_cache_mtx);
@@ -534,47 +564,17 @@ bool CustomCacheEngine::sync_pages (string owner, off_t size, char* orig_path) {
             } else {
 
                 page_streak++;
-
                 page_chunk.push_back (it->second);
 
-                struct iovec iov[page_streak];
+                wrote_bytes += flush_page_streak (fd, page_chunk, page_streak, current_block_id, iterate_blocks, page_streak_last_offset);
 
-                page_streak_last_offset =
-                    (current_block_id - page_streak + 1) * this->config->IO_BLOCK_SIZE;
-
-                for (int p_id = 0; p_id < page_streak; p_id++) {
-
-                    int streak_block = current_block_id - page_streak + p_id + 1;
-
-                    auto const& streak_pair = page_chunk[p_id];
-                    // auto const& streak_pair     = iterate_blocks.at (streak_block);
-                    Page* page_ptr = get<1> (streak_pair);
-                    // auto const& block_data_offs = page_ptr->get_block_offsets (streak_block);
-                    auto const& block_data_offs = get<2> (streak_pair);
-                    iov[p_id].iov_base          = page_ptr->data + block_data_offs.first;
-                    if (p_id == page_streak - 1) {
-                        iov[p_id].iov_len =
-                            page_ptr->allocated_block_ids.get_readable_to (streak_block) + 1;
-                    } else {
-                        iov[p_id].iov_len = this->config->IO_BLOCK_SIZE;
-                    }
-
-                    // mark block as clean
-                    std::get<3> (iterate_blocks.at (streak_block)) = true;
-                }
-
-                wrote_bytes += pwritev (fd, iov, page_streak, page_streak_last_offset);
-                
                 if (wrote_bytes < 0) {
                     spdlog::warn ("[cache] pwritev of partial sync failed");
                     res = false;
                 }
 
                 page_streak = 0;
-
                 page_chunk.clear ();
-
-                page_streak_last_offset = (current_block_id + 1) * this->config->IO_BLOCK_SIZE;
             }
         }
     }
@@ -675,48 +675,18 @@ bool CustomCacheEngine::partial_sync_pages (string owner, off_t last_size, char*
             } else {
 
                 page_streak++;
-
                 page_chunk.push_back (it->second);
 
-                struct iovec iov[page_streak];
-
-                page_streak_last_offset =
-                    (current_block_id - page_streak + 1) * this->config->IO_BLOCK_SIZE;
-
-                for (int p_id = 0; p_id < page_streak; p_id++) {
-
-                    int streak_block = current_block_id - page_streak + p_id + 1;
-
-                    auto const& streak_pair = page_chunk[p_id];
-                    // auto const& streak_pair     = iterate_blocks.at (streak_block);
-                    Page* page_ptr = get<1> (streak_pair);
-                    // auto const& block_data_offs = page_ptr->get_block_offsets (streak_block);
-                    auto const& block_data_offs = get<2> (streak_pair);
-                    iov[p_id].iov_base          = page_ptr->data + block_data_offs.first;
-                    if (p_id == page_streak - 1) {
-                        iov[p_id].iov_len =
-                            page_ptr->allocated_block_ids.get_readable_to (streak_block) + 1;
-                    } else {
-                        iov[p_id].iov_len = this->config->IO_BLOCK_SIZE;
-                    }
-
-                    // mark block as clean
-                    std::get<3> (iterate_blocks.at (streak_block)) = true;
-                }
-
-                wrote_bytes += pwritev (fd, iov, page_streak, page_streak_last_offset);
+                wrote_bytes += flush_page_streak (fd, page_chunk, page_streak, current_block_id, iterate_blocks, page_streak_last_offset);
                 spdlog::info ("[DEBUG] CustomCacheEngine::partial_sync_pages -- pwritev called for owner {} , wrote_bytes: {}", owner, wrote_bytes);
-                
+
                 if (wrote_bytes < 0) {
                     spdlog::warn ("[cache] pwritev of partial sync failed");
                     res = false;
                 }
 
                 page_streak = 0;
-
                 page_chunk.clear ();
-
-                page_streak_last_offset = (current_block_id + 1) * this->config->IO_BLOCK_SIZE;
             }
         }
     }
