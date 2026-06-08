@@ -11,7 +11,7 @@
 #include <lazyfs/lazyfs.hpp>
 #include <toml.hpp>
 
-#define MAX_READ_CHUNK 100
+#define MAX_READ_CHUNK 255
 
 /**
  * @brief Parses a clear-cache command string.
