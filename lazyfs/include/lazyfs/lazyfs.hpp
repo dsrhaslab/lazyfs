@@ -225,6 +225,7 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      *
      * @param sync_pages The sync-pages fault to be injected.
      */
+
   void command_fault_sync_pages (faults::SyncPagesF &sync_pages);
 
     /**
