@@ -695,6 +695,7 @@ bool CustomCacheEngine::partial_sync_pages (string owner, off_t last_size, char*
         if (ftruncate (fd, last_size) < 0) {
             spdlog::warn ("[cache] ftruncate of partial sync failed");
         }
+    }
 
     close (fd);
 
