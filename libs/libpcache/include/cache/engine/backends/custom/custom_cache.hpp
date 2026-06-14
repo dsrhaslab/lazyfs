@@ -149,6 +149,12 @@ class CustomCacheEngine : public PageCacheEngine {
                               int block_id,
                               pair<int, int> block_offsets_inside_page);
 
+    off_t flush_page_streak (int fd,
+                             vector<tuple<int, Page*, pair<int, int>, bool>>& page_chunk,
+                             off_t page_streak, off_t current_block_id,
+                             map<int, tuple<int, Page*, pair<int, int>, bool>>& iterate_blocks,
+                             off_t& page_streak_last_offset);
+
   public:
     /**
      * @brief Construct a new Custom Cache Engine object
