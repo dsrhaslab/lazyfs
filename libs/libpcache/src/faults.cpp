@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cctype>
 #include <memory>
+#include <random>
 #include <spdlog/spdlog.h>
 
 using namespace std; 
@@ -461,10 +462,16 @@ unordered_set<int> SyncPagesPartsF::filter_pages_to_sync (vector<int> pages_id) 
                 pages_id_filtered.insert(pages_id[i]);
             }
             break;
-        case SyncPagesPartsF::Pages::RANDOM:
-            // Random logic can be implemented here
-            // TO-DO
+        case SyncPagesPartsF::Pages::RANDOM: {
+            vector<int> shuffled = pages_id;
+            mt19937 rng(random_device{}());
+            shuffle(shuffled.begin(), shuffled.end(), rng);
+            uniform_int_distribution<int> count_dist(1, total_pages);
+            int count = count_dist(rng);
+            for (int i = 0; i < count; ++i)
+                pages_id_filtered.insert(shuffled[i]);
             break;
+        }
     }
 
     for (const auto& page : pages_id) {
