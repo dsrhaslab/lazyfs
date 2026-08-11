@@ -237,7 +237,7 @@ void LazyFS::add_crash_fault (string crash_timing,
     }
 }
 
-vector<string> LazyFS::add_torn_op_fault(string path, string parts, string parts_bytes, string persist) {
+vector<string> LazyFS::add_torn_op_fault(string path, string parts, string parts_bytes, string persist, string occurrence) {
     regex number ("\\d+");
     sregex_token_iterator iter(persist.begin(), persist.end(), number);
     sregex_token_iterator end;
@@ -264,17 +264,20 @@ vector<string> LazyFS::add_torn_op_fault(string path, string parts, string parts
         partsi = stoi(parts);
     }
 
-    int occurrence=1;
+    int occurrencei = 1;
+    if (occurrence != "none") {
+        occurrencei = stoi(occurrence);
+    }
 
     faults::SplitWriteF* fault;
     vector<string> errors;
 
     if (partsi != -1) {
-        fault = new faults::SplitWriteF(occurrence, persistv, partsi);
-        errors = faults::SplitWriteF::validate(occurrence, persistv, partsi, std::nullopt);
+        fault = new faults::SplitWriteF(occurrencei, persistv, partsi);
+        errors = faults::SplitWriteF::validate(occurrencei, persistv, partsi, std::nullopt);
     } else {
-        fault = new faults::SplitWriteF(occurrence, persistv, parts_bytes_v);
-        errors = faults::SplitWriteF::validate(occurrence, persistv, std::nullopt, parts_bytes_v);
+        fault = new faults::SplitWriteF(occurrencei, persistv, parts_bytes_v);
+        errors = faults::SplitWriteF::validate(occurrencei, persistv, std::nullopt, parts_bytes_v);
     }
     
     bool valid_fault = true;
@@ -300,7 +303,7 @@ vector<string> LazyFS::add_torn_op_fault(string path, string parts, string parts
     return errors;
 }
 
-vector<string> LazyFS::add_torn_seq_fault(string path, string op, string persist) {
+vector<string> LazyFS::add_torn_seq_fault(string path, string op, string persist, string occurrence) {
     regex number ("\\d+");
     sregex_token_iterator iter(persist.begin(), persist.end(), number);
     sregex_token_iterator end;
@@ -311,7 +314,12 @@ vector<string> LazyFS::add_torn_seq_fault(string path, string op, string persist
         ++iter;
     }
 
-    faults::ReorderF* fault = new faults::ReorderF(op, persistv, 1);
+    int occurrencei = 1;
+    if (occurrence != "none") {
+        occurrencei = stoi(occurrence);
+    }
+
+    faults::ReorderF* fault = new faults::ReorderF(op, persistv, occurrencei);
     vector<string> errors = fault->validate();
 
     bool valid_fault = true;

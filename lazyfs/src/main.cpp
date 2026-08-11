@@ -201,6 +201,7 @@ void fht_worker (LazyFS* filesystem) {
                 string parts = "none";
                 string parts_bytes = "none";
                 string persist = "none";
+                string occurrence = "none";
 
                 bool valid_fault = true;
                 vector<string> errors;
@@ -257,6 +258,17 @@ void fht_worker (LazyFS* filesystem) {
                         } else 
                             persist = tmp_persist;
                         
+                    } else if (current.rfind ("occurrence=", 0) == 0) {
+
+                        string tmp_occurrence = current.erase (0, current.find ("=") + 1);
+                        std::regex pattern(R"(\d+)");
+
+                        if (!std::regex_match(tmp_occurrence, pattern)) {
+                            errors.push_back ("occurrence should be a number");
+                            valid_fault = false;
+                        } else 
+                            occurrence = tmp_occurrence;
+
                     } else if (current != "lazyfs" && current != "torn-op") {
                         errors.push_back ("unknown attribute");
                         valid_fault = false;
@@ -270,9 +282,9 @@ void fht_worker (LazyFS* filesystem) {
                 
                 vector<string> errors_add_torn_op;
                 if (valid_fault) 
-                    errors_add_torn_op = filesystem->add_torn_op_fault (file, parts, parts_bytes, persist);
+                    errors_add_torn_op = filesystem->add_torn_op_fault (file, parts, parts_bytes, persist, occurrence);
 
-                if (errors_add_torn_op.size() == 0) 
+                if (valid_fault && errors_add_torn_op.size() == 0) 
                         spdlog::info ("[lazyfs.faults.worker]: configured successfully '{}'", string (buffer));
                 else {
                     spdlog::warn ("[lazyfs.faults.worker]: received: INVALID torn-op fault:");
@@ -299,6 +311,7 @@ void fht_worker (LazyFS* filesystem) {
                 string file = "none";
                 string op = "none";
                 string persist = "none";
+                string occurrence = "none";
 
                 bool valid_fault = true;
                 vector<string> errors;
@@ -339,6 +352,17 @@ void fht_worker (LazyFS* filesystem) {
                         } else 
                             persist = tmp_per;
                         
+                    } else if (current.rfind ("occurrence=", 0) == 0) {
+
+                        string tmp_occurrence = current.erase (0, current.find ("=") + 1);
+                        std::regex pattern(R"(\d+)");
+
+                        if (!std::regex_match(tmp_occurrence, pattern)) {
+                            errors.push_back ("occurrence should be a number");
+                            valid_fault = false;
+                        } else 
+                            occurrence = tmp_occurrence;
+
                     } else if (current != "lazyfs" && current != "torn-seq") {
                         errors.push_back ("unknown attribute");
                         valid_fault = false;
@@ -347,9 +371,9 @@ void fht_worker (LazyFS* filesystem) {
 
                 vector<string> errors_add_torn_seq;
                 if (valid_fault) 
-                    errors_add_torn_seq = filesystem->add_torn_seq_fault(file, op, persist);
+                    errors_add_torn_seq = filesystem->add_torn_seq_fault(file, op, persist, occurrence);
 
-                if (errors_add_torn_seq.size() == 0)
+                if (valid_fault && errors_add_torn_seq.size() == 0)
                         spdlog::info ("[lazyfs.faults.worker]: configured successfully '{}'", string (buffer));
                 else {  
                         errors.insert(errors.end(), errors_add_torn_seq.begin(), errors_add_torn_seq.end());
