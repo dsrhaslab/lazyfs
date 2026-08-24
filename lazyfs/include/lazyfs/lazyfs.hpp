@@ -381,9 +381,10 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      * @param path path of the fault
      * @param op system call 
      * @param persist which parts of the write to persist
+     * @param occurrence number of occurrences for the fault
      * @return errors
     */
-    vector<string> add_torn_seq_fault(string path, string op, string persist);
+    vector<string> add_torn_seq_fault(string path, string op, string persist, string occurrence);
 
     /**
      * @brief Adds a torn-op fault to the faults map. Returns a vector with errors if any.
@@ -392,9 +393,10 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      * @param parts which parts of the write to persist
      * @param parts_bytes division of the write in bytes
      * @param persist which parts of the write to persist
+     * @param occurrence number of occurrences for the fault
      * @return errors
     */
-    vector<string> add_torn_op_fault(string path, string parts, string parts_bytes, string persist);
+    vector<string> add_torn_op_fault(string path, string parts, string parts_bytes, string persist, string occurrence);
 
     /**
      * @brief Kills lazyfs with SIGKILL if any fault condition verifies
