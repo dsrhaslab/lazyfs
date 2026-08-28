@@ -10,8 +10,10 @@
 #include "spdlog/sinks/basic_file_sink.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 
+#include <atomic>
 #include <cache/config/config.hpp>
 #include <errno.h>
+#include <fcntl.h>
 #include <fstream>
 #include <lazyfs/lazyfs.hpp>
 #include <regex>
@@ -26,19 +28,13 @@ using namespace lazyfs;
 
 cache::config::Config std_config;
 std::thread faults_handler_thread;
+std::atomic<bool> stop_faults_handler {false};
+int faults_handler_fifo_fd = -1;
 LazyFS fs;
 
 void fht_worker (LazyFS* filesystem) {
-    int fd_fifo, fd_fifo_completed;
+    int fd_fifo_completed;
     std::shared_mutex fifo_lock;
-    
-    fd_fifo = open (std_config.FIFO_PATH.c_str (), O_RDWR);
-    if (fd_fifo < 0) {
-        spdlog::critical ("[lazyfs.fifo]: failed to open fifo '{}' (error: {})",
-                          std_config.FIFO_PATH.c_str (),
-                          strerror (errno));
-        return;
-    }
 
     bool write_completed_faults = (std_config.FIFO_PATH_COMPLETED != "");
 
@@ -56,8 +52,11 @@ void fht_worker (LazyFS* filesystem) {
 
     char buffer[MAX_READ_CHUNK];
     int ret;
-    while (true) {
-        if ((ret = read (fd_fifo, &buffer, MAX_READ_CHUNK)) > 0) {
+    while (!stop_faults_handler.load ()) {
+        if ((ret = read (faults_handler_fifo_fd, &buffer, MAX_READ_CHUNK)) > 0) {
+
+            if (stop_faults_handler.load ())
+                break;
 
             buffer[ret - 1] = '\0';
 
@@ -429,7 +428,6 @@ void fht_worker (LazyFS* filesystem) {
 
     spdlog::info ("[lazyfs.faults.worker]: worker stopped");
 
-    close (fd_fifo);   
     if (write_completed_faults) close(fd_fifo_completed);
 }
 
@@ -545,6 +543,15 @@ int main (int argc, char* argv[]) {
              spdlog::info ("[lazyfs.fifo]: faults fifo exists!");
     } else
          spdlog::info ("[lazyfs.fifo]: fifo {} created", std_config.FIFO_PATH.c_str ());
+
+    faults_handler_fifo_fd = open (std_config.FIFO_PATH.c_str (), O_RDWR);
+    if (faults_handler_fifo_fd < 0) {
+        spdlog::critical ("[lazyfs.fifo]: failed to open fifo '{}' (error: {})",
+                          std_config.FIFO_PATH.c_str (),
+                          strerror (errno));
+        spdlog::critical ("[lazyfs] exiting...");
+        return -1;
+    }
    
     
     if (std_config.FIFO_PATH_COMPLETED != "") {
@@ -576,6 +583,24 @@ int main (int argc, char* argv[]) {
     // Start LazyFS
 
     int status = fs.run (new_argc, new_argv);
+
+    if (faults_handler_thread.joinable ()) {
+        stop_faults_handler.store (true);
+
+        const char wakeup = '\n';
+        ssize_t wakeup_result;
+        do {
+            wakeup_result = write (faults_handler_fifo_fd, &wakeup, sizeof (wakeup));
+        } while (wakeup_result < 0 && errno == EINTR);
+
+        if (wakeup_result < 0)
+            spdlog::warn ("[lazyfs.fifo]: failed to wake faults handler (error: {})",
+                          strerror (errno));
+
+        faults_handler_thread.join ();
+    }
+
+    close (faults_handler_fifo_fd);
 
     return status;
 }
