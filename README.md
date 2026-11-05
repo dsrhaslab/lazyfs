@@ -266,6 +266,10 @@ fusermount -uz <mount-directory>
 
 LazyFS expects that every buffer written to the FIFO file terminates with a new line character (**echo** does this by default). Thus, if using `pwrite`, for example, make sure you end the buffer with `\n`.
 
+## Authors and Acknowledgments
+
+LazyFS was originally created by [João Azevedo](https://github.com/devzizu) and later extended by [Maria Ramos](https://github.com/mj-ramos). We thank them for their work.
+
 ## Contact
 
-For additional information regarding possible improvements and collaborations please open an issue or contact: [@devzizu](https://github.com/devzizu), [@mj-ramos](https://github.com/mj-ramos) and [@dsrhaslab](https://github.com/dsrhaslab).
+For bug reports, questions, or feature requests, please [open an issue](https://github.com/dsrhaslab/lazyfs/issues). For other inquiries, contact [João Paulo](https://github.com/jtpaulo), [Nuno Fernandes](https://github.com/nunom27) or [@dsrhaslab](https://github.com/dsrhaslab).
