@@ -1886,6 +1886,21 @@ int LazyFS::lfs_symlink (const char* from, const char* to) {
     return 0;
 }
 
+int LazyFS::lfs_statfs (const char* path, struct statvfs* stbuf) {
+
+    std::shared_lock<std::shared_mutex> lock (cache_command_lock);
+
+    if (this_ ()->FSConfig->log_all_operations) {
+        spdlog::info ("[lazyfs.ops]: {}(path={})", __FUNCTION__, path);
+    }
+
+    // path is already translated to the backing directory by -o subdir
+    if (statvfs (path, stbuf) == -1)
+        return -errno;
+
+    return 0;
+}
+
 int LazyFS::lfs_access (const char* path, int mask) {
 
     this_ ()->trigger_crash_fault ("access", "before", path, "", CLEAR);
