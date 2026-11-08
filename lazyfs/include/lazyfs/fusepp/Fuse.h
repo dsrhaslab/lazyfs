@@ -34,6 +34,8 @@
 #include <cache/engine/backends/custom/custom_cache.hpp>
 #include <cstring>
 #include <fuse3/fuse.h>
+#include <string>
+#include <type_traits>
 
 using namespace cache;
 using namespace cache::engine::backends::custom;
@@ -129,7 +131,35 @@ template<class T> class Fuse {
 
     static auto this_ () { return static_cast<T*> (fuse_get_context ()->private_data); }
 
+    static void set_backing_root (std::string root) { backing_root_ = std::move (root); }
+
   private:
+    inline static std::string backing_root_;
+
+    static std::string rooted_path (const char* path) {
+        return path == nullptr ? std::string () : backing_root_ + path;
+    }
+
+    template<auto Function, class... Args>
+    static auto rooted (const char* path, Args... args) -> decltype (Function (path, args...)) {
+        auto full = rooted_path (path);
+        return Function (path == nullptr ? nullptr : full.c_str (), args...);
+    }
+
+    template<auto Function, class... Args>
+    static auto rooted_pair (const char* from, const char* to, Args... args)
+        -> decltype (Function (from, to, args...)) {
+        auto full_from = rooted_path (from);
+        auto full_to = rooted_path (to);
+        return Function (full_from.c_str (), full_to.c_str (), args...);
+    }
+
+    template<auto Function>
+    static int rooted_symlink (const char* target, const char* path) {
+        auto full = rooted_path (path);
+        return Function (target, full.c_str ());
+    }
+
     static void load_operations_ () {
         operations_.getattr     = T::lfs_getattr;
         operations_.readlink    = T::lfs_readlink;
@@ -171,6 +201,51 @@ template<class T> class Fuse {
         operations_.read_buf    = T::lfs_read_buf;
         operations_.flock       = T::lfs_flock;
         operations_.fallocate   = T::lfs_fallocate;
+
+        // Root implemented callbacks here: libfuse's subdir module omits
+        // newer operations such as fallocate. Null optional callbacks stay null.
+#define ROOT_OPERATION(name, adapter)                                              \
+        if constexpr (std::is_function_v<decltype (T::lfs_##name)>)                 \
+            operations_.name = adapter<&T::lfs_##name>;
+        ROOT_OPERATION (getattr, rooted)
+        ROOT_OPERATION (readlink, rooted)
+        ROOT_OPERATION (mknod, rooted)
+        ROOT_OPERATION (mkdir, rooted)
+        ROOT_OPERATION (unlink, rooted)
+        ROOT_OPERATION (rmdir, rooted)
+        ROOT_OPERATION (symlink, rooted_symlink)
+        ROOT_OPERATION (rename, rooted_pair)
+        ROOT_OPERATION (link, rooted_pair)
+        ROOT_OPERATION (chmod, rooted)
+        ROOT_OPERATION (chown, rooted)
+        ROOT_OPERATION (truncate, rooted)
+        ROOT_OPERATION (open, rooted)
+        ROOT_OPERATION (read, rooted)
+        ROOT_OPERATION (write, rooted)
+        ROOT_OPERATION (statfs, rooted)
+        ROOT_OPERATION (flush, rooted)
+        ROOT_OPERATION (release, rooted)
+        ROOT_OPERATION (fsync, rooted)
+        ROOT_OPERATION (setxattr, rooted)
+        ROOT_OPERATION (getxattr, rooted)
+        ROOT_OPERATION (listxattr, rooted)
+        ROOT_OPERATION (removexattr, rooted)
+        ROOT_OPERATION (opendir, rooted)
+        ROOT_OPERATION (readdir, rooted)
+        ROOT_OPERATION (releasedir, rooted)
+        ROOT_OPERATION (fsyncdir, rooted)
+        ROOT_OPERATION (access, rooted)
+        ROOT_OPERATION (create, rooted)
+        ROOT_OPERATION (lock, rooted)
+        ROOT_OPERATION (utimens, rooted)
+        ROOT_OPERATION (bmap, rooted)
+        ROOT_OPERATION (ioctl, rooted)
+        ROOT_OPERATION (poll, rooted)
+        ROOT_OPERATION (write_buf, rooted)
+        ROOT_OPERATION (read_buf, rooted)
+        ROOT_OPERATION (flock, rooted)
+        ROOT_OPERATION (fallocate, rooted)
+#undef ROOT_OPERATION
     }
 
     static struct fuse_operations operations_;

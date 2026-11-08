@@ -11,6 +11,7 @@
 #include <cmath>
 #include <ctime>
 #include <dirent.h>
+#include <fcntl.h>
 #include <iostream>
 #include <lazyfs/lazyfs.hpp>
 #include <map>
@@ -18,6 +19,7 @@
 #include <signal.h>
 #include <spdlog/spdlog.h>
 #include <string>
+#include <sys/eventfd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <thread>
@@ -670,12 +672,29 @@ void* LazyFS::lfs_init (struct fuse_conn_info* conn, struct fuse_config* cfg) {
     cfg->use_ino          = 1;
     // cfg->direct_io        = 1;
 
+    this_ ()->faults_stop_fd = eventfd (0, EFD_CLOEXEC | EFD_NONBLOCK);
+    if (this_ ()->faults_stop_fd == -1) {
+        spdlog::critical ("[lazyfs]: cannot create fault worker stop descriptor: {}", strerror (errno));
+        fuse_exit (fuse_get_context ()->fuse);
+        return this_ ();
+    }
     new (this_ ()->faults_handler_thread) std::thread (this_ ()->fht_worker, this_ ());
 
     return this_ ();
 }
 
-void LazyFS::lfs_destroy (void*) { spdlog::info ("[lazyfs]: stopping LazyFS..."); }
+void LazyFS::lfs_destroy (void*) {
+    spdlog::info ("[lazyfs]: stopping LazyFS...");
+    auto* filesystem = this_ ();
+    if (filesystem->faults_stop_fd >= 0) {
+        uint64_t stop = 1;
+        while (write (filesystem->faults_stop_fd, &stop, sizeof (stop)) == -1 && errno == EINTR) {}
+        if (filesystem->faults_handler_thread->joinable ())
+            filesystem->faults_handler_thread->join ();
+        close (filesystem->faults_stop_fd);
+        filesystem->faults_stop_fd = -1;
+    }
+}
 
 int LazyFS::lfs_getattr (const char* path, struct stat* stbuf, struct fuse_file_info* fi) {
 
@@ -1538,6 +1557,28 @@ int LazyFS::lfs_read (const char* path,
     return res;
 }
 
+int LazyFS::lfs_fallocate (const char* path,
+                           int mode,
+                           off_t offset,
+                           off_t length,
+                           struct fuse_file_info* fi) {
+    std::shared_lock<std::shared_mutex> lock (cache_command_lock);
+
+    if (this_ ()->FSConfig->log_all_operations) {
+        spdlog::info ("[lazyfs.ops]: {}(path={},mode={},off={},len={})",
+                      __FUNCTION__, path, mode, offset, length);
+    }
+
+    if (mode != FALLOC_FL_KEEP_SIZE)
+        return -EOPNOTSUPP;
+    if (fi == nullptr)
+        return -EBADF;
+
+    // Reserve backing extents while preserving cached bytes and logical EOF.
+    int res = fallocate (fi->fh, mode, offset, length);
+    return res == -1 ? -errno : 0;
+}
+
 int LazyFS::lfs_fsync (const char* path, int isdatasync, struct fuse_file_info* fi) {
 
     this_ ()->trigger_crash_fault ("fsync", "before", path, "", CLEAR);
@@ -1575,6 +1616,21 @@ int LazyFS::lfs_fsync (const char* path, int isdatasync, struct fuse_file_info* 
     this_ ()->trigger_configured_clear_fault ("fsync", "after", path, "");
     
     return res;
+}
+
+int LazyFS::lfs_fsyncdir (const char* path, int isdatasync, struct fuse_file_info* fi) {
+    std::shared_lock<std::shared_mutex> lock (cache_command_lock);
+    (void)fi;
+    if (this_ ()->FSConfig->log_all_operations) {
+        spdlog::info ("[lazyfs.ops]: {}(path={},isdatasync={})", __FUNCTION__, path, isdatasync);
+    }
+    int fd = open (path, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+    if (fd == -1)
+        return -errno;
+    int res = isdatasync ? fdatasync (fd) : fsync (fd);
+    int error = errno;
+    close (fd);
+    return res == -1 ? -error : 0;
 }
 
 int LazyFS::lfs_is_dir_empty (const char* dirname) {

@@ -153,6 +153,22 @@ To **run the file system**, one could use the **mount-lazyfs.sh** script, which 
 - `-f` : Foreground mode.
 - `-s` : FUSE single thread mode.
 
+The mount script passes the backing directory through LazyFS's `--root-dir`
+option. Paths are translated in the filesystem callbacks, including both
+paths of rename and link operations. This avoids libfuse's `subdir` module,
+which does not forward `fallocate`.
+
+Preallocation supports `FALLOC_FL_KEEP_SIZE`: backing extents are reserved
+without changing logical file size or persisting dirty cached data. Other
+allocation modes return `EOPNOTSUPP`. Directory syncs reach the backing
+directory. See `tests/util/preallocate.c` for the allocation regression.
+LazyFS opens the completion FIFO for each `finished::clear-cache` reply and
+closes it after writing. Open one reader per command; a long-lived reader
+sees end-of-file after each reply. The fault worker handles no further
+commands until a reader takes the reply.
+Unmount wakes and joins the fault worker, including when a completion
+listener has not opened its FIFO. `tests/util/shutdown.sh` covers these exits.
+
 ```bash
 cd lazyfs/
 
