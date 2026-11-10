@@ -32,3 +32,8 @@ completion FIFO, an unopened completion FIFO, repeated acknowledged
 cache-loss commands, and a cache-loss command awaiting a missing listener.
 It requires FUSE mount access and fails on a blocked fault worker or an
 abnormal filesystem exit. Set `TMPDIR` to choose its artifact directory.
+
+`bash full-cache.sh /path/to/lazyfs` writes past a full cache without
+eviction and checks the data through the mount, before and after cache loss.
+With `strace` installed it also fails when the backing file receives one
+write per block instead of one per run of blocks.

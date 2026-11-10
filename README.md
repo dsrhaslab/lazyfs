@@ -126,7 +126,7 @@ crash=true
 
 I recommend following the `simple` cache configuration (indicating the cache size and using a similar configuration file as `default.toml`), since it's currently the most tested schema in our experiments. Additionally, for the section **[cache]**, you can specify the following:
 
--   **apply_eviction**: Whether the cache should behave like the real page cache, evicting pages when the cache fills to the maximum.
+-   **apply_eviction**: Whether the cache should behave like the real page cache, evicting pages when the cache fills to the maximum. Without eviction, writes past a full cache go straight to the backing file, one write for each run of uncached blocks.
 
 -   **[cache.simple]** or **[cache.manual]**: To setup the cache size and internal organization. For now, you could just follow the example using the **custom_size** in (Gb/Mb/Kb) and the **number of blocks in each page** (you can just leave 1 as default). For manual configurations, comment out the simple configuration and uncoment/change the example above to suit your needs.
 

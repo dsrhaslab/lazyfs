@@ -1062,6 +1062,43 @@ int LazyFS::lfs_write (const char* path,
         bool cache_full = (this_ ()->FSCache->get_cache_usage () == 100) &&
                           !this_ ()->FSConfig->APPLY_LRU_EVICTION;
 
+        // Blocks that bypass the cache go to the backing file. Consecutive ones
+        // from the caller's buffer form one run, written with one pwrite: on a
+        // file opened with O_DSYNC, one synchronous write per run instead of
+        // one per block. Bytes staged in block_caching_buffer are reused by the
+        // next block, so they flush the run and go out at once.
+        const char* through_buf = nullptr;
+        size_t through_size     = 0;
+        off_t through_offset    = 0;
+
+        auto flush_through = [&] () -> bool {
+            if (through_size == 0)
+                return true;
+            ssize_t written = pwrite (fd, through_buf, through_size, through_offset);
+            bool complete   = written == (ssize_t)through_size;
+            through_size    = 0;
+            return complete;
+        };
+
+        auto write_through = [&] (const char* data, size_t length, off_t at) -> bool {
+            if (data < buf || data >= buf + size) {
+                if (!flush_through ())
+                    return false;
+                return pwrite (fd, data, length, at) == (ssize_t)length;
+            }
+            if (through_size > 0 && through_buf + through_size == data &&
+                through_offset + (off_t)through_size == at) {
+                through_size += length;
+                return true;
+            }
+            if (!flush_through ())
+                return false;
+            through_buf    = data;
+            through_size   = length;
+            through_offset = at;
+            return true;
+        };
+
         // ----------------------------------------------------------------------------------
 
         // std::printf ("\t[write] from_block=%d to_block=%d\n", blk_low, blk_high);
@@ -1183,12 +1220,9 @@ int LazyFS::lfs_write (const char* path,
 
                             // Block allocation in cache failed
 
-                            int pwrite_res = pwrite (fd,
-                                                     cache_buf,
-                                                     cache_wr_sz,
-                                                     CURR_BLK_IDX * IO_BLOCK_SIZE + cache_from);
-
-                            if (pwrite_res != cache_wr_sz) {
+                            if (!write_through (cache_buf,
+                                                cache_wr_sz,
+                                                CURR_BLK_IDX * IO_BLOCK_SIZE + cache_from)) {
                                 res = -1;
                                 break;
                             }
@@ -1228,12 +1262,9 @@ int LazyFS::lfs_write (const char* path,
 
                 if (!curr_block_put_exists || put_res.at (CURR_BLK_IDX) == false) {
 
-                    int pwrite_res = pwrite (fd,
-                                             buf + data_buffer_iterator,
-                                             blk_readable_to - blk_readable_from + 1,
-                                             CURR_BLK_IDX * IO_BLOCK_SIZE + blk_readable_from);
-
-                    if (pwrite_res != (blk_readable_to - blk_readable_from + 1)) {
+                    if (!write_through (buf + data_buffer_iterator,
+                                        blk_readable_to - blk_readable_from + 1,
+                                        CURR_BLK_IDX * IO_BLOCK_SIZE + blk_readable_from)) {
                         res = -1;
                         break;
                     }
@@ -1242,6 +1273,9 @@ int LazyFS::lfs_write (const char* path,
 
             data_buffer_iterator = data_allocated;
         }
+
+        if (!flush_through ())
+            res = -1;
 
         // ----------------------------------------------------------------------------------
 
