@@ -300,6 +300,8 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
 
     static int lfs_readlink (const char* path, char* buf, size_t size);
 
+    static int lfs_statfs (const char* path, struct statvfs* stbuf);
+
     static int lfs_unlink (const char* path);
 
     static int lfs_rename (const char* from, const char* to, unsigned int flags);

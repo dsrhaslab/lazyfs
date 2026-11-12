@@ -807,7 +807,9 @@ int LazyFS::lfs_readdir (const char* path,
         memset (&st, 0, sizeof (st));
         st.st_ino  = de->d_ino;
         st.st_mode = de->d_type << 12;
-        if (filler (buf, de->d_name, &st, 0, FUSE_FILL_DIR_PLUS))
+        // Not FUSE_FILL_DIR_PLUS: st is incomplete (size 0), and with that flag the kernel
+        // takes it as the files' attributes, shrinking every listed file to 0 bytes.
+        if (filler (buf, de->d_name, &st, 0, (enum fuse_fill_dir_flags)0))
             break;
     }
 
@@ -1883,6 +1885,21 @@ int LazyFS::lfs_symlink (const char* from, const char* to) {
 
     this_ ()->trigger_crash_fault ("symlink", "after", from, to, CLEAR);
     this_ ()->trigger_configured_clear_fault ("symlink", "after", from, to);
+    return 0;
+}
+
+int LazyFS::lfs_statfs (const char* path, struct statvfs* stbuf) {
+
+    std::shared_lock<std::shared_mutex> lock (cache_command_lock);
+
+    if (this_ ()->FSConfig->log_all_operations) {
+        spdlog::info ("[lazyfs.ops]: {}(path={})", __FUNCTION__, path);
+    }
+
+    // path is already translated to the backing directory by -o subdir
+    if (statvfs (path, stbuf) == -1)
+        return -errno;
+
     return 0;
 }
 
