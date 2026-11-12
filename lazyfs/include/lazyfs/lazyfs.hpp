@@ -92,6 +92,7 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      * @brief Faults handler thread / worker.
      */
     std::thread* faults_handler_thread;
+    int faults_stop_fd = -1;
 
     /**
      * @brief Faults handler method to run inside the thread.
@@ -189,6 +190,8 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
      *
      */
     ~LazyFS ();
+
+    int fault_stop_descriptor () const { return faults_stop_fd; }
 
     /**
      * @brief Get faults currently being injected.
@@ -306,6 +309,12 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
 
     static int lfs_truncate (const char* path, off_t size, struct fuse_file_info* fi);
 
+    static int lfs_fallocate (const char* path,
+                              int mode,
+                              off_t offset,
+                              off_t length,
+                              struct fuse_file_info* fi);
+
     off_t lfs_lseek (const char* path, off_t off, int whence, struct fuse_file_info* fi);
 
     //#ifdef HAVE_UTIMENSAT
@@ -329,6 +338,8 @@ class LazyFS : public Fusepp::Fuse<LazyFS> {
 #endif /* HAVE_SETXATTR */
 
     static int lfs_fsync (const char* path, int isdatasync, struct fuse_file_info* fi);
+
+    static int lfs_fsyncdir (const char* path, int isdatasync, struct fuse_file_info* fi);
 
     static int lfs_write (const char* path,
                           const char* buf,

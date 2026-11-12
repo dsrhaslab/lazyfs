@@ -12,8 +12,11 @@
 
 #include <cache/config/config.hpp>
 #include <errno.h>
+#include <cstdlib>
 #include <fstream>
+#include <iostream>
 #include <lazyfs/lazyfs.hpp>
+#include <poll.h>
 #include <regex>
 #include <spdlog/spdlog.h>
 #include <string>
@@ -28,11 +31,26 @@ cache::config::Config std_config;
 std::thread faults_handler_thread;
 LazyFS fs;
 
+int open_completion_fifo (const std::string& path, int stop_fd) {
+    while (true) {
+        int fd = open (path.c_str (), O_WRONLY | O_NONBLOCK | O_CLOEXEC);
+        if (fd >= 0 || (errno != ENXIO && errno != EINTR))
+            return fd;
+        struct pollfd stop = {stop_fd, POLLIN, 0};
+        int result = poll (&stop, 1, 10);
+        if (result > 0) {
+            errno = ECANCELED;
+            return -1;
+        }
+        if (result < 0 && errno != EINTR)
+            return -1;
+    }
+}
+
 void fht_worker (LazyFS* filesystem) {
-    int fd_fifo, fd_fifo_completed;
-    std::shared_mutex fifo_lock;
+    int fd_fifo;
     
-    fd_fifo = open (std_config.FIFO_PATH.c_str (), O_RDWR);
+    fd_fifo = open (std_config.FIFO_PATH.c_str (), O_RDWR | O_NONBLOCK | O_CLOEXEC);
     if (fd_fifo < 0) {
         spdlog::critical ("[lazyfs.fifo]: failed to open fifo '{}' (error: {})",
                           std_config.FIFO_PATH.c_str (),
@@ -42,21 +60,22 @@ void fht_worker (LazyFS* filesystem) {
 
     bool write_completed_faults = (std_config.FIFO_PATH_COMPLETED != "");
 
-    if (write_completed_faults) {
-        fd_fifo_completed = open (std_config.FIFO_PATH_COMPLETED.c_str (), O_WRONLY);
-        if (fd_fifo_completed < 0) {
-            spdlog::critical ("[lazyfs.fifo]: failed to open fifo '{}' (error: {})",
-                            std_config.FIFO_PATH_COMPLETED.c_str (),
-                            strerror (errno));
-            return;
-        }
-    }
-
     spdlog::info ("[lazyfs.faults.worker]: waiting for fault commands...");
 
     char buffer[MAX_READ_CHUNK];
     int ret;
+    struct pollfd descriptors[] = {{fd_fifo, POLLIN, 0},
+                                   {filesystem->fault_stop_descriptor (), POLLIN, 0}};
     while (true) {
+        if (poll (descriptors, 2, -1) == -1) {
+            if (errno == EINTR)
+                continue;
+            break;
+        }
+        if (descriptors[1].revents != 0)
+            break;
+        if ((descriptors[0].revents & POLLIN) == 0)
+            continue;
         if ((ret = read (fd_fifo, &buffer, MAX_READ_CHUNK)) > 0) {
 
             buffer[ret - 1] = '\0';
@@ -179,11 +198,20 @@ void fht_worker (LazyFS* filesystem) {
                 
                 if (write_completed_faults) {
                     const char* clear_cache = "finished::clear-cache\n";
-                    fifo_lock.lock();
-                    if ((ret = write(fd_fifo_completed, clear_cache, strlen(clear_cache))) < 0) {
+                    // Open only when acknowledging a completed command. A
+                    // missing listener cannot block filesystem shutdown.
+                    spdlog::info ("[lazyfs.faults.worker]: awaiting clear-cache completion listener");
+                    int fd_completed = open_completion_fifo (std_config.FIFO_PATH_COMPLETED,
+                                                               filesystem->fault_stop_descriptor ());
+                    if (fd_completed < 0 && errno == ECANCELED)
+                        break;
+                    if (fd_completed < 0 ||
+                        write (fd_completed, clear_cache, strlen (clear_cache)) !=
+                            static_cast<ssize_t> (strlen (clear_cache))) {
                         spdlog::warn ("[lazyfs.faults.worker]: failed to write to notifier fifo");
-                    };
-                    fifo_lock.unlock();
+                    }
+                    if (fd_completed >= 0)
+                        close (fd_completed);
                 }
 
             } else if (command_str.rfind ("lazyfs::torn-op", 0) == 0) {
@@ -423,6 +451,8 @@ void fht_worker (LazyFS* filesystem) {
                 spdlog::info ("[lazyfs.faults.worker]: command unknown '{}'", string (buffer));
             }
 
+        } else if (ret < 0 && (errno == EINTR || errno == EAGAIN)) {
+            continue;
         } else
             break;
     }
@@ -430,7 +460,6 @@ void fht_worker (LazyFS* filesystem) {
     spdlog::info ("[lazyfs.faults.worker]: worker stopped");
 
     close (fd_fifo);   
-    if (write_completed_faults) close(fd_fifo_completed);
 }
 
 int main (int argc, char* argv[]) {
@@ -446,7 +475,26 @@ int main (int argc, char* argv[]) {
 
     for (i = 0, new_argc = 0; (i < argc) && (new_argc < MAX_ARGS); i++)
 
-        if (!strcmp (argv[i], "--config-path")) {
+        if (!strcmp (argv[i], "--root-dir")) {
+            if (i + 1 >= argc) {
+                std::cerr << "--root-dir requires a directory" << std::endl;
+                return 1;
+            }
+            char* root = realpath (argv[++i], nullptr);
+            struct stat info;
+            if (root == nullptr || stat (root, &info) == -1 || !S_ISDIR (info.st_mode)) {
+                std::cerr << "invalid backing directory" << std::endl;
+                free (root);
+                return 1;
+            }
+            fs.set_backing_root (root);
+            free (root);
+        } else if (!strcmp (argv[i], "--config-path")) {
+
+            if (i + 1 >= argc) {
+                std::cerr << "--config-path requires a file" << std::endl;
+                return 1;
+            }
 
             if (strcasestr (argv[i + 1], "-o"))
 

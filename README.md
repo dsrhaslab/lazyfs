@@ -126,7 +126,7 @@ crash=true
 
 I recommend following the `simple` cache configuration (indicating the cache size and using a similar configuration file as `default.toml`), since it's currently the most tested schema in our experiments. Additionally, for the section **[cache]**, you can specify the following:
 
--   **apply_eviction**: Whether the cache should behave like the real page cache, evicting pages when the cache fills to the maximum.
+-   **apply_eviction**: Whether the cache should behave like the real page cache, evicting pages when the cache fills to the maximum. Without eviction, writes past a full cache go straight to the backing file, one write for each run of uncached blocks.
 
 -   **[cache.simple]** or **[cache.manual]**: To setup the cache size and internal organization. For now, you could just follow the example using the **custom_size** in (Gb/Mb/Kb) and the **number of blocks in each page** (you can just leave 1 as default). For manual configurations, comment out the simple configuration and uncoment/change the example above to suit your needs.
 
@@ -152,6 +152,22 @@ To **run the file system**, one could use the **mount-lazyfs.sh** script, which 
 - `-r` : FUSE root directory.
 - `-f` : Foreground mode.
 - `-s` : FUSE single thread mode.
+
+The mount script passes the backing directory through LazyFS's `--root-dir`
+option. Paths are translated in the filesystem callbacks, including both
+paths of rename and link operations. This avoids libfuse's `subdir` module,
+which does not forward `fallocate`.
+
+Preallocation supports `FALLOC_FL_KEEP_SIZE`: backing extents are reserved
+without changing logical file size or persisting dirty cached data. Other
+allocation modes return `EOPNOTSUPP`. Directory syncs reach the backing
+directory. See `tests/util/preallocate.c` for the allocation regression.
+LazyFS opens the completion FIFO for each `finished::clear-cache` reply and
+closes it after writing. Open one reader per command; a long-lived reader
+sees end-of-file after each reply. The fault worker handles no further
+commands until a reader takes the reply.
+Unmount wakes and joins the fault worker, including when a completion
+listener has not opened its FIFO. `tests/util/shutdown.sh` covers these exits.
 
 ```bash
 cd lazyfs/

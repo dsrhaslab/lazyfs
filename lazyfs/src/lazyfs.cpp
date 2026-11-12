@@ -11,6 +11,7 @@
 #include <cmath>
 #include <ctime>
 #include <dirent.h>
+#include <fcntl.h>
 #include <iostream>
 #include <lazyfs/lazyfs.hpp>
 #include <map>
@@ -18,6 +19,7 @@
 #include <signal.h>
 #include <spdlog/spdlog.h>
 #include <string>
+#include <sys/eventfd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <thread>
@@ -678,12 +680,29 @@ void* LazyFS::lfs_init (struct fuse_conn_info* conn, struct fuse_config* cfg) {
     cfg->use_ino          = 1;
     // cfg->direct_io        = 1;
 
+    this_ ()->faults_stop_fd = eventfd (0, EFD_CLOEXEC | EFD_NONBLOCK);
+    if (this_ ()->faults_stop_fd == -1) {
+        spdlog::critical ("[lazyfs]: cannot create fault worker stop descriptor: {}", strerror (errno));
+        fuse_exit (fuse_get_context ()->fuse);
+        return this_ ();
+    }
     new (this_ ()->faults_handler_thread) std::thread (this_ ()->fht_worker, this_ ());
 
     return this_ ();
 }
 
-void LazyFS::lfs_destroy (void*) { spdlog::info ("[lazyfs]: stopping LazyFS..."); }
+void LazyFS::lfs_destroy (void*) {
+    spdlog::info ("[lazyfs]: stopping LazyFS...");
+    auto* filesystem = this_ ();
+    if (filesystem->faults_stop_fd >= 0) {
+        uint64_t stop = 1;
+        while (write (filesystem->faults_stop_fd, &stop, sizeof (stop)) == -1 && errno == EINTR) {}
+        if (filesystem->faults_handler_thread->joinable ())
+            filesystem->faults_handler_thread->join ();
+        close (filesystem->faults_stop_fd);
+        filesystem->faults_stop_fd = -1;
+    }
+}
 
 int LazyFS::lfs_getattr (const char* path, struct stat* stbuf, struct fuse_file_info* fi) {
 
@@ -1051,6 +1070,43 @@ int LazyFS::lfs_write (const char* path,
         bool cache_full = (this_ ()->FSCache->get_cache_usage () == 100) &&
                           !this_ ()->FSConfig->APPLY_LRU_EVICTION;
 
+        // Blocks that bypass the cache go to the backing file. Consecutive ones
+        // from the caller's buffer form one run, written with one pwrite: on a
+        // file opened with O_DSYNC, one synchronous write per run instead of
+        // one per block. Bytes staged in block_caching_buffer are reused by the
+        // next block, so they flush the run and go out at once.
+        const char* through_buf = nullptr;
+        size_t through_size     = 0;
+        off_t through_offset    = 0;
+
+        auto flush_through = [&] () -> bool {
+            if (through_size == 0)
+                return true;
+            ssize_t written = pwrite (fd, through_buf, through_size, through_offset);
+            bool complete   = written == (ssize_t)through_size;
+            through_size    = 0;
+            return complete;
+        };
+
+        auto write_through = [&] (const char* data, size_t length, off_t at) -> bool {
+            if (data < buf || data >= buf + size) {
+                if (!flush_through ())
+                    return false;
+                return pwrite (fd, data, length, at) == (ssize_t)length;
+            }
+            if (through_size > 0 && through_buf + through_size == data &&
+                through_offset + (off_t)through_size == at) {
+                through_size += length;
+                return true;
+            }
+            if (!flush_through ())
+                return false;
+            through_buf    = data;
+            through_size   = length;
+            through_offset = at;
+            return true;
+        };
+
         // ----------------------------------------------------------------------------------
 
         // std::printf ("\t[write] from_block=%d to_block=%d\n", blk_low, blk_high);
@@ -1172,12 +1228,9 @@ int LazyFS::lfs_write (const char* path,
 
                             // Block allocation in cache failed
 
-                            int pwrite_res = pwrite (fd,
-                                                     cache_buf,
-                                                     cache_wr_sz,
-                                                     CURR_BLK_IDX * IO_BLOCK_SIZE + cache_from);
-
-                            if (pwrite_res != cache_wr_sz) {
+                            if (!write_through (cache_buf,
+                                                cache_wr_sz,
+                                                CURR_BLK_IDX * IO_BLOCK_SIZE + cache_from)) {
                                 res = -1;
                                 break;
                             }
@@ -1217,12 +1270,9 @@ int LazyFS::lfs_write (const char* path,
 
                 if (!curr_block_put_exists || put_res.at (CURR_BLK_IDX) == false) {
 
-                    int pwrite_res = pwrite (fd,
-                                             buf + data_buffer_iterator,
-                                             blk_readable_to - blk_readable_from + 1,
-                                             CURR_BLK_IDX * IO_BLOCK_SIZE + blk_readable_from);
-
-                    if (pwrite_res != (blk_readable_to - blk_readable_from + 1)) {
+                    if (!write_through (buf + data_buffer_iterator,
+                                        blk_readable_to - blk_readable_from + 1,
+                                        CURR_BLK_IDX * IO_BLOCK_SIZE + blk_readable_from)) {
                         res = -1;
                         break;
                     }
@@ -1231,6 +1281,9 @@ int LazyFS::lfs_write (const char* path,
 
             data_buffer_iterator = data_allocated;
         }
+
+        if (!flush_through ())
+            res = -1;
 
         // ----------------------------------------------------------------------------------
 
@@ -1546,6 +1599,28 @@ int LazyFS::lfs_read (const char* path,
     return res;
 }
 
+int LazyFS::lfs_fallocate (const char* path,
+                           int mode,
+                           off_t offset,
+                           off_t length,
+                           struct fuse_file_info* fi) {
+    std::shared_lock<std::shared_mutex> lock (cache_command_lock);
+
+    if (this_ ()->FSConfig->log_all_operations) {
+        spdlog::info ("[lazyfs.ops]: {}(path={},mode={},off={},len={})",
+                      __FUNCTION__, path, mode, offset, length);
+    }
+
+    if (mode != FALLOC_FL_KEEP_SIZE)
+        return -EOPNOTSUPP;
+    if (fi == nullptr)
+        return -EBADF;
+
+    // Reserve backing extents while preserving cached bytes and logical EOF.
+    int res = fallocate (fi->fh, mode, offset, length);
+    return res == -1 ? -errno : 0;
+}
+
 int LazyFS::lfs_fsync (const char* path, int isdatasync, struct fuse_file_info* fi) {
 
     this_ ()->trigger_crash_fault ("fsync", "before", path, "", CLEAR);
@@ -1583,6 +1658,21 @@ int LazyFS::lfs_fsync (const char* path, int isdatasync, struct fuse_file_info* 
     this_ ()->trigger_configured_clear_fault ("fsync", "after", path, "");
     
     return res;
+}
+
+int LazyFS::lfs_fsyncdir (const char* path, int isdatasync, struct fuse_file_info* fi) {
+    std::shared_lock<std::shared_mutex> lock (cache_command_lock);
+    (void)fi;
+    if (this_ ()->FSConfig->log_all_operations) {
+        spdlog::info ("[lazyfs.ops]: {}(path={},isdatasync={})", __FUNCTION__, path, isdatasync);
+    }
+    int fd = open (path, O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+    if (fd == -1)
+        return -errno;
+    int res = isdatasync ? fdatasync (fd) : fsync (fd);
+    int error = errno;
+    close (fd);
+    return res == -1 ? -error : 0;
 }
 
 int LazyFS::lfs_is_dir_empty (const char* dirname) {
